@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Compile Python sources
+        run: python -m py_compile *.py google-bridge/*.py
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Run monitor self-test
+        run: python monitor.py --self-test
+
+      - name: Run watchdog self-test
+        run: python watchdog.py --self-test
+
+  apps-script:
+    name: Apps Script bridge test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Test Code.gs handlers
+        run: node google-bridge/test_code_gs.js
+
+  shell:
+    name: Shell syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check shell scripts
+        run: |
+          for file in scripts/*.sh docker-entrypoint.sh google-bridge/*.sh; do
+            bash -n "$file"
+          done

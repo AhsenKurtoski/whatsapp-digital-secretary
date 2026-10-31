@@ -1,0 +1,30 @@
+services:
+  dashboard:
+    build: .
+    container_name: whatsapp-secretary-dashboard
+    restart: unless-stopped
+    ports:
+      # Published on host loopback only. Never change this to 0.0.0.0.
+      - "127.0.0.1:8787:8787"
+    environment:
+      SECRETARY_BASE: /data
+      SECRETARY_CONFIG: /config/config.json
+      OPENCLAW_CONFIG: /openclaw/openclaw.json
+      OPENCLAW_DB: /openclaw/agents/main/agent/openclaw-agent.sqlite
+      DASHBOARD_HOST: 0.0.0.0
+      DASHBOARD_PORT: "8787"
+      TZ: "${TZ:-Europe/Rome}"
+    volumes:
+      - "${HOME}/.openclaw:/openclaw"
+      - "${HOME}/.config/digital-secretary:/config:ro"
+      - secretary-data:/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+
+volumes:
+  secretary-data:

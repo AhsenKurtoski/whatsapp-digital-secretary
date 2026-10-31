@@ -1,0 +1,46 @@
+name: Feature request
+description: Suggest a capability or an improvement.
+title: "[feat] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is difficult or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the behaviour, not only the implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Bot behaviour
+        - WhatsApp channel
+        - Dashboard / UI
+        - Gmail / Calendar
+        - Security
+        - Documentation / deployment
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: This request does not require exposing secrets to the model.
+          required: true
+        - label: I searched existing issues and the roadmap.
+          required: true
