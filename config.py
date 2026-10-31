@@ -38,7 +38,7 @@ DEFAULTS: dict[str, object] = {
     "hours": "Lun–Ven 9:00–18:00",
     "pricing_note": "I prezzi e le condizioni li conferma il titolare.",
     "dashboard_port": 8787,
-    "max_concurrent": 5,
+    "max_concurrent": 3,
     "max_reply_lines": 6,
     "whatsapp_number": "",
 }

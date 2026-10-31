@@ -26,6 +26,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
   key pool management, connector diagnostics and CSV export.
 - AI provider pool: Gemini primary, Groq fallbacks, key testing and automatic model
   selection from the available keys.
+- Configurable parallel AI calls (`max_concurrent`, 1–5) with a 30-message queue, so
+  five simultaneous chats are served without quota errors.
 - Technical-error guard plugin that replaces provider errors and model names with a
   human holding message.
 - Watchdog, monitor and daily digest systemd timers with automatic gateway restart and

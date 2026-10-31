@@ -78,10 +78,15 @@ def main() -> int:
     ]
     tools["elevated"] = {"enabled": False}
     defaults = data.setdefault("agents", {}).setdefault("defaults", {})
-    # Tre chiamate AI in parallelo: le altre conversazioni restano in coda
-    # (fino a 30) e vengono servite appena un posto si libera. Con i piani
-    # gratuiti, cinque chiamate simultanee su una sola chiave causano 429.
-    defaults["maxConcurrent"] = 3
+    # Le chiamate AI in parallelo sono configurabili (1-5). Le altre
+    # conversazioni restano in coda (fino a 30) e vengono servite appena un
+    # posto si libera. Con i piani gratuiti, cinque chiamate simultanee su una
+    # sola chiave causano 429: il default sicuro è 3.
+    try:
+        concurrent = int(CFG.get("max_concurrent") or 3)
+    except (TypeError, ValueError):
+        concurrent = 3
+    defaults["maxConcurrent"] = max(1, min(5, concurrent))
     messages = data.setdefault("messages", {})
     queue = messages.setdefault("queue", {})
     queue.setdefault("mode", "followup")
