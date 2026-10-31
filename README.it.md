@@ -221,7 +221,9 @@ Linux/WSL2. Dentro il container la dashboard ascolta su `0.0.0.0`, ma non è mai
 esposta oltre `127.0.0.1` sull'host. L'immagine presuppone UID/GID 1000 (il primo
 utente Linux/WSL2). Non è un container WhatsApp completo: il client non ufficiale e la
 sua sessione restano intenzionalmente sull'host, e i widget basati su systemd (uptime
-gateway, timer) non sono disponibili nel container.
+gateway, timer) non sono disponibili nel container. La gestione chiavi e il pulsante di
+riavvio nel container non comandano il gateway dell'host: modifica
+`~/.openclaw/secretary/secrets.env` sull'host o usa la dashboard host.
 
 ## Deploy su VPS
 

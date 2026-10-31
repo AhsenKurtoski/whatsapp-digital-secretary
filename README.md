@@ -218,7 +218,9 @@ forwarding. Inside the container the dashboard listens on `0.0.0.0`, but it is n
 exposed beyond `127.0.0.1` on the host. The image expects host UID/GID 1000 (the
 default first Linux/WSL2 user). This is not a full WhatsApp container: the unofficial
 WhatsApp client and its session are intentionally kept on the host, and systemd-only
-widgets (gateway uptime, timers) are unavailable inside the container.
+widgets (gateway uptime, timers) are unavailable inside the container. Key management
+and the restart button in the container do not control the host gateway: edit
+`~/.openclaw/secretary/secrets.env` on the host or use the host dashboard.
 
 ## Deployment on a VPS
 
