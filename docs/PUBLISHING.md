@@ -1,7 +1,8 @@
 # Publishing to GitHub
 
-The repository already has a clean history: no previous commits, no secrets and no
-site files. Replace `YOUR_GITHUB_USER` with your account before running the commands.
+The live repository is [AhsenKurtoski/whatsapp-digital-secretary](https://github.com/AhsenKurtoski/whatsapp-digital-secretary).
+It was published from a clean history with no previous commits, no secrets and no site
+files. This document is kept for future releases and for forks.
 
 ## 1. Final secret scan
 
@@ -22,39 +23,27 @@ git status --short --branch
 `.env`, `secrets.env`, `dashboard_token`, `google_bridge.json`, WhatsApp sessions,
 databases or the public website folder.
 
-## 2. Create the remote
-
-With GitHub CLI already installed and authenticated:
+## 2. Push to the existing remote
 
 ```bash
 cd whatsapp-digital-secretary
-gh repo create whatsapp-digital-secretary \
-  --public \
-  --source=. \
-  --remote=origin \
-  --description "Self-hosted WhatsApp digital secretary with approval-gated Gmail and Calendar"
+git remote add origin https://github.com/AhsenKurtoski/whatsapp-digital-secretary.git
 git push -u origin main
 ```
 
-If `gh` is not installed on Windows:
+For a fork, replace the owner in the URL. If `gh` is not installed on Windows and you
+need it for the release commands:
 
 ```powershell
 winget install --id GitHub.cli
 gh auth login
 ```
 
-Then run the `gh repo create` command above. Alternatively create an empty repository
-in the browser and run:
-
-```bash
-git remote add origin https://github.com/YOUR_GITHUB_USER/whatsapp-digital-secretary.git
-git push -u origin main
-```
-
 ## 3. Topics and repository settings
 
 ```bash
-gh repo edit --add-topic whatsapp --add-topic chatbot --add-topic openclaw \
+gh repo edit AhsenKurtoski/whatsapp-digital-secretary \
+  --add-topic whatsapp --add-topic chatbot --add-topic openclaw \
   --add-topic gmail --add-topic google-calendar --add-topic python \
   --add-topic self-hosted --add-topic privacy
 ```

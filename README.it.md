@@ -1,5 +1,9 @@
 # Segreteria Digitale per WhatsApp
 
+[![CI](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml/badge.svg)](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/AhsenKurtoski/whatsapp-digital-secretary?color=5eead4&label=release)](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-7dd3fc.svg)](LICENSE)
+
 Una segreteria digitale **self-hosted** e privata per WhatsApp. Risponde ai clienti
 con il tono della tua attività, conosce servizi e prezzi, raccoglie lead e richieste
 di appuntamento, e prepara le azioni Gmail/Calendar che **approvi tu** dalla dashboard
@@ -85,7 +89,7 @@ Nessun dato dei clienti viene inviato a un servizio dashboard di terze parti.
 ## Avvio rapido
 
 ```bash
-git clone https://github.com/tuo-nome/whatsapp-digital-secretary.git
+git clone https://github.com/AhsenKurtoski/whatsapp-digital-secretary.git
 cd whatsapp-digital-secretary
 
 # 1. Crea la configurazione dell'attività e la persona del bot

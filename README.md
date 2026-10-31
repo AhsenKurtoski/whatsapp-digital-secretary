@@ -1,5 +1,9 @@
 # WhatsApp Digital Secretary
 
+[![CI](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml/badge.svg)](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/AhsenKurtoski/whatsapp-digital-secretary?color=5eead4&label=release)](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-7dd3fc.svg)](LICENSE)
+
 A self-hosted, private digital secretary for WhatsApp. It answers customers in your
 business tone, knows your services and prices, collects leads and appointment
 requests, and prepares Gmail/Calendar actions that **you approve** from a local
@@ -86,7 +90,7 @@ customer data is sent to a third-party dashboard service.
 ## Quick start
 
 ```bash
-git clone https://github.com/your-name/whatsapp-digital-secretary.git
+git clone https://github.com/AhsenKurtoski/whatsapp-digital-secretary.git
 cd whatsapp-digital-secretary
 
 # 1. Create the business configuration and the persona

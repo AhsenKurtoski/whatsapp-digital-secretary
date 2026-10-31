@@ -47,4 +47,4 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - Secrets stored outside the repository with `600` permissions.
 - Log redaction for phone numbers and message content.
 
-[1.0.0]: https://github.com/your-name/whatsapp-digital-secretary/releases/tag/v1.0.0
+[1.0.0]: https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.0.0
