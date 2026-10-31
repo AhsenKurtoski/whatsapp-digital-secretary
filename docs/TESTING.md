@@ -12,7 +12,7 @@ python3 monitor.py --self-test
 python3 watchdog.py --self-test
 ```
 
-Expected result: 26 tests pass, compile check is silent, Code.gs prints
+Expected result: 27 tests pass, compile check is silent, Code.gs prints
 `Code.gs handlers: OK`, and both self-tests exit with code 0.
 
 The suite is hermetic: it uses a temporary home, a demo configuration and no network.

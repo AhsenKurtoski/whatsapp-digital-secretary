@@ -32,7 +32,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
   WhatsApp reconnect handling.
 - Setup wizard, installer, Dockerfile for the dashboard, docker-compose, and systemd
   unit files.
-- Test suite (26 tests), Python compile check, Apps Script handler test and CI workflow.
+- Test suite (27 tests), Python compile check, Apps Script handler test and CI workflow.
 - Documentation in English and Italian, security policy, contribution guide, code of
   conduct, issue and pull request templates, MIT license.
 

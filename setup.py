@@ -85,17 +85,17 @@ def main() -> int:
     parser.add_argument("--non-interactive", action="store_true", help="usa solo i flag, senza domande")
     parser.add_argument("--business-name", default="")
     parser.add_argument("--owner-name", default="")
-    parser.add_argument("--bot-name", default="Segreteria Digitale")
+    parser.add_argument("--bot-name", default="")
     parser.add_argument("--owner-number", default="")
     parser.add_argument("--google-account", default="")
-    parser.add_argument("--language", default="italiano")
-    parser.add_argument("--timezone", default="Europe/Rome")
+    parser.add_argument("--language", default="")
+    parser.add_argument("--timezone", default="")
     parser.add_argument("--city", default="")
-    parser.add_argument("--hours", default="Lun–Ven 9:00–18:00")
+    parser.add_argument("--hours", default="")
     parser.add_argument("--site-url", default="")
     parser.add_argument("--services", default="")
-    parser.add_argument("--pricing-note", default="I prezzi e le condizioni li conferma il titolare.")
-    parser.add_argument("--port", type=int, default=8787)
+    parser.add_argument("--pricing-note", default="")
+    parser.add_argument("--port", type=int, default=None)
     args = parser.parse_args()
 
     existing = {}
@@ -109,17 +109,19 @@ def main() -> int:
         data = {
             "business_name": args.business_name or str(existing.get("business_name") or "Nome Attività"),
             "owner_name": args.owner_name or str(existing.get("owner_name") or "Titolare"),
-            "bot_name": args.bot_name or "Segreteria Digitale",
+            "bot_name": args.bot_name or str(existing.get("bot_name") or "Segreteria Digitale"),
             "owner_number": validate_phone(args.owner_number or str(existing.get("owner_number") or "")),
             "google_account": args.google_account or str(existing.get("google_account") or ""),
-            "language": args.language,
-            "timezone": validate_timezone(args.timezone),
-            "city": args.city,
-            "hours": args.hours,
-            "site_url": args.site_url,
-            "services": [x.strip() for x in args.services.split(";") if x.strip()] or config.DEFAULTS["services"],
-            "pricing_note": args.pricing_note,
-            "dashboard_port": args.port,
+            "language": args.language or str(existing.get("language") or "italiano"),
+            "timezone": validate_timezone(args.timezone or str(existing.get("timezone") or "Europe/Rome")),
+            "city": args.city or str(existing.get("city") or ""),
+            "hours": args.hours or str(existing.get("hours") or "Lun–Ven 9:00–18:00"),
+            "site_url": args.site_url or str(existing.get("site_url") or ""),
+            "services": [x.strip() for x in args.services.split(";") if x.strip()]
+            or existing.get("services")
+            or config.DEFAULTS["services"],
+            "pricing_note": args.pricing_note or str(existing.get("pricing_note") or "I prezzi e le condizioni li conferma il titolare."),
+            "dashboard_port": args.port if args.port is not None else int(existing.get("dashboard_port") or 8787),
         }
     else:
         print("\nConfigurazione della segreteria digitale")
@@ -139,6 +141,10 @@ def main() -> int:
             "pricing_note": ask("Nota sui prezzi", str(existing.get("pricing_note") or "I prezzi e le condizioni li conferma il titolare.")),
             "dashboard_port": int(ask("Porta dashboard", str(existing.get("dashboard_port") or 8787))),
         }
+
+    # An update must not drop settings that the wizard does not ask about
+    # (max_concurrent, max_reply_lines, whatsapp_number, future keys).
+    data = {**existing, **data}
 
     config.DEFAULT_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     os.chmod(config.DEFAULT_CONFIG_PATH.parent, 0o700)
