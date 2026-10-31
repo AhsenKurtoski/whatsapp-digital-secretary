@@ -1,0 +1,3 @@
+// File generato dall'installer: non pubblicare questo valore e non condividerlo.
+// Puoi anche impostare BRIDGE_SECRET nelle Script Properties, che ha precedenza.
+const BRIDGE_SECRET = 'INSERISCI_QUI_UN_SEGRETO_CASUALE_DI_ALMENO_32_CARATTERI';

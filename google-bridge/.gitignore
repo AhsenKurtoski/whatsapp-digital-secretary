@@ -1,0 +1,4 @@
+.clasp.json
+.claspignore
+Config.gs
+*.log

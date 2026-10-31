@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{BUSINESS_NAME}} — Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%237dd3fc'/%3E%3Cstop offset='1' stop-color='%235eead4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='18' fill='url(%23g)'/%3E%3Ctext x='32' y='45' font-family='Arial' font-size='38' font-weight='bold' text-anchor='middle' fill='%23061018'%3EA%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --ink:#050b12; --ink2:#081420; --glass:rgba(13,28,44,.58); --glass2:rgba(9,20,33,.52);
+  --stroke:rgba(170,225,255,.16); --stroke2:rgba(170,225,255,.26);
+  --text:#edf7ff; --muted:#97b3c9; --dim:#67849c;
+  --sky:#7dd3fc; --mint:#5eead4; --violet:#b7a6ff; --gold:#fbd38d; --rose:#fda4af;
+  --ok:#5eead4; --bad:#fb7185; --shadow:0 24px 80px rgba(0,0,0,.42);
+  --r:22px;
+}
+*{box-sizing:border-box}
+html{min-height:100%;background:var(--ink)}
+body{
+  margin:0;min-height:100vh;color:var(--text);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  background:
+    radial-gradient(1100px 700px at 8% -15%, rgba(125,211,252,.20), transparent 55%),
+    radial-gradient(900px 650px at 100% 0%, rgba(183,166,255,.14), transparent 58%),
+    radial-gradient(900px 700px at 50% 115%, rgba(94,234,212,.09), transparent 62%),
+    linear-gradient(160deg,#050b12 0%,#07131f 55%,#040a10 100%);
+}
+body::before{
+  content:"";position:fixed;inset:-20% -10%;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(closest-side at 18% 22%, rgba(125,211,252,.20), transparent 72%),
+    radial-gradient(closest-side at 82% 16%, rgba(183,166,255,.16), transparent 70%),
+    radial-gradient(closest-side at 56% 82%, rgba(94,234,212,.10), transparent 75%);
+  filter:blur(38px);animation:drift 24s ease-in-out infinite alternate;
+}
+body::after{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.28;
+  background-image:radial-gradient(rgba(255,255,255,.18) .5px, transparent .5px);
+  background-size:28px 28px;mask-image:linear-gradient(to bottom,rgba(0,0,0,.8),transparent 80%);
+}
+@keyframes drift{from{transform:translate3d(-2%,-1%,0) scale(1)}to{transform:translate3d(2%,2%,0) scale(1.06)}}
+a{color:var(--sky);text-decoration:none}
+a:hover{text-decoration:underline}
+button,input,textarea,select{font:inherit}
+.app{max-width:1380px;margin:0 auto;padding:24px 22px 64px}
+.header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:13px;min-width:280px}
+.logo{
+  width:48px;height:48px;border-radius:16px;display:grid;place-items:center;font-weight:850;font-size:22px;color:#04120f;
+  background:linear-gradient(135deg,var(--sky),var(--mint));
+  box-shadow:0 14px 40px rgba(94,234,212,.26),inset 0 1px 0 rgba(255,255,255,.55);
+}
+.brand h1{font-size:19px;line-height:1.1;margin:0;letter-spacing:-.03em;font-weight:780}
+.brand p{margin:4px 0 0;color:var(--muted);font-size:12px}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.clock{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12.5px;padding:0 6px}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:9px 13px;border-radius:999px;border:1px solid var(--stroke);background:rgba(10,24,38,.55);backdrop-filter:blur(14px);font-size:12.5px;color:var(--muted);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dim);box-shadow:0 0 0 4px rgba(103,132,156,.12)}
+.dot.ok{background:var(--ok);box-shadow:0 0 0 4px rgba(94,234,212,.14),0 0 14px rgba(94,234,212,.6);animation:pulse 2.4s infinite}
+.dot.bad{background:var(--bad);box-shadow:0 0 0 4px rgba(251,113,133,.14)}
+.dot.warn{background:var(--gold);box-shadow:0 0 0 4px rgba(251,211,141,.14)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+.btn{
+  border:1px solid var(--stroke);background:rgba(15,32,49,.62);color:var(--text);
+  padding:9px 13px;border-radius:12px;cursor:pointer;font-size:12.8px;font-weight:680;transition:.18s;
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;backdrop-filter:blur(10px);white-space:nowrap;
+}
+.btn:hover{border-color:rgba(125,211,252,.55);transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,.22)}
+.btn.primary{background:linear-gradient(135deg,var(--sky),var(--mint));color:#04120f;border:0;box-shadow:0 10px 28px rgba(94,234,212,.2)}
+.btn.ghost{background:transparent}
+.btn.danger{color:#ffe4e6;border-color:rgba(251,113,133,.34)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.tabs{display:flex;gap:5px;padding:6px;border:1px solid var(--stroke);background:rgba(6,18,29,.55);border-radius:16px;margin-bottom:18px;overflow:auto;backdrop-filter:blur(18px)}
+.tab{border:0;background:transparent;color:var(--muted);padding:10px 14px;border-radius:11px;cursor:pointer;font-weight:680;font-size:12.8px;white-space:nowrap;transition:.16s}
+.tab:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.tab.active{color:#06131c;background:linear-gradient(135deg,rgba(125,211,252,.95),rgba(94,234,212,.9));box-shadow:0 8px 22px rgba(94,234,212,.16)}
+.section{display:none;animation:rise .28s ease}
+.section.active{display:block}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.card{
+  position:relative;border:1px solid var(--stroke);border-radius:var(--r);padding:18px;
+  background:linear-gradient(145deg,rgba(18,38,58,.62),rgba(7,18,30,.50));
+  box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.055);
+  backdrop-filter:blur(22px) saturate(150%);min-width:0;overflow:hidden;
+}
+.card::before{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(120deg,rgba(255,255,255,.055),transparent 38%)}
+.card > *{position:relative}
+.card h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 13px;font-weight:780}
+.span3{grid-column:span 3}.span4{grid-column:span 4}.span5{grid-column:span 5}.span6{grid-column:span 6}.span7{grid-column:span 7}.span8{grid-column:span 8}.span12{grid-column:span 12}
+.hero{
+  grid-column:span 12;display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:24px;
+  background:
+    radial-gradient(700px 300px at 8% 0%, rgba(125,211,252,.18), transparent 65%),
+    radial-gradient(600px 300px at 100% 100%, rgba(94,234,212,.10), transparent 65%),
+    linear-gradient(135deg,rgba(17,38,58,.72),rgba(7,18,30,.52));
+}
+.hero-copy{flex:1;min-width:260px}
+.hero-kicker{display:inline-flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mint);font-weight:780;margin-bottom:9px}
+.hero h2{font-size:clamp(24px,3vw,34px);line-height:1.05;letter-spacing:-.04em;margin:0 0 8px;color:var(--text);text-transform:none}
+.hero p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.55;max-width:640px}
+.hero-side{display:flex;gap:10px;flex-wrap:wrap}
+.hero-chip{border:1px solid var(--stroke);background:rgba(6,18,30,.5);border-radius:14px;padding:10px 12px;min-width:130px}
+.hero-chip small{display:block;color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;margin-bottom:3px}
+.hero-chip strong{font-size:13px;font-weight:720}
+.metric{font-size:34px;font-weight:850;letter-spacing:-.05em;line-height:1;margin:2px 0 6px;font-variant-numeric:tabular-nums}
+.metric small{font-size:13px;color:var(--muted);font-weight:650;letter-spacing:0}
+.sub{color:var(--muted);font-size:12.4px;line-height:1.5}
+.stat-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.icon-tile{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;border:1px solid var(--stroke);background:rgba(125,211,252,.08);color:var(--sky);font-size:16px}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid rgba(170,225,255,.08);font-size:12.7px}
+.kv:last-child{border-bottom:0}
+.kv span:first-child{color:var(--muted)}
+.kv span:last-child{text-align:right;overflow-wrap:anywhere}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{font-size:11px;color:#c6e4f5;background:rgba(125,211,252,.08);border:1px solid rgba(125,211,252,.18);padding:5px 9px;border-radius:999px;white-space:nowrap}
+.chip.ok{color:#b9f7e8;background:rgba(94,234,212,.09);border-color:rgba(94,234,212,.24)}
+.chip.gold{color:#fdebc8;background:rgba(251,211,141,.08);border-color:rgba(251,211,141,.22)}
+.chip.bad{color:#ffd9df;background:rgba(251,113,133,.08);border-color:rgba(251,113,133,.24)}
+.chip.violet{color:#e4dcff;background:rgba(183,166,255,.09);border-color:rgba(183,166,255,.24)}
+.table-wrap{overflow-x:auto;margin:0 -4px}
+table{width:100%;border-collapse:collapse;min-width:520px}
+th{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);text-align:left;padding:0 8px 9px;font-weight:780}
+td{padding:11px 8px;border-top:1px solid rgba(170,225,255,.075);font-size:12.6px;vertical-align:top}
+tr:hover td{background:rgba(125,211,252,.028)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.6px}
+.muted{color:var(--muted)}.dim{color:var(--dim)}.danger{color:var(--bad)}.ok{color:var(--ok)}.gold{color:var(--gold)}
+.empty{padding:22px 8px;color:var(--dim);font-size:12.5px;text-align:center}
+.field{margin-bottom:13px}
+.label{display:block;font-size:11.5px;color:var(--muted);margin:0 0 7px;font-weight:680}
+.input,textarea,select{
+  width:100%;background:rgba(4,12,20,.62);border:1px solid var(--stroke);color:var(--text);
+  border-radius:12px;padding:11px 12px;outline:none;transition:.18s;font-size:12.8px;
+}
+textarea{min-height:104px;resize:vertical;line-height:1.5}
+.input:focus,textarea:focus,select:focus{border-color:rgba(125,211,252,.62);box-shadow:0 0 0 3px rgba(125,211,252,.09)}
+select option{background:#081420}
+.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.pre{white-space:pre-wrap;overflow:auto;max-height:380px;background:rgba(3,10,17,.68);border:1px solid var(--stroke);border-radius:13px;padding:14px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;line-height:1.55;color:#b9d7e9;margin:0}
+.mailprev{margin:12px 0;border:1px solid var(--stroke);border-radius:15px;overflow:hidden;background:#09090b}
+.mailprev summary{cursor:pointer;padding:11px 15px;color:var(--text);font-size:12px;font-weight:650;list-style:none;display:flex;align-items:center;gap:8px}
+.mailprev summary::-webkit-details-marker{display:none}
+.mailprev summary:before{content:'✉';color:#a78bfa}
+.mailprev iframe{width:100%;height:500px;border:0;display:block;background:#09090b}
+.bars{display:flex;align-items:flex-end;gap:8px;height:130px;padding:8px 2px 0}
+.bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0}
+.bar{width:100%;max-width:40px;min-height:5px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,rgba(125,211,252,.95),rgba(94,234,212,.55));box-shadow:0 0 18px rgba(125,211,252,.14);transition:height .4s ease}
+.bar-label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+.bar-value{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.score{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:760;padding:4px 7px;border-radius:999px;border:1px solid var(--stroke)}
+.score.high{color:#b9f7e8;background:rgba(94,234,212,.1);border-color:rgba(94,234,212,.25)}
+.score.mid{color:#fdebc8;background:rgba(251,211,141,.08);border-color:rgba(251,211,141,.22)}
+.score.low{color:#c6e4f5;background:rgba(125,211,252,.07)}
+.sec-badge{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:10px;border:1px solid rgba(94,234,212,.22);background:rgba(94,234,212,.06);font-size:11.5px;color:#b9f7e8}
+.login-overlay{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:22px;background:rgba(3,9,15,.68);backdrop-filter:blur(20px)}
+.login-overlay[hidden]{display:none}
+.login-card{width:min(450px,100%);border:1px solid var(--stroke2);background:linear-gradient(150deg,rgba(20,42,64,.93),rgba(6,16,27,.94));border-radius:26px;padding:30px;box-shadow:0 34px 110px rgba(0,0,0,.62);backdrop-filter:blur(26px)}
+.login-card .logo{margin-bottom:16px}
+.login-card h2{font-size:25px;margin:0 0 8px;letter-spacing:-.04em;text-transform:none;color:var(--text)}
+.login-card p{color:var(--muted);font-size:12.8px;line-height:1.55;margin:0 0 18px}
+.error{color:#ffd9df;font-size:12px;min-height:18px;margin-top:9px}
+.toast{position:fixed;right:18px;bottom:18px;z-index:60;max-width:min(440px,calc(100% - 36px));padding:13px 15px;border-radius:14px;border:1px solid var(--stroke2);background:rgba(10,24,38,.95);box-shadow:var(--shadow);font-size:12.5px;transform:translateY(18px);opacity:0;pointer-events:none;transition:.22s;backdrop-filter:blur(18px)}
+.toast.show{transform:none;opacity:1}
+.footer{margin-top:26px;color:var(--dim);font-size:11px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.hint{font-size:11.5px;color:var(--dim);line-height:1.5}
+.steps{display:grid;gap:10px;font-size:12px;line-height:1.55;color:var(--txt)}
+.steps>div{padding:10px 11px;border:1px solid rgba(170,225,255,.09);border-radius:11px;background:rgba(255,255,255,.022)}
+.steps b{color:var(--cyan)}
+.divider{height:1px;background:rgba(170,225,255,.08);margin:14px 0}
+@media (max-width:1050px){.span3,.span4,.span6{grid-column:span 6}.span5,.span7,.span8,.span12{grid-column:span 12}.metric{font-size:29px}}
+@media (max-width:680px){.span3,.span4,.span6{grid-column:span 12}.app{padding:18px 14px 44px}.brand{min-width:0}.header-right{width:100%;margin-left:0}.clock{display:none}.tabs{padding:5px}.tab{padding:9px 10px}.hero{padding:19px}.hero-side{width:100%}.hero-chip{flex:1}.metric{font-size:27px}}
+</style>
+</head>
+<body>
+
+<div id="login" class="login-overlay" hidden>
+  <form id="loginForm" class="login-card" autocomplete="off">
+    <div class="logo">A</div>
+    <h2>Dashboard privata</h2>
+    <p>Accesso riservato a {{OWNER_NAME}}. Il token è nel file <span class="mono">~/.openclaw/secretary/dashboard_token</span> sul PC.</p>
+    <label class="label" for="token">Token di accesso</label>
+    <input class="input" id="token" name="token" type="password" placeholder="Incolla il token locale" required autofocus>
+    <div id="loginError" class="error"></div>
+    <button class="btn primary" type="submit" style="width:100%;margin-top:10px">Entra nella dashboard</button>
+    <p class="hint" style="margin-top:15px">Solo localhost · cookie HttpOnly · protezione CSRF · nessun dato inviato fuori.</p>
+  </form>
+</div>
+
+<div id="app" class="app" style="display:none">
+  <div class="header">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div>
+        <h1>{{BUSINESS_NAME}}</h1>
+        <p>WhatsApp · assistente digitale · dashboard privata</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="clock" id="clock">—</span>
+      <span class="pill"><span id="pillDot" class="dot"></span><span id="pillText">Verifica…</span></span>
+      <button class="btn ghost" id="refreshBtn" type="button">↻ Aggiorna</button>
+      <a class="btn ghost" href="/logout">Esci</a>
+    </div>
+  </div>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="overview">Panoramica</button>
+    <button class="tab" data-tab="leads">Lead</button>
+    <button class="tab" data-tab="alerts">Alert</button>
+    <button class="tab" data-tab="approvals">Approvazioni <span id="approvalBadge" class="chip gold" style="padding:2px 6px;margin-left:4px">0</span></button>
+    <button class="tab" data-tab="keys">Chiavi</button>
+    <button class="tab" data-tab="connectors">Connettori</button>
+    <button class="tab" data-tab="security">Sicurezza</button>
+    <button class="tab" data-tab="system">Sistema</button>
+  </nav>
+
+  <main>
+    <section id="tab-overview" class="section active">
+      <div class="grid">
+        <div class="card hero">
+          <div class="hero-copy">
+            <div class="hero-kicker"><span class="dot ok" id="heroDot"></span> Segreteria digitale</div>
+            <h2 id="heroTitle">La tua segreteria è online</h2>
+            <p id="heroSub">Controllo in corso…</p>
+          </div>
+          <div class="hero-side">
+            <div class="hero-chip"><small>Modello</small><strong id="heroModel">—</strong></div>
+            <div class="hero-chip"><small>Uptime</small><strong id="heroUptime">—</strong></div>
+            <div class="hero-chip"><small>Chiavi attive</small><strong id="heroKeys">—</strong></div>
+            <div class="hero-chip"><small>Da approvare</small><strong id="heroApprovals">—</strong></div>
+          </div>
+        </div>
+
+        <div class="card span3">
+          <div class="stat-head"><h2>Lead oggi</h2><span class="icon-tile">◎</span></div>
+          <div class="metric" id="mLeads">—</div>
+          <div class="sub" id="sLeads">—</div>
+        </div>
+        <div class="card span3">
+          <div class="stat-head"><h2>Contatti oggi</h2><span class="icon-tile">◌</span></div>
+          <div class="metric" id="mSenders">—</div>
+          <div class="sub" id="sSenders">—</div>
+        </div>
+        <div class="card span3">
+          <div class="stat-head"><h2>Alert oggi</h2><span class="icon-tile">△</span></div>
+          <div class="metric" id="mAlerts">—</div>
+          <div class="sub" id="sAlerts">—</div>
+        </div>
+        <div class="card span3">
+          <div class="stat-head"><h2>Sicurezza</h2><span class="icon-tile">◇</span></div>
+          <div class="metric" id="mScams">—</div>
+          <div class="sub" id="sScams">—</div>
+        </div>
+
+        <div class="card span7">
+          <h2>Attività ultimi 7 giorni</h2>
+          <div class="bars" id="activityChart"></div>
+        </div>
+        <div class="card span5">
+          <h2>Stato sistema</h2>
+          <div class="kv"><span>Gateway</span><span id="sysGateway">—</span></div>
+          <div class="kv"><span>WhatsApp</span><span id="sysWa">—</span></div>
+          <div class="kv"><span>Uptime</span><span id="sysUptime">—</span></div>
+          <div class="kv"><span>Monitor</span><span id="monitorNext">—</span></div>
+          <div class="kv"><span>Watchdog</span><span id="watchdogNext">—</span></div>
+          <div class="kv"><span>Riepilogo</span><span id="digestNext">—</span></div>
+          <div class="row" style="margin-top:13px">
+            <button class="btn danger" id="restartBtn" type="button">Riavvia bot</button>
+            <button class="btn" id="monitorBtn" type="button">Esegui monitor</button>
+          </div>
+        </div>
+
+        <div class="card span7">
+          <h2>Ultimi contatti</h2>
+          <div class="table-wrap"><table><thead><tr><th>Quando</th><th>Numero</th><th>Messaggio</th><th>Score</th></tr></thead><tbody id="recentLeads"></tbody></table></div>
+        </div>
+        <div class="card span5">
+          <h2>Modello e protezioni</h2>
+          <div class="chips" id="modelChips"></div>
+          <div class="divider"></div>
+          <div class="kv"><span>Tool attivi</span><span id="toolsState">—</span></div>
+          <div class="kv"><span>Memoria condivisa</span><span class="ok">disattivata</span></div>
+          <div class="kv"><span>Sessioni</span><span>isolate per numero</span></div>
+          <div class="kv"><span>Chiavi</span><span id="keysMini">—</span></div>
+          <div class="sub" style="margin-top:10px">Il bot non esegue comandi, non legge file e non cambia configurazione.</div>
+        </div>
+
+        <div class="card span12">
+          <h2>Ultimi alert</h2>
+          <div class="table-wrap"><table><thead><tr><th>Quando</th><th>Tipo</th><th>Numero</th><th>Dettaglio</th><th>Inviato</th></tr></thead><tbody id="recentAlerts"></tbody></table></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-leads" class="section">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;margin-bottom:14px">
+          <div>
+            <h2 style="margin:0 0 4px">Registro contatti</h2>
+            <div class="sub">Messaggi reali registrati dal monitor, con priorità commerciale.</div>
+          </div>
+          <div class="row">
+            <button class="btn" id="exportLeadsBtn" type="button">Esporta CSV</button>
+            <input class="input" id="leadSearch" placeholder="Cerca numero o testo…" style="width:240px">
+            <select id="intentFilter" style="width:170px">
+              <option value="">Tutte le intenzioni</option>
+              <option value="preventivo">Preventivo</option>
+              <option value="call">Call</option>
+              <option value="supporto">Supporto</option>
+              <option value="info">Informazioni</option>
+              <option value="sospetto">Sospetto</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Quando</th><th>Numero</th><th>Messaggio</th><th>Intenzione</th><th>Score</th></tr></thead><tbody id="leadsBody"></tbody></table></div>
+      </div>
+    </section>
+
+    <section id="tab-alerts" class="section">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;margin-bottom:14px">
+          <div><h2 style="margin:0 0 4px">Alert e sicurezza</h2><div class="sub">Truffe, injection, richieste di call e nuovi contatti.</div></div>
+          <select id="alertFilter" style="width:170px">
+            <option value="">Tutti gli alert</option>
+            <option value="scam">Truffe</option>
+            <option value="hot">Call</option>
+            <option value="new">Nuovi contatti</option>
+          </select>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Quando</th><th>Tipo</th><th>Numero</th><th>Dettaglio</th><th>Inviato</th></tr></thead><tbody id="alertsBody"></tbody></table></div>
+      </div>
+    </section>
+
+    <section id="tab-approvals" class="section">
+      <div class="grid">
+        <div class="card span12">
+          <div class="row" style="justify-content:space-between;margin-bottom:10px">
+            <div>
+              <h2 style="margin:0 0 4px">Approvazioni</h2>
+              <div class="sub">Il bot prepara la richiesta, tu approvi. Nessuna email parte e nessun evento viene creato senza il tuo consenso.</div>
+            </div>
+            <div class="row" style="gap:8px">
+              <button class="btn" id="testEmailBtn" type="button">✉ Email di prova</button>
+              <button class="btn" id="refreshApprovalsBtn" type="button">↻ Aggiorna</button>
+            </div>
+          </div>
+          <div class="chips" id="approvalCounts" style="margin-bottom:12px"></div>
+          <div id="approvalsList"><div class="empty">Nessuna richiesta in attesa.</div></div>
+        </div>
+        <div class="card span12">
+          <h2>Flusso di sicurezza</h2>
+          <div class="steps">
+            <div><b>1.</b> Il bot raccoglie i dati e crea una richiesta con il tool di approvazione. Non ha accesso diretto all'invio.</div>
+            <div><b>2.</b> La richiesta appare qui con destinatario, oggetto, testo o data dell'appuntamento.</div>
+            <div><b>3.</b> Tu controlli e premi <b>Approva</b>. Solo allora la dashboard usa Gmail o Calendar.</div>
+            <div><b>4.</b> Se rifiuti, non viene inviato nulla. Ogni azione resta nell'audit locale.</div>
+          </div>
+          <div class="divider"></div>
+          <div class="sub">Il numero admin è <span class="mono">{{OWNER_NUMBER}}</span>. I clienti possono chiedere un follow-up, ma non possono approvarlo. Le credenziali e i token non sono mai visibili al bot.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-keys" class="section">
+      <div class="grid">
+        <div class="card span6">
+          <div class="row" style="justify-content:space-between;margin-bottom:8px">
+            <h2 style="margin:0">Gemini · motore principale</h2>
+            <span class="chip" id="geminiCount">0 / 7</span>
+          </div>
+          <div class="sub">Con almeno una chiave Gemini il bot usa <span class="mono">gemini-3.5-flash</span> come motore principale: contesto ampio e risposte rapide. Incolla tutte le chiavi che vuoi tenere, una per riga.</div>
+          <div class="field" style="margin-top:12px">
+            <label class="label" for="geminiKeys">Pool Gemini</label>
+            <textarea id="geminiKeys" placeholder="AIza…&#10;AIza…&#10;AIza…" autocomplete="off" spellcheck="false"></textarea>
+          </div>
+          <div class="row">
+            <button class="btn primary" id="saveGeminiBtn" type="button">Salva Gemini</button>
+            <button class="btn ghost" id="clearGeminiBtn" type="button">Svuota pool</button>
+          </div>
+          <p class="hint">Crea chiavi gratuite su <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a>. Le chiavi non vengono mai mostrate né registrate nei log.</p>
+          <p class="hint" id="geminiAdvice" style="margin-top:6px">Per 5 conversazioni in parallelo servono 2–3 chiavi Gemini: aggiungile qui, una per riga. La rotazione è automatica.</p>
+        </div>
+
+        <div class="card span6">
+          <div class="row" style="justify-content:space-between;margin-bottom:8px">
+            <h2 style="margin:0">Groq · fallback e quota indipendente</h2>
+            <span class="chip" id="groqCount">0 / 7</span>
+          </div>
+          <div class="sub">Ogni chiave crea un provider separato (<span class="mono">groq2…groq7</span>) e una voce di fallback automatica. Se Gemini si ferma, Groq risponde senza interrompere la chat. Una chiave per riga.</div>
+          <div class="field" style="margin-top:12px">
+            <label class="label" for="groqKeys">Pool Groq fallback</label>
+            <textarea id="groqKeys" placeholder="gsk_…&#10;gsk_…" autocomplete="off" spellcheck="false"></textarea>
+          </div>
+          <div class="row">
+            <button class="btn primary" id="saveGroqBtn" type="button">Salva Groq fallback</button>
+            <button class="btn ghost" id="clearGroqBtn" type="button">Svuota pool</button>
+          </div>
+          <p class="hint">Crea chiavi su <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Groq Console</a>. Stessa chiave di account diversi = quota separata.</p>
+        </div>
+
+        <div class="card span12">
+          <div class="row" style="justify-content:space-between;margin-bottom:10px">
+            <h2 style="margin:0">Verifica e fallback attivi</h2>
+            <button class="btn" id="testKeysBtn" type="button">Verifica tutte le chiavi</button>
+          </div>
+          <div class="chips" id="keyFallbacks" style="margin-bottom:12px"></div>
+          <div id="keysResult" class="sub">Nessuna verifica eseguita.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-connectors" class="section">
+      <div class="grid">
+        <div class="card span7">
+          <div class="row" style="justify-content:space-between;margin-bottom:10px">
+            <div><h2 style="margin:0 0 4px">Google Workspace · Gmail e Calendar</h2><div class="sub">Connettore MCP locale, senza servizi terzi. Gmail per i follow-up e Calendar per gli appuntamenti.</div></div>
+            <span class="chip" id="googleConnChip">verifica…</span>
+          </div>
+          <div class="kv"><span>gog</span><span id="connVersion">—</span></div>
+          <div class="kv"><span>MCP server</span><span id="connMcp">—</span></div>
+          <div class="kv"><span>Tool esposti</span><span id="connTools">—</span></div>
+          <div class="kv"><span>Account Google</span><span id="connAccounts">—</span></div>
+          <div class="kv"><span>Modalità</span><span id="connMode">—</span></div>
+          <div class="kv"><span>Stato</span><span id="connState">—</span></div>
+          <div class="row" style="margin-top:13px">
+            <button class="btn" id="testConnectorsBtn" type="button">Verifica connessione</button>
+            <a class="btn ghost" href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Crea OAuth Google</a>
+          </div>
+          <p class="hint" style="margin-top:10px">Per attivare Gmail e Calendar serve l'autorizzazione del tuo account Google. gog usa un client OAuth desktop tuo: nessuna password Google passa dal bot o dalla dashboard.</p>
+        </div>
+        <div class="card span5">
+          <h2>Come attivarlo</h2>
+          <div class="steps">
+            <div><b>1.</b> Google Cloud → Credenziali → crea un client OAuth <b>Desktop</b> e scarica il JSON.</div>
+            <div><b>2.</b> Nel terminale: <span class="mono">gog-secretary auth credentials set ~/Downloads/client_secret_*.json</span></div>
+            <div><b>3.</b> <span class="mono">gog-secretary auth add {{GOOGLE_ACCOUNT}} --services gmail,calendar --gmail-scope read-send</span></div>
+            <div><b>4.</b> Apri l'URL, autorizza e torna qui: <b>Verifica connessione</b>.</div>
+          </div>
+          <div class="divider"></div>
+          <div class="sub">Il server MCP espone solo ricerca Gmail, invio email e lettura calendario. Il bot resta senza tool finché non abiliti un flusso approvato: nessun invio automatico o evento creato da solo.</div>
+        </div>
+        <div class="card span12">
+          <div class="row" style="justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+            <div>
+              <h2 style="margin:0 0 4px">Permanente senza dominio</h2>
+              <div class="sub">Se non vuoi pubblicare l'app OAuth, il bridge Apps Script usa Gmail e Calendar con un solo consenso Google. Nessun dominio da comprare e nessuna scadenza di 7 giorni.</div>
+            </div>
+            <span class="chip" id="bridgeChip">non attivo</span>
+          </div>
+          <div class="kv"><span>Modalità</span><span id="bridgeMode">OAuth locale</span></div>
+          <div class="kv"><span>Endpoint</span><span id="bridgeHost">—</span></div>
+          <div class="kv"><span>Ultima verifica</span><span id="bridgeHealth">da verificare</span></div>
+          <div class="row" style="margin-top:13px">
+            <button class="btn" id="bridgeTestBtn" type="button">Verifica bridge</button>
+            <button class="btn ghost" id="bridgeCopyBtn" type="button">Copia comando</button>
+          </div>
+          <p class="hint" style="margin-top:10px">Attivazione una tantum: <span class="mono">bash ~/.openclaw/secretary/google-bridge/installa-bridge.sh</span> — accedi con {{GOOGLE_ACCOUNT}} e premi Consenti. Il segreto resta solo sul PC e su Apps Script.</p>
+        </div>
+        <div class="card span6">
+          <h2>Concorrenza e code</h2>
+          <div class="kv"><span>Conversazioni in parallelo</span><span id="connConcurrent">—</span></div>
+          <div class="kv"><span>Modalità coda</span><span id="connQueue">—</span></div>
+          <div class="kv"><span>Debounce globale</span><span id="connDebounce">—</span></div>
+          <div class="kv"><span>Debounce WhatsApp</span><span id="connWaDebounce">—</span></div>
+          <p class="sub" style="margin-top:10px">Ogni numero ha una sessione isolata. Le risposte sono messe in coda per conversazione, senza mescolare clienti.</p>
+        </div>
+        <div class="card span6">
+          <h2>Notifiche a te</h2>
+          <div class="kv"><span>Canale</span><span>WhatsApp</span></div>
+          <div class="kv"><span>Numero</span><span class="mono" id="connOwner">—</span></div>
+          <div class="kv"><span>Nuovi contatti</span><span class="ok">attivo</span></div>
+          <div class="kv"><span>Call / appuntamenti</span><span class="ok">attivo</span></div>
+          <div class="kv"><span>Truffe e injection</span><span class="ok">attivo</span></div>
+          <p class="sub" style="margin-top:10px">Il monitor invia un alert a questo numero quando un cliente chiede una call, arriva un nuovo contatto o compare un segnale di truffa.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-security" class="section">
+      <div class="grid">
+        <div class="card span7">
+          <div class="row" style="justify-content:space-between;margin-bottom:10px">
+            <h2 style="margin:0">Stato sicurezza</h2>
+            <span class="sec-badge">● solo localhost</span>
+          </div>
+          <div class="kv"><span>Bind</span><span class="mono" id="secBind">—</span></div>
+          <div class="kv"><span>Token</span><span class="mono" id="secToken">—</span></div>
+          <div class="kv"><span>Permessi</span><span class="mono" id="secPerms">—</span></div>
+          <div class="kv"><span>Ultimo login</span><span id="secLastLogin">—</span></div>
+          <div class="kv"><span>Tentativi falliti (5 min)</span><span id="secFails">—</span></div>
+          <div class="kv"><span>Token ruotato</span><span id="secRotated">—</span></div>
+          <div class="divider"></div>
+          <p class="sub">Cookie HttpOnly · SameSite Strict · CSRF · CSP · rate limit login · directory 700 · chiavi 600. La rotazione invalida le altre sessioni e mantiene questa.</p>
+          <button class="btn danger" id="rotateTokenBtn" type="button">Rigenera token di accesso</button>
+        </div>
+        <div class="card span5">
+          <h2>Audit locale</h2>
+          <p class="sub">Eventi della dashboard: login, chiavi, riavvii e rotazioni. Nessun contenuto delle chiavi.</p>
+          <div class="row" style="margin:12px 0">
+            <button class="btn" id="loadAuditBtn" type="button">Carica audit</button>
+          </div>
+          <pre class="pre" id="auditBox">Premi “Carica audit”.</pre>
+        </div>
+        <div class="card span12">
+          <h2>Protezioni del bot</h2>
+          <div class="chips">
+            <span class="chip ok">solo richieste dell'attività</span>
+            <span class="chip ok">anti-jailbreak</span>
+            <span class="chip ok">niente API key o modelli</span>
+            <span class="chip ok">nome cliente da WhatsApp</span>
+            <span class="chip ok">tool disabilitati</span>
+            <span class="chip ok">sessioni isolate</span>
+            <span class="chip ok">memoria condivisa off</span>
+            <span class="chip ok">istanza locale</span>
+          </div>
+          <p class="sub" style="margin-top:10px">Richieste fuori tema vengono rifiutate in una riga; non vengono eseguiti compiti generici, codice, ricerche o richieste di credenziali. I dettagli tecnici non sono disponibili nemmeno al proprietario via WhatsApp.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-system" class="section">
+      <div class="grid">
+        <div class="card span6">
+          <h2>Sistema</h2>
+          <div class="kv"><span>Gateway</span><span id="sysGw">—</span></div>
+          <div class="kv"><span>PID</span><span class="mono" id="sysPid">—</span></div>
+          <div class="kv"><span>Uptime</span><span id="sysUp">—</span></div>
+          <div class="kv"><span>WhatsApp</span><span id="sysWa2">—</span></div>
+          <div class="kv"><span>Riconnessioni</span><span id="sysReconnect">—</span></div>
+          <div class="kv"><span>Ultimo evento</span><span id="sysLastEvent">—</span></div>
+          <div class="kv"><span>Monitor</span><span id="sysMonitor">—</span></div>
+          <div class="kv"><span>Digest</span><span id="sysDigest">—</span></div>
+          <div class="kv"><span>Watchdog</span><span id="sysWatchdog">—</span></div>
+          <div class="kv"><span>Dashboard uptime</span><span id="sysDash">—</span></div>
+        </div>
+        <div class="card span6">
+          <h2>Azioni e log</h2>
+          <div class="row">
+            <button class="btn danger" id="restartBtn2" type="button">Riavvia gateway</button>
+            <button class="btn" id="monitorBtn2" type="button">Esegui monitor</button>
+            <button class="btn" id="logsBtn" type="button">Carica log</button>
+          </div>
+          <p class="sub">Il riavvio è rapido e non cancella lead, alert o configurazione. Il monitor controlla subito nuovi messaggi e truffe.</p>
+          <pre class="pre" id="logsBox">Premi “Carica log”.</pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="footer">
+    <span>Segreteria digitale di {{OWNER_NAME}} · solo localhost · <span id="footerDate">—</span></span>
+    <span class="mono" id="footerDash">—</span>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const state = { status:null, leads:[], alerts:[], approvals:null, tab:'overview', security:null, connectors:null };
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate = (v) => { if(!v) return '—'; const d = new Date(v); return isNaN(d) ? String(v) : d.toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); };
+const fmtMs = (v) => { if(!v) return '—'; const d = new Date(Number(v)); return isNaN(d) ? '—' : d.toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); };
+const safe = (fn, fallback='—') => { try { return fn(); } catch(e) { return fallback; } };
+const timerText = (t) => { if(!t?.active) return 'fermo'; const n=String(t.next||''); const m=n.match(/(\d{2}:\d{2})/); return m ? 'attivo · '+m[1] : 'attivo'; };
+
+function toast(msg, bad=false){
+  const t=$('toast'); t.textContent=msg;
+  t.style.borderColor = bad ? 'rgba(251,113,133,.5)' : 'rgba(94,234,212,.42)';
+  t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),4600);
+}
+function showLogin(){ $('login').hidden=false; $('app').style.display='none'; }
+function hideLogin(){ $('login').hidden=true; $('app').style.display=''; }
+async function api(path, opts={}){
+  const o = Object.assign({credentials:'same-origin',headers:{'X-Requested-With':'dashboard'}}, opts);
+  if(o.body && !o.headers['Content-Type']) o.headers['Content-Type']='application/json';
+  const r = await fetch(path,o);
+  if(r.status===401){ showLogin(); throw new Error('auth'); }
+  let j={}; try{ j=await r.json(); }catch(e){}
+  if(!r.ok) throw new Error(j.error || ('HTTP '+r.status));
+  return j;
+}
+function clock(){
+  const d=new Date();
+  $('clock').textContent = d.toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'short'}) + ' · ' + d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+}
+function setPill(kind, text){ $('pillDot').className='dot '+kind; $('pillText').textContent=text; }
+function scoreChip(score){
+  const n = Number(score || 0);
+  if(!n) return '<span class="score low">—</span>';
+  const cls = n >= 70 ? 'high' : (n >= 40 ? 'mid' : 'low');
+  return `<span class="score ${cls}">${n}</span>`;
+}
+function intentLabel(v){
+  const m={preventivo:'Preventivo',call:'Call',supporto:'Supporto',info:'Info',sospetto:'Sospetto'};
+  return `<span class="chip ${v==='sospetto'?'bad':(v==='call'?'gold':'')}">${esc(m[v]||v||'—')}</span>`;
+}
+function badgeKind(k){
+  if(k==='scam') return '<span class="chip bad">truffa</span>';
+  if(k==='hot') return '<span class="chip gold">call</span>';
+  return '<span class="chip">nuovo</span>';
+}
+function renderActivity(activity){
+  const rows = Array.isArray(activity) ? activity : [];
+  const max = Math.max(1, ...rows.map(x=>Number(x.count||0)));
+  $('activityChart').innerHTML = rows.length ? rows.map(x=>{
+    const n=Number(x.count||0); const h=Math.max(5, Math.round((n/max)*96));
+    return `<div class="bar-wrap"><div class="bar" style="height:${h}px" title="${esc(x.date)}: ${n}"></div><div class="bar-value">${n}</div><div class="bar-label">${esc(x.label||'')}</div></div>`;
+  }).join('') : '<div class="empty">Nessuna attività.</div>';
+}
+function renderStatus(s, leads, alerts){
+  state.status=s; state.leads=leads; state.alerts=alerts;
+  const gw=s.gateway||{}, wa=s.whatsapp||{}, m=s.model||{}, t=s.timers||{}, c=s.counts||{}, k=s.keys||{};
+  const waOk = ['healthy','connected','ready'].includes(String(wa.state||'').toLowerCase());
+  const online = !!gw.health;
+  setPill(online && waOk ? 'ok' : (online ? 'warn' : 'bad'), online ? (waOk ? 'Tutto online' : 'WhatsApp da verificare') : 'Gateway offline');
+  $('heroDot').className = 'dot ' + (online ? 'ok' : 'bad');
+  $('heroTitle').textContent = online ? 'La tua segreteria è online' : 'Segreteria in ripristino';
+  $('heroSub').textContent = online
+    ? `WhatsApp ${waOk?'connesso':(wa.state||'in verifica')} · ${c.leads_today??0} lead oggi · ${c.alerts_today??0} alert. Il bot risponde e il watchdog controlla tutto.`
+    : 'Il gateway non risponde. Il watchdog tenta il ripristino automatico.';
+  $('heroModel').textContent = safe(()=>m.primary||'—');
+  $('heroUptime').textContent = safe(()=>gw.uptime||'—');
+  $('heroKeys').textContent = safe(()=>`${k.total??0} / ${(k.gemini?.max??5)+(k.groq_backup?.max??5)}`);
+  $('heroApprovals').textContent = c.approvals_pending??0;
+  const badge=$('approvalBadge');
+  if(badge){ badge.textContent=c.approvals_pending??0; badge.style.display=(c.approvals_pending??0)>0?'inline-flex':'none'; }
+  $('mLeads').textContent = c.leads_today??0;
+  $('sLeads').textContent = `${c.leads_total??0} totali · ${c.senders_today??0} numeri`;
+  $('mSenders').textContent = c.senders_today??0;
+  $('sSenders').textContent = 'contatti unici oggi';
+  $('mAlerts').textContent = c.alerts_today??0;
+  $('sAlerts').textContent = `${c.scams_today??0} truffe · ${c.hot_today??0} call`;
+  $('mScams').textContent = c.scams_today??0;
+  $('sScams').textContent = 'truffe bloccate oggi';
+  $('sysGateway').innerHTML = online ? '<span class="ok">attivo</span>' : '<span class="danger">offline</span>';
+  $('sysWa').textContent = `${wa.state||'—'} · ${wa.lifecycle||'—'}`;
+  $('sysUptime').textContent = gw.uptime||'—';
+  $('monitorNext').textContent = timerText(t.monitor);
+  $('watchdogNext').textContent = timerText(t.watchdog);
+  $('digestNext').textContent = timerText(t.digest);
+  $('modelChips').innerHTML = [`<span class="chip ok">${esc(m.primary||'—')}</span>`, ...(m.fallbacks||[]).map(x=>`<span class="chip">${esc(x)}</span>`)].join('');
+  $('toolsState').textContent = m.tools||'nessuno';
+  $('keysMini').textContent = `${k.gemini?.count??0} Gemini · ${k.groq_backup?.count??0} Groq backup`;
+  $('footerDate').textContent = fmtDate(s.now);
+  $('footerDash').textContent = `${s.dashboard?.host||''}:${s.dashboard?.port||''} · uptime ${s.dashboard?.uptime??0}s`;
+  $('sysGw').innerHTML = online ? '<span class="ok">attivo</span>' : '<span class="danger">offline</span>';
+  $('sysPid').textContent = gw.pid||'—';
+  $('sysUp').textContent = gw.uptime||'—';
+  $('sysWa2').textContent = `${wa.state||'—'} · ${wa.lifecycle||'—'}`;
+  $('sysReconnect').textContent = wa.reconnect??0;
+  $('sysLastEvent').textContent = fmtMs(wa.lastEvent);
+  $('sysMonitor').textContent = timerText(t.monitor);
+  $('sysDigest').textContent = timerText(t.digest);
+  $('sysWatchdog').textContent = timerText(t.watchdog);
+  $('sysDash').textContent = `${s.dashboard?.uptime??0}s`;
+  renderActivity(s.activity);
+  renderRecent();
+  renderLeads();
+  renderAlerts();
+  renderKeys();
+}
+function renderRecent(){
+  const l=(state.status?.recent?.leads)||[];
+  $('recentLeads').innerHTML = l.length ? l.map(x=>`<tr><td class="muted">${fmtDate(x.ts)}</td><td class="mono">${esc(x.sender||'—')}</td><td>${esc((x.text||'').slice(0,110))}</td><td>${scoreChip(x.score)}</td></tr>`).join('') : '<tr><td colspan="4" class="empty">Nessun contatto ancora.</td></tr>';
+  const a=(state.status?.recent?.alerts)||[];
+  $('recentAlerts').innerHTML = a.length ? a.map(x=>`<tr><td class="muted">${fmtDate(x.ts)}</td><td>${badgeKind(x.kind)}</td><td class="mono">${esc(x.sender||'—')}</td><td>${esc((x.text||'').slice(0,110))}</td><td>${x.sent?'<span class="chip ok">sì</span>':'<span class="chip bad">no</span>'}</td></tr>`).join('') : '<tr><td colspan="5" class="empty">Nessun alert.</td></tr>';
+}
+function renderLeads(){
+  const q=($('leadSearch').value||'').toLowerCase();
+  const f=$('intentFilter').value;
+  const rows=(state.leads||[]).filter(x=>{
+    const okQ=!q || String(x.sender||'').toLowerCase().includes(q) || String(x.text||'').toLowerCase().includes(q);
+    const okF=!f || String(x.intent||'')===f;
+    return okQ && okF;
+  });
+  $('leadsBody').innerHTML = rows.length ? rows.map(x=>`<tr><td class="muted">${fmtDate(x.ts)}</td><td class="mono">${esc(x.sender||'—')}</td><td>${esc((x.text||'').slice(0,240))}</td><td>${intentLabel(x.intent)}</td><td>${scoreChip(x.score)}</td></tr>`).join('') : '<tr><td colspan="5" class="empty">Nessun lead con questi filtri.</td></tr>';
+}
+function renderAlerts(){
+  const f=$('alertFilter').value;
+  const rows=(state.alerts||[]).filter(x=>!f || String(x.kind||'')===f);
+  $('alertsBody').innerHTML = rows.length ? rows.map(x=>`<tr><td class="muted">${fmtDate(x.ts)}</td><td>${badgeKind(x.kind)}</td><td class="mono">${esc(x.sender||'—')}</td><td>${esc((x.text||'').slice(0,240))}</td><td>${x.sent?'<span class="chip ok">sì</span>':'<span class="chip bad">no</span>'}</td></tr>`).join('') : '<tr><td colspan="5" class="empty">Nessun alert con questo filtro.</td></tr>';
+}
+function approvalType(x){ return x.type==='calendar' ? 'Appuntamento' : 'Email'; }
+function approvalStatus(x){
+  const s=String(x.status||'');
+  const cls=s==='approved'?'ok':(s==='failed'?'bad':(s==='rejected'?'gold':''));
+  return `<span class="chip ${cls}">${esc(s||'pending')}</span>`;
+}
+function approvalCard(x){
+  const p=x.payload||{};
+  const details = x.type==='calendar'
+    ? `<div class="kv"><span>Quando</span><span>${esc(fmtDate(p.start))} → ${esc(fmtDate(p.end))}</span></div>
+       <div class="kv"><span>Invitati</span><span>${esc((p.attendees||[]).join(', ')||'nessuno')}</span></div>`
+    : `<div class="kv"><span>A</span><span>${esc(p.to||'—')}</span></div>
+       <div class="kv"><span>Oggetto</span><span>${esc(p.subject||'—')}</span></div>`;
+  const body = x.type==='calendar' ? (p.description||p.location||'') : (p.body||'');
+  return `<div class="card" style="margin-bottom:10px;padding:14px">
+    <div class="row" style="justify-content:space-between;margin-bottom:8px">
+      <div class="row"><span class="chip violet">${approvalType(x)}</span>${approvalStatus(x)}</div>
+      <span class="dim mono">${esc(x.id||'')}</span>
+    </div>
+    <div class="kv"><span>Cliente</span><span>${esc(x.client_name||'—')} ${esc(x.client_phone||'')}</span></div>
+    <div class="kv"><span>Titolo</span><span>${esc(x.type==='calendar'?(p.summary||'—'):(p.subject||'—'))}</span></div>
+    ${details}
+    <div class="kv"><span>Richiesta</span><span>${esc(x.reason||'—')}</span></div>
+    ${x.type==='email'&&p.html?`<details class="mailprev"><summary>Anteprima email HTML</summary><iframe title="Anteprima email" sandbox loading="lazy" srcdoc="${esc(p.html)}"></iframe></details>`:''}
+    ${body?`<pre class="pre" style="max-height:180px;margin:10px 0">${esc(body)}</pre>`:''}
+    ${x.status==='pending'?`<div class="row"><button class="btn primary" data-approve="${esc(x.id)}" type="button">Approva e ${x.type==='calendar'?'crea':'invia'}</button><button class="btn danger" data-reject="${esc(x.id)}" type="button">Rifiuta</button></div>`:''}
+    ${x.result?`<div class="sub ok" style="margin-top:8px">${esc(x.result)}</div>`:''}
+    ${x.error?`<div class="sub danger" style="margin-top:8px">${esc(x.error)}</div>`:''}
+  </div>`;
+}
+function renderApprovals(d){
+  state.approvals=d||{};
+  const pending=d?.pending||[], counts=d?.counts||{}, recent=d?.recent||[];
+  $('approvalCounts').innerHTML = `<span class="chip gold">${counts.pending??pending.length} in attesa</span><span class="chip ok">${counts.approved??0} approvate</span><span class="chip">${counts.rejected??0} rifiutate</span><span class="chip bad">${counts.failed??0} fallite</span>`;
+  const history=recent.filter(x=>x.status!=='pending').slice(0,12);
+  $('approvalsList').innerHTML = (pending.length ? pending.map(approvalCard).join('') : '<div class="empty">Nessuna richiesta in attesa.</div>')
+    + (history.length ? '<div class="divider"></div><h2 style="margin-top:12px">Storico recente</h2>'+history.map(approvalCard).join('') : '');
+}
+async function loadApprovals(){
+  try{ const r=await api('/api/approvals?limit=120'); renderApprovals(r.data||{}); }
+  catch(e){ if(e.message!=='auth') toast('Approvazioni: '+e.message,true); }
+}
+$('refreshApprovalsBtn').addEventListener('click',loadApprovals);
+$('testEmailBtn').addEventListener('click', async ()=>{
+  if(!confirm('Inviare un\'email HTML di prova a {{GOOGLE_ACCOUNT}}?')) return;
+  const b=$('testEmailBtn'); b.disabled=true; const old=b.textContent; b.textContent='Invio…';
+  try{
+    const res=await api('/api/email/test',{method:'POST',body:'{}'});
+    toast(res.result||'Email di prova inviata.',!res.ok);
+  }catch(e){ toast('Errore: '+e.message,true); }
+  finally{ b.disabled=false; b.textContent=old; }
+});
+$('approvalsList').addEventListener('click', async (e)=>{
+  const a=e.target.closest('button[data-approve]');
+  const r=e.target.closest('button[data-reject]');
+  if(!a && !r) return;
+  const id=(a||r).getAttribute(a?'data-approve':'data-reject');
+  const action=a?'approve':'reject';
+  if(!confirm(action==='approve'?'Approvare ed eseguire questa azione con Gmail/Calendar?':'Rifiutare questa richiesta?')) return;
+  (a||r).disabled=true;
+  try{
+    const res=await api('/api/approvals/'+action,{method:'POST',body:JSON.stringify({id})});
+    toast(action==='approve'?('Approvata: '+(res.result||'azione eseguita')):'Richiesta rifiutata.',!res.ok);
+    await loadApprovals(); load();
+  }catch(err){ toast('Errore: '+err.message,true); }
+  finally{ (a||r).disabled=false; }
+});
+function renderKeys(){
+  const k=state.status?.keys||{};
+  $('geminiCount').textContent = `${k.gemini?.count??0} / ${k.gemini?.max??5}`;
+  $('groqCount').textContent = `${k.groq_backup?.count??0} / ${k.groq_backup?.max??5}`;
+  $('geminiCount').className = 'chip ' + (k.gemini?.configured?'ok':'');
+  $('groqCount').className = 'chip ' + (k.groq_backup?.configured?'ok':'');
+  $('keyFallbacks').innerHTML = (k.fallback_models||[]).length
+    ? (k.fallback_models||[]).map(x=>`<span class="chip ${String(x).startsWith('google/')?'violet':(String(x).startsWith('groq')&&!String(x).startsWith('groq/')?'gold':'')}">${esc(x)}</span>`).join('')
+    : '<span class="chip">Nessun fallback configurato</span>';
+  if(!$('keysResult').dataset.keep) $('keysResult').textContent = 'Nessuna verifica eseguita.';
+}
+async function load(){
+  try{
+    const st=await api('/api/status');
+    const [l,a]=await Promise.all([api('/api/leads?limit=300'),api('/api/alerts?limit=300')]);
+    hideLogin(); renderStatus(st.data,l.data,a.data);
+    if(state.tab==='security') loadSecurity();
+  }catch(e){ if(e.message!=='auth') toast('Errore: '+e.message,true); }
+}
+function switchTab(name){
+  state.tab=name;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+  document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id==='tab-'+name));
+  if(name==='security') loadSecurity();
+  if(name==='connectors') loadConnectors();
+  if(name==='approvals') loadApprovals();
+  if(name==='system') $('logsBox').textContent='Premi “Carica log”.';
+}
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
+$('refreshBtn').addEventListener('click',load);
+$('leadSearch').addEventListener('input',renderLeads);
+$('intentFilter').addEventListener('change',renderLeads);
+$('alertFilter').addEventListener('change',renderAlerts);
+$('exportLeadsBtn').addEventListener('click',()=>{
+  const cell=(value)=>{let v=String(value??''); if(/^[=+\-@]/.test(v)) v="'"+v; return '"'+v.replace(/"/g,'""')+'"';};
+  const rows=[['data','numero','messaggio','intenzione','score'],...state.leads.map(x=>[x.ts||'',x.sender||'',String(x.text||'').replace(/\s+/g,' '),x.intent||'',x.score??''])];
+  const csv=rows.map(r=>r.map(cell).join(',')).join('\n');
+  const blob=new Blob(["\ufeff"+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='lead-segreteria.csv'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  toast('CSV esportato.');
+});
+
+$('loginForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  $('loginError').textContent='';
+  const token=$('token').value.trim();
+  const r=await fetch('/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({token})});
+  if(r.redirected || r.ok){ location.reload(); return; }
+  let j={}; try{j=await r.json();}catch(x){}
+  $('loginError').textContent=j.error||'Token non valido.';
+});
+
+async function doRestart(){
+  if(!confirm('Riavviare il gateway? Il bot tornerà online in pochi secondi.')) return;
+  try{ await api('/api/restart',{method:'POST'}); toast('Riavvio richiesto…'); setTimeout(load,6000); }catch(e){ toast('Errore: '+e.message,true); }
+}
+$('restartBtn').addEventListener('click',doRestart);
+$('restartBtn2').addEventListener('click',doRestart);
+async function doMonitor(){
+  try{ const r=await api('/api/monitor',{method:'POST'}); toast('Monitor: '+String(r.output||'ok').slice(0,180)); load(); }catch(e){ toast('Errore: '+e.message,true); }
+}
+$('monitorBtn').addEventListener('click',doMonitor);
+$('monitorBtn2').addEventListener('click',doMonitor);
+$('logsBtn').addEventListener('click', async ()=>{
+  try{ const r=await api('/api/logs?lines=100'); $('logsBox').textContent=(r.lines||[]).join('\n')||'(nessuna riga)'; }catch(e){ toast('Errore: '+e.message,true); }
+});
+
+function poolFrom(id){ return ($(id).value||'').split(/[\n,]+/).map(x=>x.trim()).filter(Boolean); }
+async function savePool(kind){
+  const btn=$(kind==='gemini'?'saveGeminiBtn':'saveGroqBtn');
+  const keys=poolFrom(kind==='gemini'?'geminiKeys':'groqKeys');
+  if(!keys.length && !confirm('Svuotare questo pool? Il fallback corrispondente verrà rimosso.')) return;
+  btn.disabled=true;
+  try{
+    const body = kind==='gemini' ? {gemini_keys:keys} : {groq_backup_keys:keys};
+    const r=await api('/api/keys/save',{method:'POST',body:JSON.stringify(body)});
+    $(kind==='gemini'?'geminiKeys':'groqKeys').value='';
+    $('keysResult').dataset.keep='1';
+    $('keysResult').innerHTML='<span class="ok">Pool salvato. Gateway in riavvio.</span>';
+    toast(r.restarting?'Pool salvato, riavvio in corso…':'Pool salvato');
+    setTimeout(()=>{ delete $('keysResult').dataset.keep; load(); },7000);
+  }catch(e){ toast('Errore: '+e.message,true); }
+  finally{ btn.disabled=false; }
+}
+$('saveGeminiBtn').addEventListener('click',()=>savePool('gemini'));
+$('saveGroqBtn').addEventListener('click',()=>savePool('groq'));
+$('clearGeminiBtn').addEventListener('click', async ()=>{
+  if(!confirm('Svuotare il pool Gemini?')) return;
+  try{ await api('/api/keys/save',{method:'POST',body:JSON.stringify({gemini_keys:[]})}); toast('Pool Gemini svuotato.'); setTimeout(load,6000); }catch(e){ toast('Errore: '+e.message,true); }
+});
+$('clearGroqBtn').addEventListener('click', async ()=>{
+  if(!confirm('Svuotare il pool Groq backup?')) return;
+  try{ await api('/api/keys/save',{method:'POST',body:JSON.stringify({groq_backup_keys:[]})}); toast('Pool Groq svuotato.'); setTimeout(load,6000); }catch(e){ toast('Errore: '+e.message,true); }
+});
+$('testKeysBtn').addEventListener('click', async ()=>{
+  const btn=$('testKeysBtn'); btn.disabled=true;
+  $('keysResult').dataset.keep='1'; $('keysResult').textContent='Verifica in corso…';
+  try{
+    const r=await api('/api/keys/test',{method:'POST'});
+    const g=r.results?.gemini||[], q=r.results?.groq_backup||[];
+    const row=(x,label)=>`<span class="chip ${x.status==='ok'?'ok':(x.status==='limite'?'gold':'bad')}">${label} ${x.index}: ${esc(x.status)}</span>`;
+    $('keysResult').innerHTML = (g.length||q.length)
+      ? [...g.map(x=>row(x,'Gemini')), ...q.map(x=>row(x,'Groq'))].join(' ')
+      : 'Nessuna chiave configurata.';
+  }catch(e){ $('keysResult').textContent='Errore: '+e.message; }
+  finally{ btn.disabled=false; }
+});
+
+async function loadConnectors(){
+  try{
+    const r=await api('/api/connectors');
+    const d=r.data||{}; state.connectors=d; const g=d.google||{}, m=d.mcp||{}, p=d.policy||{}, b=d.bridge||{};
+    $('googleConnChip').className = 'chip ' + (b.configured ? (b.healthy === false ? 'bad' : 'ok') : (g.authorized ? 'ok' : 'gold'));
+    $('googleConnChip').textContent = b.configured ? (b.healthy === false ? 'bridge errore' : 'bridge attivo') : (g.authorized ? 'autorizzato' : 'da autorizzare');
+    $('connVersion').textContent = g.installed ? (g.version||'installato') : 'non installato';
+    $('connMcp').textContent = m.ok ? 'connesso' : 'non connesso';
+    $('connTools').textContent = (m.tools||[]).length ? (m.tools||[]).join(' · ') : '—';
+    $('connAccounts').textContent = (g.accounts||[]).length ? (g.accounts||[]).join(', ') : 'nessuno';
+    $('connMode').textContent = b.configured ? 'Bridge Apps Script' : 'OAuth locale (gog)';
+    $('connState').textContent = b.configured
+      ? (b.healthy === false ? 'Bridge configurato · verifica fallita' : 'Gmail e Calendar via bridge permanente')
+      : (g.authorized && m.ok ? 'Gmail e Calendar pronti' : (g.installed ? 'MCP pronto · serve autorizzazione Google' : 'gog non installato'));
+    $('bridgeChip').className = 'chip ' + (b.configured ? (b.healthy === false ? 'bad' : 'ok') : 'gold');
+    $('bridgeChip').textContent = b.configured ? (b.healthy === false ? 'errore' : 'configurato') : 'non attivo';
+    $('bridgeMode').textContent = b.configured ? 'Apps Script · permanente' : 'OAuth locale';
+    $('bridgeHost').textContent = b.host || '—';
+    $('bridgeHealth').textContent = b.healthy === true ? 'ok' : (b.healthy === false ? (b.health_error || 'errore') : (b.configured ? 'da verificare' : '—'));
+    $('connConcurrent').textContent = p.max_concurrent ?? '—';
+    $('connQueue').textContent = p.queue || '—';
+    $('connDebounce').textContent = (p.debounce_ms ?? '—') + ' ms';
+    $('connWaDebounce').textContent = (p.whatsapp_debounce_ms ?? '—') + ' ms';
+    $('connOwner').textContent = d.owner || '—';
+  }catch(e){ toast('Connettori: '+e.message,true); }
+}
+$('testConnectorsBtn').addEventListener('click', async ()=>{
+  const b=$('testConnectorsBtn'); b.disabled=true; b.textContent='Verifica…';
+  try{ await api('/api/connectors/test',{method:'POST'}); await loadConnectors(); toast('Verifica completata.'); }
+  catch(e){ toast('Errore: '+e.message,true); }
+  finally{ b.disabled=false; b.textContent='Verifica connessione'; }
+});
+$('bridgeTestBtn').addEventListener('click', async ()=>{
+  const b=$('bridgeTestBtn'); b.disabled=true; b.textContent='Verifica…';
+  try{
+    await api('/api/connectors/test',{method:'POST'}); await loadConnectors();
+    const bridge=(state.connectors||{}).bridge||{};
+    if(bridge.configured && bridge.healthy!==false) toast('Bridge verificato e operativo.');
+    else if(bridge.configured) toast('Bridge configurato, ma la verifica non risponde: '+((bridge.health_error)||'controlla Apps Script'),true);
+    else toast('Bridge non ancora attivato: esegui l’attivazione una tantum.',true);
+  }
+  catch(e){ toast('Bridge: '+e.message,true); }
+  finally{ b.disabled=false; b.textContent='Verifica bridge'; }
+});
+$('bridgeCopyBtn').addEventListener('click', async ()=>{
+  const cmd='bash ~/.openclaw/secretary/google-bridge/installa-bridge.sh';
+  try{ await navigator.clipboard.writeText(cmd); toast('Comando copiato. Incollalo nel terminale WSL.'); }
+  catch(e){ toast('Copia manuale: '+cmd,true); }
+});
+
+async function loadSecurity(){
+  try{
+    const [s,a]=await Promise.all([api('/api/security'),api('/api/audit?lines=80')]);
+    const d=s.data||{}; state.security=d;
+    $('secBind').textContent=d.bind||'—';
+    $('secToken').textContent=d.token_file||'—';
+    $('secPerms').textContent=d.token_perms||'—';
+    $('secLastLogin').textContent=d.last_login?fmtDate(d.last_login):'mai';
+    $('secFails').textContent=d.failed_logins_5m??0;
+    $('secRotated').textContent=d.token_rotated_at?fmtDate(d.token_rotated_at):'mai';
+    $('auditBox').textContent=(a.lines||[]).join('\n')||'(nessun evento)';
+  }catch(e){ if(e.message!=='auth') toast('Errore sicurezza: '+e.message,true); }
+}
+$('loadAuditBtn').addEventListener('click',loadSecurity);
+$('rotateTokenBtn').addEventListener('click', async ()=>{
+  if(!confirm('Rigenerare il token? Le altre sessioni della dashboard verranno scollegate.')) return;
+  try{ await api('/api/security/rotate',{method:'POST'}); toast('Token ruotato. Nuovo token nel file locale.'); loadSecurity(); }catch(e){ toast('Errore: '+e.message,true); }
+});
+
+document.addEventListener('keydown',(e)=>{
+  if(e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+  if(e.metaKey||e.ctrlKey||e.altKey) return;
+  const tabs=['overview','leads','alerts','approvals','keys','connectors','security','system'];
+  if(/^[1-8]$/.test(e.key)) switchTab(tabs[Number(e.key)-1]);
+  if(e.key.toLowerCase()==='r') load();
+});
+
+clock();
+load();
+setInterval(()=>{ if(!document.hidden && $('login').hidden) load(); }, 30000);
+setInterval(clock, 1000);
+</script>
+</body>
+</html>
