@@ -1,0 +1,13 @@
+{
+  "id": "secretary-guard",
+  "name": "Secretary Guard",
+  "description": "Sostituisce errori tecnici e riferimenti a provider/modelli con un messaggio umano in italiano.",
+  "version": "1.0.0",
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false
+  }
+}

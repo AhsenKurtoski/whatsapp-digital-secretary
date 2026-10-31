@@ -1,0 +1,17 @@
+[Unit]
+Description=OpenClaw Secretary Dashboard (private localhost)
+After=network-online.target openclaw-gateway.service
+Wants=openclaw-gateway.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.openclaw/secretary
+ExecStart=/usr/bin/python3 %h/.openclaw/secretary/dashboard.py
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=default.target

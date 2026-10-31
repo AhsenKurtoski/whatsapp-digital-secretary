@@ -1,0 +1,22 @@
+{
+  "business_name": "Nome Attività",
+  "owner_name": "Mario Rossi",
+  "bot_name": "Segreteria Digitale",
+  "owner_number": "+390000000000",
+  "google_account": "you@example.com",
+  "language": "italiano",
+  "timezone": "Europe/Rome",
+  "site_url": "https://example.com",
+  "city": "Città",
+  "services": [
+    "informazioni su prodotti e servizi",
+    "preventivi e disponibilità",
+    "prenotazioni e appuntamenti"
+  ],
+  "hours": "Lun–Ven 9:00–18:00",
+  "pricing_note": "I prezzi e le condizioni li conferma il titolare.",
+  "dashboard_port": 8787,
+  "max_concurrent": 3,
+  "max_reply_lines": 6,
+  "whatsapp_number": ""
+}

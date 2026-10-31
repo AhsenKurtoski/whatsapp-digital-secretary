@@ -1,0 +1,65 @@
+# Secrets and private configuration
+.env
+.env.*
+!.env.example
+secrets.env
+secrets.env.*
+!secrets.env.example
+google_bridge.json
+Config.gs
+.clasp.json
+credentials.json
+token.json
+*.pem
+*.key
+
+# Runtime data and sessions
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+*.db-shm
+*.db-wal
+dashboard_token
+security_state.json
+watchdog_state.json
+state.json
+approvals.jsonl
+approvals.lock
+leads.jsonl
+alerts.jsonl
+digest_state.json
+*.log
+sessions/
+workspace/
+archive/
+
+# Dashboard and email previews
+*.html.tmp
+preview-*.html
+screenshots/*.png
+!docs/screenshot-dashboard.png
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+
+# Node / Apps Script
+node_modules/
+npm-debug.log*
+coverage/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,12 @@
+{
+  "name": "secretary-guard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Nasconde errori tecnici e nomi dei provider nei messaggi della segreteria.",
+  "openclaw": {
+    "extensions": [
+      "./index.js"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=OpenClaw Secretary Watchdog (gateway, WhatsApp, dashboard, timers)
+After=network-online.target openclaw-gateway.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/.openclaw/secretary
+ExecStart=/usr/bin/python3 %h/.openclaw/secretary/watchdog.py
+Nice=10
+NoNewPrivileges=yes
+PrivateTmp=yes
