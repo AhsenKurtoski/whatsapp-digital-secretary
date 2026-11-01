@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] - 2026-11-01
+
+### Fixed
+
+- Python 3.11 compatibility: removed a backslash from an f-string expression in the
+  HTML email renderer (PEP 701 is only available from Python 3.12).
+- Timezone loading no longer crashes on Windows systems without the IANA `tzdata`
+  database; the local timezone is used as a safe fallback.
+- Cross-platform approval-queue locking: `fcntl` is used on POSIX, with an atomic lock
+  file on Windows.
+- Monitor console output no longer crashes on cp1252 terminals when a message contains
+  emoji or non-ASCII characters.
+- Watchdog self-test no longer calls `os.getuid()` on platforms that do not provide it.
+- The public site now uses GitHub Pages instead of Netlify, including the hosting
+  disclosure in the privacy policy.
+
+### Changed
+
+- CI now passes on Python 3.11, 3.12 and 3.13.
+
 ## [1.0.0] - 2026-10-31
 
 ### Added
@@ -47,4 +67,5 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - Secrets stored outside the repository with `600` permissions.
 - Log redaction for phone numbers and message content.
 
+[1.0.1]: https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.0.1
 [1.0.0]: https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.0.0

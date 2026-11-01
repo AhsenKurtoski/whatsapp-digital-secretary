@@ -76,7 +76,8 @@ Nessun dato dei clienti viene inviato a un servizio dashboard di terze parti.
 ## Requisiti
 
 - Linux o WSL2 con systemd utente
-- Python **3.11+** (solo standard library)
+- Python **3.11+** (solo standard library; su Windows nativo installa `tzdata` per il
+  database completo dei fusi orari IANA)
 - Node.js **22+** e [OpenClaw](https://openclaw.ai) installato globalmente
 - Un account WhatsApp per il bot (consigliato un numero dedicato)
 - Almeno una chiave AI (i tier gratuiti Gemini e/o Groq funzionano)

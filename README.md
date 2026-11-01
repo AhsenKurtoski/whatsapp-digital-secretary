@@ -77,7 +77,8 @@ customer data is sent to a third-party dashboard service.
 ## Requirements
 
 - Linux or WSL2 with systemd user services
-- Python **3.11+** (standard library only)
+- Python **3.11+** (standard library only; on native Windows install `tzdata` for the
+  full IANA timezone database)
 - Node.js **22+** and [OpenClaw](https://openclaw.ai) installed globally
 - A WhatsApp account for the bot (a separate number is recommended)
 - At least one AI provider key (Gemini and/or Groq free tiers work)

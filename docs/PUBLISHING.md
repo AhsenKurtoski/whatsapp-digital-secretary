@@ -74,8 +74,8 @@ Check the release page and the rendered README. The screenshot must load from
 - `~/.openclaw/agents/...` — WhatsApp session and conversations.
 - The public website folder and privacy pages (not part of this repository).
 
-The website can be deployed separately to Netlify Drop from its own zip; it must not
-be committed here.
+The public website is published separately on GitHub Pages. Its source and URL live
+outside this repository and must never be committed here.
 
 ## 6. After publishing
 
