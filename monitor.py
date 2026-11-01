@@ -6,13 +6,22 @@ import os
 import re
 import sqlite3
 import subprocess
+import sys
 import tempfile
 import time
 import unicodedata
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
 import config
+
+# Windows consoles default to cp1252 and would crash on emoji. Keep the
+# console encoding so parent processes can decode it, but never crash.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(errors="replace")
+        except Exception:
+            pass
 
 HOME = os.path.expanduser("~")
 CFG = config.load()
@@ -21,7 +30,7 @@ DEFAULT_DB = config.db_path()
 NODE = config.node_bin()
 CLI = config.openclaw_cli()
 OWNER = str(CFG.get("owner_number") or "")
-ROME = ZoneInfo(str(CFG.get("timezone") or "Europe/Rome"))
+ROME = config.resolve_timezone()
 SEEN_MAX = 1000
 
 

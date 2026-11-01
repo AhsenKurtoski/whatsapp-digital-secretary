@@ -12,7 +12,9 @@ import glob
 import json
 import os
 import shutil
+from datetime import datetime, timezone as dt_timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 DEFAULT_CONFIG_PATH = Path(
     os.environ.get("SECRETARY_CONFIG", str(Path.home() / ".config" / "digital-secretary" / "config.json"))
@@ -92,6 +94,25 @@ def get(key: str, default=None):
 
 def timezone_name() -> str:
     return str(get("timezone", "Europe/Rome"))
+
+
+def resolve_timezone(name: str | None = None):
+    """Restituisce il fuso configurato, con fallback sicuro su Windows.
+
+    Windows non include il database IANA: senza il pacchetto ``tzdata``
+    ``ZoneInfo("Europe/Rome")`` fallisce. In quel caso usiamo l'offset locale
+    corrente del sistema, così l'app resta operativa; per date future oltre un
+    cambio di ora legale installa ``tzdata``. Su Linux il database di sistema è
+    presente, quindi una chiave davvero invalida continua a sollevare l'errore
+    invece di essere nascosta.
+    """
+    key = str(name or timezone_name() or "Europe/Rome")
+    try:
+        return ZoneInfo(key)
+    except ZoneInfoNotFoundError:
+        if available_timezones():
+            raise
+        return datetime.now().astimezone().tzinfo or dt_timezone.utc
 
 
 def wa_link() -> str:

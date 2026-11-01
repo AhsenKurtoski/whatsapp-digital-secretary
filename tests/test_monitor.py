@@ -27,7 +27,7 @@ class MonitorTests(unittest.TestCase):
     def test_location_uses_configured_city(self):
         # support.py configures Milano; no other real city may be hardcoded.
         self.assertTrue(monitor.LOCATION.search("Sono di Milano"))
-        self.assertFalse(monitor.LOCATION.search("Sono di Feltre"))
+        self.assertFalse(monitor.LOCATION.search("Sono di Roma"))
 
 
 if __name__ == "__main__":

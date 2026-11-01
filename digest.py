@@ -5,7 +5,6 @@ import json
 import os
 import subprocess
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
 import config
 
@@ -15,7 +14,7 @@ BASE = str(config.BASE)
 NODE = config.node_bin()
 CLI = config.openclaw_cli()
 OWNER = str(CFG.get("owner_number") or "")
-ROME = ZoneInfo(str(CFG.get("timezone") or "Europe/Rome"))
+ROME = config.resolve_timezone()
 
 
 def read_jsonl(path):

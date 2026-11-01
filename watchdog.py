@@ -12,7 +12,6 @@ import subprocess
 import time
 import urllib.request
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
 import config
 
@@ -21,7 +20,7 @@ CFG = config.load()
 BASE = str(config.BASE)
 STATE = os.path.join(BASE, "watchdog_state.json")
 LOG = os.path.join(BASE, "watchdog.log")
-ROME = ZoneInfo(str(CFG.get("timezone") or "Europe/Rome"))
+ROME = config.resolve_timezone()
 UNITS = {
     "gateway": "openclaw-gateway.service",
     "dashboard": "openclaw-dashboard.service",
@@ -51,9 +50,10 @@ def log(msg: str) -> None:
 
 def run(cmd: list[str], timeout: int = 30) -> tuple[int, str, str]:
     env = os.environ.copy()
-    uid = os.getuid()
-    env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{uid}")
-    env.setdefault("DBUS_SESSION_BUS_ADDRESS", f"unix:path=/run/user/{uid}/bus")
+    if hasattr(os, "getuid"):
+        uid = os.getuid()
+        env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{uid}")
+        env.setdefault("DBUS_SESSION_BUS_ADDRESS", f"unix:path=/run/user/{uid}/bus")
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, env=env)
         return r.returncode, r.stdout.strip(), r.stderr.strip()

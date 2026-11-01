@@ -23,7 +23,6 @@ from datetime import datetime, timedelta
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
-from zoneinfo import ZoneInfo
 
 import config
 
@@ -60,7 +59,7 @@ LOG = os.path.join(BASE, "dashboard.log")
 HTML_FILE = os.path.join(BASE, "dashboard.html")
 HOST = os.environ.get("DASHBOARD_HOST", "127.0.0.1")
 PORT = int(CFG.get("dashboard_port") or 8787)
-ROME = ZoneInfo(str(CFG.get("timezone") or "Europe/Rome"))
+ROME = config.resolve_timezone()
 OWNER = str(CFG.get("owner_number") or "")
 START = time.time()
 STATUS_CACHE = {"ts": 0.0, "data": None}

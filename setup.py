@@ -47,12 +47,19 @@ def validate_phone(value: str) -> str:
 
 
 def validate_timezone(value: str) -> str:
-    try:
-        from zoneinfo import ZoneInfo
+    from zoneinfo import ZoneInfo, available_timezones
 
+    try:
         ZoneInfo(value)
     except Exception as exc:
-        raise SystemExit(f"Fuso orario non valido: {value}") from exc
+        try:
+            has_database = bool(available_timezones())
+        except Exception:
+            has_database = False
+        # Windows can lack the IANA database. Accept a well-formed key there;
+        # config.resolve_timezone() will use the local timezone at runtime.
+        if has_database or not re.fullmatch(r"[A-Za-z_]+(?:/[A-Za-z0-9_+\-]+)+", value):
+            raise SystemExit(f"Fuso orario non valido: {value}") from exc
     return value
 
 

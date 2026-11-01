@@ -25,7 +25,8 @@ class ApprovalStoreTests(unittest.TestCase):
         self.assertEqual(row["type"], "email")
         self.assertEqual(row["status"], "pending")
         self.assertTrue(row["payload"]["html"].startswith("<!DOCTYPE html>"))
-        self.assertEqual(stat.S_IMODE(os.stat(approval_store.QUEUE).st_mode), 0o600)
+        if os.name != "nt":  # Windows does not expose POSIX permission bits.
+            self.assertEqual(stat.S_IMODE(os.stat(approval_store.QUEUE).st_mode), 0o600)
 
     def test_duplicate_pending_returns_same_request(self):
         payload = {"to": "cliente@example.com", "subject": "Ciao", "body": "Test"}

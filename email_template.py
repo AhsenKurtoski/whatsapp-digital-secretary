@@ -33,6 +33,7 @@ INDIGO = "#6366f1"
 CYAN = "#06b6d4"
 
 _URL_RE = re.compile(r"(https?://[^\s<]+)")
+_NUMBERED_RE = re.compile(r"^\d+[.)]\s*")
 
 
 def _rich_text(text: str) -> str:
@@ -55,9 +56,9 @@ def _rich_text(text: str) -> str:
                 f'<ul style="margin:0 0 18px 0;padding-left:20px;color:{SOFT};font-size:15px;line-height:1.75">{items}</ul>'
             )
             continue
-        if len(lines) > 1 and all(re.match(r"^\d+[.)]\s", ln) for ln in lines):
+        if len(lines) > 1 and all(_NUMBERED_RE.match(ln) for ln in lines):
             items = "".join(
-                f'<li style="margin:0 0 8px 0;padding-left:2px">{re.sub(r"^\d+[.)]\s*", "", ln)}</li>'
+                f'<li style="margin:0 0 8px 0;padding-left:2px">{_NUMBERED_RE.sub("", ln)}</li>'
                 for ln in lines
             )
             blocks.append(

@@ -6,16 +6,19 @@ La dashboard, dopo il login, esegue l'azione approvata tramite gog.
 """
 from __future__ import annotations
 
-import fcntl
+try:
+    import fcntl
+except ImportError:  # Windows has no fcntl; use an atomic lock file instead.
+    fcntl = None
 import hashlib
 import json
 import os
 import re
 import secrets
+import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 import config
 
@@ -28,7 +31,7 @@ CFG = config.load()
 BASE = config.BASE
 QUEUE = BASE / "approvals.jsonl"
 LOCK = BASE / "approvals.lock"
-ROME = ZoneInfo(str(CFG.get("timezone") or "Europe/Rome"))
+ROME = config.resolve_timezone()
 MAX_PENDING = 30
 MAX_ROWS = 500
 EMAIL_RE = re.compile(r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$")
@@ -125,6 +128,25 @@ def validate_calendar(payload: dict) -> dict:
 @contextmanager
 def _locked():
     BASE.mkdir(parents=True, exist_ok=True)
+    if fcntl is None:
+        deadline = time.monotonic() + 10
+        while True:
+            try:
+                handle = os.open(LOCK, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o600)
+                break
+            except FileExistsError:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("timeout while waiting for the approval queue lock")
+                time.sleep(0.05)
+        try:
+            yield
+        finally:
+            os.close(handle)
+            try:
+                LOCK.unlink()
+            except FileNotFoundError:
+                pass
+        return
     with open(LOCK, "a+", encoding="utf-8") as handle:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         try:
