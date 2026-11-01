@@ -26,6 +26,7 @@ UNITS = {
     "dashboard": "openclaw-dashboard.service",
     "monitor": "openclaw-secretary-monitor.timer",
     "digest": "openclaw-secretary-digest.timer",
+    "health": "openclaw-secretary-health.timer",
 }
 
 
@@ -173,6 +174,7 @@ def check(dry: bool = False) -> dict:
         "dashboard_health": dashboard_health(),
         "monitor_active": is_active(UNITS["monitor"]),
         "digest_active": is_active(UNITS["digest"]),
+        "health_active": is_active(UNITS["health"]),
         "whatsapp": "unknown",
         "actions": [],
     }
@@ -225,7 +227,7 @@ def check(dry: bool = False) -> dict:
             result["actions"].append("dashboard-restart")
 
     # Timer: li riattiva se qualcuno li ha fermati.
-    for key in ("monitor", "digest"):
+    for key in ("monitor", "digest", "health"):
         if not result[key + "_active"]:
             log(f"{key} timer inactive; starting")
             if not dry:

@@ -50,6 +50,10 @@ Web. Non è un prodotto WhatsApp Business API e non è affiliato a Meta o WhatsA
   approvazione e anteprima email.
 - **Operatività** — servizi systemd utente, watchdog, riepilogo giornaliero, dashboard
   Docker opzionale e procedura di primo avvio guidata.
+- **Health e avvisi token** — una scansione ogni 30 minuti controlla configurazione,
+  segreti, gateway, WhatsApp, dashboard, timer, Google OAuth/bridge, MCP, chiavi AI,
+  approvazioni, disco e avvio Windows. Manda un avviso WhatsApp senza spam quando un
+  token scade o un servizio si blocca, e mostra il report completo nella dashboard.
 
 ## Architettura
 
@@ -202,11 +206,12 @@ python3 -m py_compile *.py google-bridge/*.py
 node google-bridge/test_code_gs.js
 python3 monitor.py --self-test
 python3 watchdog.py --self-test
+python3 healthcheck.py --self-test
 ```
 
 La suite copre configurazione, rendering della persona, archivio approvazioni, sicurezza
-del template email, autenticazione/CSRF della dashboard, stato del watchdog e selezione
-automatica dei modelli. L'integrazione con un numero WhatsApp reale e un account Google
+del template email, autenticazione/CSRF della dashboard, stato del watchdog, punteggio
+Health/avvisi token e selezione automatica dei modelli. L'integrazione con un numero WhatsApp reale e un account Google
 reale non è testabile in CI; vedi [docs/TESTING.md](docs/TESTING.md) per la checklist
 manuale.
 

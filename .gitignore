@@ -23,6 +23,8 @@ token.json
 dashboard_token
 security_state.json
 watchdog_state.json
+health_state.json
+health_alerts_state.json
 state.json
 approvals.jsonl
 approvals.lock

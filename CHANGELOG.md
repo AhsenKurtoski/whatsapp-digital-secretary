@@ -4,6 +4,35 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-11-01
+
+### Added
+
+- **Health scan** (`healthcheck.py`): a complete check of configuration, persona,
+  secrets, gateway, WhatsApp, dashboard, systemd timers, Google OAuth and Apps Script
+  bridge, MCP, AI keys, approval queue, disk, logs and Windows autostart. It writes
+  `health_state.json` and never prints tokens or customer data.
+- **Token expiry alerts** on WhatsApp for Google OAuth, the Google bridge, the dashboard
+  token, the WhatsApp session, AI keys and the public site, with per-alert cooldowns so
+  the owner is not spammed.
+- **Health tab in the dashboard**: overall verdict, per-check detail with the fix to
+  run, a token/expiry table, active alerts, “Esegui scansione completa” and a WhatsApp
+  test alert button.
+- `openclaw-secretary-health.timer` (every 30 minutes) and `/api/health`,
+  `/api/health/scan`, `/api/health/notify` endpoints protected by the dashboard token
+  and CSRF header.
+- Cross-platform timezone resolution in `config.resolve_timezone()`.
+- The evening digest now includes a Health summary and is sent even on days with no
+  new contacts when a check needs attention.
+- The dashboard shows the next scheduled run for monotonic timers (e.g. Health).
+
+### Changed
+
+- The watchdog now also restarts the health timer if it is stopped and reports it in
+  the dashboard status.
+- Windows systems without the IANA timezone database fall back to the local offset
+  instead of crashing.
+
 ## [1.0.1] - 2026-11-01
 
 ### Fixed

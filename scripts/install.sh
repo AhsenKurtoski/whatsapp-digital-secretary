@@ -33,6 +33,7 @@ install -m 700 "$HERE/dashboard.py" "$BASE/dashboard.py"
 install -m 644 "$HERE/dashboard.html" "$BASE/dashboard.html"
 install -m 700 "$HERE/sync_fallbacks.py" "$BASE/sync_fallbacks.py"
 install -m 700 "$HERE/watchdog.py" "$BASE/watchdog.py"
+install -m 700 "$HERE/healthcheck.py" "$BASE/healthcheck.py"
 install -m 700 "$HERE/monitor.py" "$BASE/monitor.py"
 install -m 700 "$HERE/digest.py" "$BASE/digest.py"
 install -m 700 "$HERE/approval_store.py" "$BASE/approval_store.py"
@@ -55,7 +56,8 @@ install -m 700 "$HERE/gog-secretary" "$HOME/.local/bin/gog-secretary" 2>/dev/nul
 
 for unit in openclaw-dashboard.service openclaw-watchdog.service openclaw-watchdog.timer \
             openclaw-secretary-monitor.service openclaw-secretary-monitor.timer \
-            openclaw-secretary-digest.service openclaw-secretary-digest.timer; do
+            openclaw-secretary-digest.service openclaw-secretary-digest.timer \
+            openclaw-secretary-health.service openclaw-secretary-health.timer; do
   install -m 644 "$HERE/systemd/$unit" "$UNIT_DIR/$unit"
 done
 install -m 644 "$HERE/systemd/gateway-secrets.conf" "$DROPIN/secretary.conf"
@@ -75,6 +77,7 @@ systemctl --user enable --now openclaw-dashboard.service
 systemctl --user enable --now openclaw-watchdog.timer
 systemctl --user enable --now openclaw-secretary-monitor.timer
 systemctl --user enable --now openclaw-secretary-digest.timer
+systemctl --user enable --now openclaw-secretary-health.timer
 systemctl --user restart openclaw-dashboard.service
 
 if command -v openclaw >/dev/null 2>&1; then

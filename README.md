@@ -51,6 +51,10 @@ Meta or WhatsApp.
   approval queue, and email preview.
 - **Operations** — systemd user services, watchdog, daily digest, optional Docker
   dashboard, and a setup wizard.
+- **Health and token alerts** — a 30-minute scan checks configuration, secrets,
+  gateway, WhatsApp, dashboard, timers, Google OAuth/bridge, MCP, AI keys, approvals,
+  disk and Windows autostart. It sends a deduplicated WhatsApp alert to the owner when
+  a token expires or a service breaks, and shows the full report in the dashboard.
 
 ## Architecture
 
@@ -200,11 +204,12 @@ python3 -m py_compile *.py google-bridge/*.py
 node google-bridge/test_code_gs.js
 python3 monitor.py --self-test
 python3 watchdog.py --self-test
+python3 healthcheck.py --self-test
 ```
 
 The suite covers configuration, persona rendering, approval storage, email template
-safety, dashboard authentication/CSRF, watchdog status, and automatic model
-selection. Integration with a real WhatsApp number and a real Google account cannot
+safety, dashboard authentication/CSRF, watchdog status, health scoring/token alerts,
+and automatic model selection. Integration with a real WhatsApp number and a real Google account cannot
 be tested in CI; see [docs/TESTING.md](docs/TESTING.md) for the manual checklist.
 
 ## Docker (dashboard only)

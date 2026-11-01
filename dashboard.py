@@ -36,6 +36,7 @@ CLI = config.openclaw_cli()
 TOKEN_FILE = os.path.join(BASE, "dashboard_token")
 SECURITY_STATE = os.path.join(BASE, "security_state.json")
 WATCHDOG_STATE = os.path.join(BASE, "watchdog_state.json")
+HEALTH_STATE = os.path.join(BASE, "health_state.json")
 SECRETS = os.path.join(BASE, "secrets.env")
 GOG = config.gog_bin()
 GOOGLE_ACCOUNT = str(CFG.get("google_account") or "")
@@ -169,6 +170,23 @@ def is_active(unit: str) -> bool:
 
 
 def next_elapse(unit: str) -> str:
+    """Ora della prossima esecuzione del timer, anche per i timer monotoni.
+
+    Con ``OnUnitActiveSec`` systemd lascia vuoto ``NextElapseUSecRealtime``:
+    per questo usiamo ``list-timers --output=json``, che restituisce sempre
+    l'istante assoluto. Se la versione di systemd è vecchia e non supporta il
+    JSON, ricadiamo sul campo realtime.
+    """
+    _, out, _ = run(["systemctl", "--user", "list-timers", "--all", "--no-pager", "--output=json"], timeout=8)
+    try:
+        for item in json.loads(out or "[]"):
+            if str(item.get("unit") or "") != unit:
+                continue
+            micros = int(item.get("next") or 0)
+            if micros > 0:
+                return datetime.fromtimestamp(micros / 1_000_000, ROME).strftime("%d/%m %H:%M")
+    except Exception:
+        pass
     _, out, _ = run(["systemctl", "--user", "show", unit, "-p", "NextElapseUSecRealtime", "--value"], timeout=8)
     return out.strip() or "-"
 
@@ -225,6 +243,39 @@ def _watchdog_whatsapp() -> dict | None:
         "busy": False,
         "source": "watchdog",
         "age": max(0, int(age)),
+    }
+
+
+def health_state() -> dict:
+    """Legge l'ultimo report scritto da healthcheck.py.
+
+    La scansione completa interroga Google, MCP e systemd: non deve bloccare
+    il caricamento della dashboard. Il timer la esegue ogni 30 minuti e il
+    pulsante Health la esegue su richiesta.
+    """
+    data = read_json(HEALTH_STATE, {})
+    if not isinstance(data, dict) or not data:
+        return {"available": False, "overall": "unknown", "counts": {}, "checks": [], "tokens": [], "alerts": []}
+    data = dict(data)
+    data["available"] = True
+    try:
+        stamp = datetime.fromisoformat(str(data.get("generated_at") or "").replace("Z", "+00:00"))
+        if stamp.tzinfo is None:
+            stamp = stamp.replace(tzinfo=ROME)
+        data["age_seconds"] = max(0, int((datetime.now(ROME) - stamp).total_seconds()))
+    except Exception:
+        data["age_seconds"] = None
+    return data
+
+
+def health_summary() -> dict:
+    data = health_state()
+    return {
+        "available": bool(data.get("available")),
+        "overall": str(data.get("overall") or "unknown"),
+        "counts": data.get("counts") or {},
+        "generated_at": data.get("generated_at"),
+        "age_seconds": data.get("age_seconds"),
     }
 
 
@@ -429,6 +480,7 @@ def status() -> dict:
             "monitor": {"active": is_active("openclaw-secretary-monitor.timer"), "next": next_elapse("openclaw-secretary-monitor.timer")},
             "digest": {"active": is_active("openclaw-secretary-digest.timer"), "next": next_elapse("openclaw-secretary-digest.timer")},
             "watchdog": {"active": is_active("openclaw-watchdog.timer"), "next": next_elapse("openclaw-watchdog.timer")},
+            "health": {"active": is_active("openclaw-secretary-health.timer"), "next": next_elapse("openclaw-secretary-health.timer")},
         },
         "counts": {
             "leads_today": len(leads_today),
@@ -448,6 +500,7 @@ def status() -> dict:
             "alerts": alerts[:12],
         },
         "dashboard": {"uptime": int(now - START), "host": HOST, "port": PORT},
+        "health": health_summary(),
     }
     STATUS_CACHE["ts"] = now
     STATUS_CACHE["data"] = data
@@ -923,6 +976,11 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._json({"ok": True, "data": status()})
             return
+        if path == "/api/health":
+            if not self._require():
+                return
+            self._json({"ok": True, "data": health_state()})
+            return
         if path == "/api/leads":
             if not self._require():
                 return
@@ -1030,6 +1088,19 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/monitor":
             rc, out, err = run(["python3", os.path.join(BASE, "monitor.py")], timeout=90)
             self._json({"ok": rc == 0, "output": out[-1200:], "error": err[-400:]})
+            return
+        if path == "/api/health/scan":
+            rc, out, err = run([sys.executable, os.path.join(BASE, "healthcheck.py"), "--json"], timeout=120)
+            data = None
+            try:
+                data = json.loads(out[out.find("{"):]) if "{" in out else None
+            except Exception:
+                data = None
+            self._json({"ok": rc == 0 and isinstance(data, dict), "data": data, "error": (err or out)[-500:] if rc != 0 else ""})
+            return
+        if path == "/api/health/notify":
+            rc, out, err = run([sys.executable, os.path.join(BASE, "healthcheck.py"), "--notify", "--force", "--summary"], timeout=120)
+            self._json({"ok": rc == 0, "output": out[-500:], "error": err[-400:]})
             return
         if path == "/api/keys/status":
             self._json({"ok": True, "keys": keys_status()})

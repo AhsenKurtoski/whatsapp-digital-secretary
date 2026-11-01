@@ -55,6 +55,18 @@ class DashboardTests(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertTrue(json.loads(response.read())["ok"])
 
+    def test_health_endpoint_requires_token(self):
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            self.get("/api/health")
+        self.assertEqual(ctx.exception.code, 401)
+
+    def test_health_endpoint_returns_cached_state(self):
+        with self.get("/api/health", dashboard.DASH_TOKEN) as response:
+            self.assertEqual(response.status, 200)
+            payload = json.loads(response.read())
+            self.assertTrue(payload["ok"])
+            self.assertIn("available", payload["data"])
+
     def test_post_without_csrf_is_rejected(self):
         req = urllib.request.Request(
             self.base + "/api/restart",
@@ -66,6 +78,36 @@ class DashboardTests(unittest.TestCase):
             urllib.request.urlopen(req, timeout=10)
         self.assertEqual(ctx.exception.code, 403)
         self.assertIn("csrf", ctx.exception.read().decode())
+
+    def test_next_elapse_reads_json_timers(self):
+        original = dashboard.run
+        payload = json.dumps([
+            {"unit": "other.timer", "next": 0},
+            {"unit": "openclaw-secretary-health.timer", "next": 1793568077264633},
+        ])
+        dashboard.run = lambda *a, **k: (0, payload, "")
+        try:
+            value = dashboard.next_elapse("openclaw-secretary-health.timer")
+        finally:
+            dashboard.run = original
+        self.assertRegex(value, r"^\d{2}/\d{2} \d{2}:\d{2}$")
+
+    def test_next_elapse_falls_back_when_json_unavailable(self):
+        original = dashboard.run
+        calls = []
+
+        def fake(cmd, **kwargs):
+            calls.append(cmd)
+            if "list-timers" in cmd:
+                return 1, "", "unknown option"
+            return 0, "Sun 2026-11-01 22:21:17 CET", ""
+
+        dashboard.run = fake
+        try:
+            value = dashboard.next_elapse("openclaw-secretary-health.timer")
+        finally:
+            dashboard.run = original
+        self.assertIn("22:21", value)
 
     def test_login_sets_cookie_and_rejects_bad_token(self):
         opener = urllib.request.build_opener(NoRedirect)

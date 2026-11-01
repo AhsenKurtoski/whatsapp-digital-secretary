@@ -168,6 +168,25 @@ select option{background:#081420}
 .steps>div{padding:10px 11px;border:1px solid rgba(170,225,255,.09);border-radius:11px;background:rgba(255,255,255,.022)}
 .steps b{color:var(--cyan)}
 .divider{height:1px;background:rgba(170,225,255,.08);margin:14px 0}
+.health-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
+.health-item{border:1px solid var(--stroke);border-radius:15px;padding:13px;background:rgba(255,255,255,.022);min-width:0}
+.health-item.critical{border-color:rgba(251,113,133,.42);background:rgba(251,113,133,.055)}
+.health-item.warn{border-color:rgba(251,211,141,.36);background:rgba(251,211,141,.045)}
+.health-item.ok{border-color:rgba(94,234,212,.28);background:rgba(94,234,212,.035)}
+.health-item.info{border-color:rgba(125,211,252,.2)}
+.health-item h3{font-size:12.5px;margin:0 0 6px;letter-spacing:-.01em;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.health-item p{margin:0;color:var(--muted);font-size:11.8px;line-height:1.5;overflow-wrap:anywhere}
+.health-item .health-exp{color:var(--dim);font-size:10.8px;margin-top:7px}
+.health-item .health-action{color:var(--sky);font-size:11.2px;margin-top:7px}
+.health-banner{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:18px 20px;border-radius:17px;border:1px solid var(--stroke);background:linear-gradient(135deg,rgba(17,38,58,.72),rgba(7,18,30,.52))}
+.health-banner.critical{border-color:rgba(251,113,133,.38);background:linear-gradient(135deg,rgba(60,20,32,.55),rgba(7,18,30,.52))}
+.health-banner.warn{border-color:rgba(251,211,141,.32);background:linear-gradient(135deg,rgba(55,42,18,.45),rgba(7,18,30,.52))}
+.health-banner.ok{border-color:rgba(94,234,212,.3);background:linear-gradient(135deg,rgba(12,48,42,.48),rgba(7,18,30,.52))}
+.health-banner h2{font-size:23px;letter-spacing:-.03em;margin:0 0 4px;text-transform:none;color:var(--text)}
+.health-banner p{margin:0;color:var(--muted);font-size:12.5px}
+.health-banner .health-score{margin-left:auto;text-align:right}
+.health-banner .health-score strong{display:block;font-size:26px;line-height:1}
+.health-banner .health-score small{color:var(--muted);font-size:11px}
 @media (max-width:1050px){.span3,.span4,.span6{grid-column:span 6}.span5,.span7,.span8,.span12{grid-column:span 12}.metric{font-size:29px}}
 @media (max-width:680px){.span3,.span4,.span6{grid-column:span 12}.app{padding:18px 14px 44px}.brand{min-width:0}.header-right{width:100%;margin-left:0}.clock{display:none}.tabs{padding:5px}.tab{padding:9px 10px}.hero{padding:19px}.hero-side{width:100%}.hero-chip{flex:1}.metric{font-size:27px}}
 </style>
@@ -206,6 +225,7 @@ select option{background:#081420}
 
   <nav class="tabs">
     <button class="tab active" data-tab="overview">Panoramica</button>
+    <button class="tab" data-tab="health">Health <span id="healthBadge" class="chip" style="padding:2px 6px;margin-left:4px">—</span></button>
     <button class="tab" data-tab="leads">Lead</button>
     <button class="tab" data-tab="alerts">Alert</button>
     <button class="tab" data-tab="approvals">Approvazioni <span id="approvalBadge" class="chip gold" style="padding:2px 6px;margin-left:4px">0</span></button>
@@ -228,6 +248,7 @@ select option{background:#081420}
             <div class="hero-chip"><small>Modello</small><strong id="heroModel">—</strong></div>
             <div class="hero-chip"><small>Uptime</small><strong id="heroUptime">—</strong></div>
             <div class="hero-chip"><small>Chiavi attive</small><strong id="heroKeys">—</strong></div>
+            <div class="hero-chip"><small>Health</small><strong id="heroHealth">—</strong></div>
             <div class="hero-chip"><small>Da approvare</small><strong id="heroApprovals">—</strong></div>
           </div>
         </div>
@@ -289,6 +310,39 @@ select option{background:#081420}
         <div class="card span12">
           <h2>Ultimi alert</h2>
           <div class="table-wrap"><table><thead><tr><th>Quando</th><th>Tipo</th><th>Numero</th><th>Dettaglio</th><th>Inviato</th></tr></thead><tbody id="recentAlerts"></tbody></table></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-health" class="section">
+      <div class="grid">
+        <div class="span12">
+          <div class="health-banner" id="healthBanner">
+            <div>
+              <h2 id="healthTitle">Scansione salute</h2>
+              <p id="healthSub">Premi “Esegui scansione completa” per controllare tutto il progetto.</p>
+            </div>
+            <div class="health-score"><strong id="healthScore">—</strong><small id="healthScoreLabel">controlli</small></div>
+          </div>
+        </div>
+        <div class="card span12">
+          <div class="row" style="justify-content:space-between;margin-bottom:12px">
+            <div><h2 style="margin:0 0 4px">Controlli completi</h2><div class="sub" id="healthLast">Nessuna scansione disponibile.</div></div>
+            <div class="row">
+              <button class="btn primary" id="healthScanBtn" type="button">Esegui scansione completa</button>
+              <button class="btn" id="healthNotifyBtn" type="button">Invia test WhatsApp</button>
+            </div>
+          </div>
+          <div class="health-grid" id="healthChecks"><div class="empty">Nessuna scansione disponibile.</div></div>
+        </div>
+        <div class="card span12">
+          <h2>Token e scadenze</h2>
+          <div class="table-wrap"><table><thead><tr><th>Elemento</th><th>Stato</th><th>Scadenza</th><th>Dettaglio</th></tr></thead><tbody id="healthTokens"></tbody></table></div>
+        </div>
+        <div class="card span12">
+          <h2>Avvisi automatici</h2>
+          <div id="healthAlerts" class="sub">Nessun avviso.</div>
+          <p class="sub" style="margin-top:8px">Il timer controlla ogni 30 minuti e manda su WhatsApp solo problemi nuovi o ancora aperti, senza spam.</p>
         </div>
       </div>
     </section>
@@ -532,6 +586,7 @@ select option{background:#081420}
           <div class="kv"><span>Monitor</span><span id="sysMonitor">—</span></div>
           <div class="kv"><span>Digest</span><span id="sysDigest">—</span></div>
           <div class="kv"><span>Watchdog</span><span id="sysWatchdog">—</span></div>
+          <div class="kv"><span>Health</span><span id="sysHealth">—</span></div>
           <div class="kv"><span>Dashboard uptime</span><span id="sysDash">—</span></div>
         </div>
         <div class="card span6">
@@ -558,7 +613,7 @@ select option{background:#081420}
 
 <script>
 const $ = (id) => document.getElementById(id);
-const state = { status:null, leads:[], alerts:[], approvals:null, tab:'overview', security:null, connectors:null };
+const state = { status:null, leads:[], alerts:[], approvals:null, tab:'overview', security:null, connectors:null, health:null };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = (v) => { if(!v) return '—'; const d = new Date(v); return isNaN(d) ? String(v) : d.toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); };
 const fmtMs = (v) => { if(!v) return '—'; const d = new Date(Number(v)); return isNaN(d) ? '—' : d.toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); };
@@ -611,18 +666,24 @@ function renderActivity(activity){
 }
 function renderStatus(s, leads, alerts){
   state.status=s; state.leads=leads; state.alerts=alerts;
-  const gw=s.gateway||{}, wa=s.whatsapp||{}, m=s.model||{}, t=s.timers||{}, c=s.counts||{}, k=s.keys||{};
+  const gw=s.gateway||{}, wa=s.whatsapp||{}, m=s.model||{}, t=s.timers||{}, c=s.counts||{}, k=s.keys||{}, h=s.health||{};
   const waOk = ['healthy','connected','ready'].includes(String(wa.state||'').toLowerCase());
   const online = !!gw.health;
-  setPill(online && waOk ? 'ok' : (online ? 'warn' : 'bad'), online ? (waOk ? 'Tutto online' : 'WhatsApp da verificare') : 'Gateway offline');
-  $('heroDot').className = 'dot ' + (online ? 'ok' : 'bad');
+  const healthBad = h.overall==='critical';
+  const healthWarn = h.overall==='warn';
+  const pillKind = !online ? 'bad' : (!waOk || healthBad ? 'warn' : (healthWarn ? 'warn' : 'ok'));
+  const pillText = !online ? 'Gateway offline' : (!waOk ? 'WhatsApp da verificare' : (healthBad ? 'Health: azione richiesta' : (healthWarn ? 'Health: avvisi' : 'Tutto online')));
+  setPill(pillKind, pillText);
+  $('heroDot').className = 'dot ' + (online ? (healthBad ? 'warn' : 'ok') : 'bad');
   $('heroTitle').textContent = online ? 'La tua segreteria è online' : 'Segreteria in ripristino';
   $('heroSub').textContent = online
-    ? `WhatsApp ${waOk?'connesso':(wa.state||'in verifica')} · ${c.leads_today??0} lead oggi · ${c.alerts_today??0} alert. Il bot risponde e il watchdog controlla tutto.`
+    ? `WhatsApp ${waOk?'connesso':(wa.state||'in verifica')} · ${c.leads_today??0} lead oggi · ${c.alerts_today??0} alert · Health ${healthBad?'critico':(healthWarn?'da controllare':'ok')}.`
     : 'Il gateway non risponde. Il watchdog tenta il ripristino automatico.';
   $('heroModel').textContent = safe(()=>m.primary||'—');
   $('heroUptime').textContent = safe(()=>gw.uptime||'—');
   $('heroKeys').textContent = safe(()=>`${k.total??0} / ${(k.gemini?.max??5)+(k.groq_backup?.max??5)}`);
+  $('heroHealth').textContent = h.available ? (healthBad ? 'critico' : (healthWarn ? 'avvisi' : 'ok')) : 'da scansionare';
+  $('heroHealth').className = healthBad ? 'danger' : (healthWarn ? 'gold' : 'ok');
   $('heroApprovals').textContent = c.approvals_pending??0;
   const badge=$('approvalBadge');
   if(badge){ badge.textContent=c.approvals_pending??0; badge.style.display=(c.approvals_pending??0)>0?'inline-flex':'none'; }
@@ -640,6 +701,7 @@ function renderStatus(s, leads, alerts){
   $('monitorNext').textContent = timerText(t.monitor);
   $('watchdogNext').textContent = timerText(t.watchdog);
   $('digestNext').textContent = timerText(t.digest);
+  if($('sysHealth')) $('sysHealth').textContent = timerText(t.health);
   $('modelChips').innerHTML = [`<span class="chip ok">${esc(m.primary||'—')}</span>`, ...(m.fallbacks||[]).map(x=>`<span class="chip">${esc(x)}</span>`)].join('');
   $('toolsState').textContent = m.tools||'nessuno';
   $('keysMini').textContent = `${k.gemini?.count??0} Gemini · ${k.groq_backup?.count??0} Groq backup`;
@@ -681,6 +743,58 @@ function renderAlerts(){
   const f=$('alertFilter').value;
   const rows=(state.alerts||[]).filter(x=>!f || String(x.kind||'')===f);
   $('alertsBody').innerHTML = rows.length ? rows.map(x=>`<tr><td class="muted">${fmtDate(x.ts)}</td><td>${badgeKind(x.kind)}</td><td class="mono">${esc(x.sender||'—')}</td><td>${esc((x.text||'').slice(0,240))}</td><td>${x.sent?'<span class="chip ok">sì</span>':'<span class="chip bad">no</span>'}</td></tr>`).join('') : '<tr><td colspan="5" class="empty">Nessun alert con questo filtro.</td></tr>';
+}
+function healthStatusLabel(status){
+  return status==='critical'?'critico':(status==='warn'?'attenzione':(status==='ok'?'ok':'info'));
+}
+function healthStatusChip(status){
+  const s=String(status||'info');
+  const cls=s==='critical'?'bad':(s==='warn'?'gold':(s==='ok'?'ok':''));
+  return `<span class="chip ${cls}">${healthStatusLabel(s)}</span>`;
+}
+function healthItem(c){
+  const status=String(c.status||'info');
+  return `<div class="health-item ${esc(status)}">
+    <h3><span>${esc(c.label||c.id||'Controllo')}</span>${healthStatusChip(status)}</h3>
+    <p>${esc(c.detail||'')}</p>
+    ${c.expires?`<div class="health-exp">Scadenza: ${esc(c.expires)}</div>`:''}
+    ${c.action?`<div class="health-action">→ ${esc(c.action)}</div>`:''}
+  </div>`;
+}
+function renderHealth(d){
+  const data=d||{};
+  state.health=data;
+  const checks=data.checks||[], tokens=data.tokens||[], alerts=data.alerts||[];
+  const available=data.available!==false;
+  const overall=available?String(data.overall||'unknown'):'unknown';
+  const cls=overall==='critical'?'critical':(overall==='warn'?'warn':(overall==='ok'?'ok':''));
+  $('healthBanner').className='health-banner '+cls;
+  $('healthTitle').textContent=!available?'Nessuna scansione ancora':(overall==='critical'?'Serve un intervento':(overall==='warn'?'Qualcosa da controllare':(overall==='ok'?'Tutto in ordine':'Scansione salute')));
+  $('healthSub').textContent=!available?'Premi “Esegui scansione completa” per controllare configurazione, token, servizi, Google e disco.':`${data.counts?.ok??0} ok · ${data.counts?.warn??0} avvisi · ${data.counts?.critical??0} critici`;
+  $('healthScore').textContent=available?`${data.counts?.critical??0}/${checks.length}`:'—';
+  $('healthScoreLabel').textContent='critici / controlli';
+  $('healthLast').textContent=available?`Ultima scansione: ${fmtDate(data.generated_at)} · ${data.duration_ms??0} ms`:'Nessuna scansione disponibile.';
+  $('healthBadge').className='chip '+(overall==='critical'?'bad':(overall==='warn'?'gold':(overall==='ok'?'ok':'')));
+  $('healthBadge').textContent=available?(overall==='critical'?'critico':(overall==='warn'?'avvisi':'ok')):'—';
+  $('healthChecks').innerHTML=checks.length?checks.map(healthItem).join(''):'<div class="empty">Nessun controllo disponibile.</div>';
+  $('healthTokens').innerHTML=tokens.length?tokens.map(t=>`<tr><td><b>${esc(t.label||t.id||'—')}</b></td><td>${healthStatusChip(t.status)}</td><td class="mono">${esc(t.expires||'—')}</td><td class="muted">${esc(t.detail||'')}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">Nessun token rilevato.</td></tr>';
+  $('healthAlerts').innerHTML=alerts.length?alerts.map(a=>`<div class="health-item ${a.severity==='critical'?'critical':'warn'}" style="margin-bottom:8px"><h3><span>${esc(a.title||'Avviso')}</span>${healthStatusChip(a.severity)}</h3><p>${esc(a.message||'')}</p>${a.action?`<div class="health-action">→ ${esc(a.action)}</div>`:''}</div>`).join(''):'<span class="ok">Nessun avviso attivo.</span>';
+}
+async function loadHealth(force=false){
+  const btn=$('healthScanBtn');
+  if(force){
+    btn.disabled=true; const old=btn.textContent; btn.textContent='Scansione…';
+    try{
+      const r=await api('/api/health/scan',{method:'POST',body:'{}'});
+      renderHealth(r.data||{});
+      toast(r.ok?'Scansione completa terminata.':'Scansione terminata con errori: '+(r.error||''),!r.ok);
+      if(r.ok) load();
+    }catch(e){ toast('Health: '+e.message,true); }
+    finally{ btn.disabled=false; btn.textContent=old; }
+  }else{
+    try{ const r=await api('/api/health'); renderHealth(r.data||{}); }
+    catch(e){ if(e.message!=='auth') toast('Health: '+e.message,true); }
+  }
 }
 function approvalType(x){ return x.type==='calendar' ? 'Appuntamento' : 'Email'; }
 function approvalStatus(x){
@@ -766,6 +880,7 @@ async function load(){
     const [l,a]=await Promise.all([api('/api/leads?limit=300'),api('/api/alerts?limit=300')]);
     hideLogin(); renderStatus(st.data,l.data,a.data);
     if(state.tab==='security') loadSecurity();
+    if(state.tab==='health') loadHealth();
   }catch(e){ if(e.message!=='auth') toast('Errore: '+e.message,true); }
 }
 function switchTab(name){
@@ -775,10 +890,21 @@ function switchTab(name){
   if(name==='security') loadSecurity();
   if(name==='connectors') loadConnectors();
   if(name==='approvals') loadApprovals();
+  if(name==='health') loadHealth();
   if(name==='system') $('logsBox').textContent='Premi “Carica log”.';
 }
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
 $('refreshBtn').addEventListener('click',load);
+$('healthScanBtn').addEventListener('click',()=>loadHealth(true));
+$('healthNotifyBtn').addEventListener('click', async ()=>{
+  if(!confirm('Inviare un messaggio di test Health su WhatsApp?')) return;
+  const b=$('healthNotifyBtn'); b.disabled=true; const old=b.textContent; b.textContent='Invio…';
+  try{
+    const r=await api('/api/health/notify',{method:'POST',body:'{}'});
+    toast(r.ok?'Messaggio di test inviato su WhatsApp.':'Invio non riuscito: '+(r.error||r.output||''),!r.ok);
+  }catch(e){ toast('Health: '+e.message,true); }
+  finally{ b.disabled=false; b.textContent=old; }
+});
 $('leadSearch').addEventListener('input',renderLeads);
 $('intentFilter').addEventListener('change',renderLeads);
 $('alertFilter').addEventListener('change',renderAlerts);
@@ -930,8 +1056,8 @@ $('rotateTokenBtn').addEventListener('click', async ()=>{
 document.addEventListener('keydown',(e)=>{
   if(e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
   if(e.metaKey||e.ctrlKey||e.altKey) return;
-  const tabs=['overview','leads','alerts','approvals','keys','connectors','security','system'];
-  if(/^[1-8]$/.test(e.key)) switchTab(tabs[Number(e.key)-1]);
+  const tabs=['overview','health','leads','alerts','approvals','keys','connectors','security','system'];
+  if(/^[1-9]$/.test(e.key)) switchTab(tabs[Number(e.key)-1]);
   if(e.key.toLowerCase()==='r') load();
 });
 
