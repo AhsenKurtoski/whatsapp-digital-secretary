@@ -174,6 +174,35 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual([t["id"] for t in summary["tokens"]], ["google_oauth"])
         self.assertEqual(len(summary["expiring"]), 1)
 
+    def test_interval_seconds_reads_monotonic_props(self):
+        props = "{ OnUnitActiveUSec=2min ; next_elapse=26min 1.913766s }"
+        self.assertEqual(dashboard.interval_seconds(props), 120)
+        self.assertEqual(dashboard.interval_seconds("{ OnUnitActiveUSec=1h 30min }"), 5400)
+        self.assertEqual(dashboard.interval_seconds("{ next_elapse=30min }"), 0)
+        self.assertEqual(dashboard.interval_seconds(""), 0)
+
+    def test_next_elapse_rebuilds_when_systemd_has_no_next(self):
+        unit = "openclaw-watchdog.timer"
+        original = dashboard.run
+
+        def fake(cmd, **kwargs):
+            if "list-timers" in cmd:
+                return 0, json.dumps([{"unit": unit, "next": 0}]), ""
+            if "NextElapseUSecRealtime" in cmd:
+                return 0, "", ""
+            if "TimersMonotonic" in cmd:
+                return 0, "{ OnUnitActiveUSec=2min ; next_elapse=0 }", ""
+            if "LastTriggerUSec" in cmd:
+                return 0, "Mon 2026-11-02 13:29:25 CET", ""
+            return 1, "", ""
+
+        dashboard.run = fake
+        try:
+            value = dashboard.next_elapse(unit)
+        finally:
+            dashboard.run = original
+        self.assertEqual(value, "02/11 13:31")
+
     def test_login_sets_cookie_and_rejects_bad_token(self):
         opener = urllib.request.build_opener(NoRedirect)
         body = urllib.parse.urlencode({"token": dashboard.DASH_TOKEN}).encode()

@@ -169,13 +169,39 @@ def is_active(unit: str) -> bool:
     return run(["systemctl", "--user", "is-active", unit], timeout=8)[1] == "active"
 
 
+SPAN_RE = re.compile(r"(\d+(?:\.\d+)?)\s*(us|ms|s|min|h|d|w)")
+SPAN_UNITS = {"us": 1e-6, "ms": 1e-3, "s": 1, "min": 60, "h": 3600, "d": 86400, "w": 604800}
+
+
+def interval_seconds(props: str) -> float:
+    """Intervallo di un timer monotono, letto da ``TimersMonotonic``.
+
+    Esempio: ``{ OnUnitActiveUSec=2min ; next_elapse=26min 1.9s }`` → 120.
+    """
+    for part in str(props or "").split(";"):
+        if "=" not in part:
+            continue
+        key, value = part.split("=", 1)
+        key = key.strip("{} \t\n")
+        if not key.endswith("USec") or "next_elapse" in key:
+            continue
+        total = 0.0
+        found = False
+        for amount, span in SPAN_RE.findall(value):
+            total += float(amount) * SPAN_UNITS.get(span, 0)
+            found = True
+        if found and total > 0:
+            return total
+    return 0.0
+
+
 def next_elapse(unit: str) -> str:
     """Ora della prossima esecuzione del timer, anche per i timer monotoni.
 
     Con ``OnUnitActiveSec`` systemd lascia vuoto ``NextElapseUSecRealtime``:
-    per questo usiamo ``list-timers --output=json``, che restituisce sempre
-    l'istante assoluto. Se la versione di systemd è vecchia e non supporta il
-    JSON, ricadiamo sul campo realtime.
+    per questo usiamo ``list-timers --output=json``. Subito dopo un'esecuzione
+    systemd può riportare ``next=0`` finché non ricalcola: in quel caso
+    ricostruiamo l'istante da ultima esecuzione + intervallo.
     """
     _, out, _ = run(["systemctl", "--user", "list-timers", "--all", "--no-pager", "--output=json"], timeout=8)
     try:
@@ -187,8 +213,19 @@ def next_elapse(unit: str) -> str:
                 return datetime.fromtimestamp(micros / 1_000_000, ROME).strftime("%d/%m %H:%M")
     except Exception:
         pass
-    _, out, _ = run(["systemctl", "--user", "show", unit, "-p", "NextElapseUSecRealtime", "--value"], timeout=8)
-    return out.strip() or "-"
+    _, realtime, _ = run(["systemctl", "--user", "show", unit, "-p", "NextElapseUSecRealtime", "--value"], timeout=8)
+    if realtime.strip():
+        return realtime.strip()
+    _, props, _ = run(["systemctl", "--user", "show", unit, "-p", "TimersMonotonic", "--value"], timeout=8)
+    seconds = interval_seconds(props)
+    if seconds:
+        _, last, _ = run(["systemctl", "--user", "show", unit, "-p", "LastTriggerUSec", "--value"], timeout=8)
+        try:
+            stamp = datetime.strptime(last.strip(), "%a %Y-%m-%d %H:%M:%S %Z").replace(tzinfo=ROME)
+            return (stamp + timedelta(seconds=seconds)).strftime("%d/%m %H:%M")
+        except Exception:
+            pass
+    return "-"
 
 
 def uptime_text() -> str:
