@@ -18,7 +18,7 @@ dashboard.
 
 | | |
 |---|---|
-| **Latest release** | [v1.1.0](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.1.0) — health scan, token alerts, one-click Google re-authorization |
+| **Latest release** | [v1.1.1](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.1.1) — reliable Google bridge, accurate health with an active bridge |
 | **CI on `main`** | [All checks passing](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml) (last verified 2 Nov 2026): unit tests, monitor and watchdog self-tests, Apps Script bridge handlers, shell syntax |
 | **Python** | 3.11, 3.12, 3.13 and 3.14, all covered by CI |
 | **Platform** | Linux or WSL2 with systemd user services; optional Docker dashboard |

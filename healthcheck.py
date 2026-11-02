@@ -36,7 +36,7 @@ sys.path.insert(0, str(HERE / "google-bridge"))
 
 import config
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 HOME = os.path.expanduser("~")
 CFG = config.load()
 BASE = Path(config.BASE)

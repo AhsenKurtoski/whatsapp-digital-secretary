@@ -18,7 +18,7 @@ locale.
 
 | | |
 |---|---|
-| **Ultima release** | [v1.1.0](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.1.0) — scansione salute, avvisi scadenza token, riautorizzazione Google con un clic |
+| **Ultima release** | [v1.1.1](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.1.1) — bridge Google affidabile, salute corretta con bridge attivo |
 | **CI su `main`** | [Tutti i controlli verdi](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml) (ultima verifica 2 nov 2026): test unitari, self-test di monitor e watchdog, handler del bridge Apps Script, sintassi degli script shell |
 | **Python** | 3.11, 3.12, 3.13 e 3.14, tutte coperte dalla CI |
 | **Piattaforme** | Linux o WSL2 con systemd utente; dashboard Docker opzionale |

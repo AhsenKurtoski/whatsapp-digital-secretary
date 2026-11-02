@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.1] - 2026-11-02
+
+### Fixed
+
+- **Bridge requests with accented text no longer fail with `unauthorized`**: the signed
+  envelope is serialized as pure ASCII (`\uXXXX` escapes), so Apps Script signature
+  verification cannot break when the POST body is decoded as Latin-1. Every HTML email
+  and the dashboard test email failed while plain-ASCII messages worked.
+- **Bridge Calendar responses never fail after the event exists**: `createEvent` reads
+  `getHtmlLink()` only when the calendar exposes it, so a successful creation is not
+  reported as `server_error` (which caused duplicate events on retry).
+- **Health understands the bridge**: when the Apps Script bridge is configured, an
+  expired `gog` token and the unused Google Workspace MCP are reported as `info`
+  ("Gmail e Calendar passano dal bridge"), not as critical/warning, and no longer count
+  as an urgent expiry in the digest or in the dashboard banner.
+- **Next timer run parses on Python 3.11+**: `strptime` with `%Z` accepts only
+  UTC/GMT/local time, so a `CET`/`CEST` timestamp raised `ValueError` and the field
+  showed `-`; the abbreviation is now stripped and the configured timezone applied.
+
+### Changed
+
+- CI now tests Python 3.14 as well, so the interpreter used on the developer machine is
+  covered by the same suite as 3.11, 3.12 and 3.13.
+
 ## [1.1.0] - 2026-11-02
 
 ### Added
@@ -22,20 +46,6 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **Next timer run parses on Python 3.11+**: `strptime` with `%Z` accepts only
-  UTC/GMT/local time, so a `CET`/`CEST` timestamp raised `ValueError` and the field
-  showed `-`; the abbreviation is now stripped and the configured timezone applied.
-- **Bridge requests with accented text no longer fail with `unauthorized`**: the signed
-  envelope is serialized as pure ASCII (`\uXXXX` escapes), so Apps Script signature
-  verification cannot break when the POST body is decoded as Latin-1. This made every
-  HTML email (and the dashboard test email) fail while plain-ASCII emails worked.
-- **Bridge Calendar responses never fail after the event exists**: `createEvent` reads
-  `getHtmlLink()` only when the calendar exposes it, so a successful creation is not
-  reported as `server_error` (which caused duplicate events on retry).
-- **Health understands the bridge**: when the Apps Script bridge is configured, an
-  expired `gog` token and the unused Google Workspace MCP are reported as `info`
-  ("Gmail e Calendar passano dal bridge"), not as critical/warning, and no longer count
-  as an urgent expiry in the digest or in the dashboard banner.
 - Google OAuth check now reads the account configured in `config.json` instead of the
   first authorized account in the keyring.
 - The next scheduled run of monotonic systemd timers is resolved with
