@@ -52,6 +52,7 @@ install -m 600 "$HERE/google-bridge/appsscript.json" "$BASE/google-bridge/appssc
 install -m 700 "$HERE/google-bridge/installa-bridge.sh" "$BASE/google-bridge/installa-bridge.sh"
 install -m 600 "$HERE/google-bridge/Config.gs.example" "$BASE/google-bridge/Config.gs.example"
 install -m 600 "$HERE/google-bridge/README.md" "$BASE/google-bridge/README.md"
+mkdir -p "$HOME/.local/bin"
 install -m 700 "$HERE/gog-secretary" "$HOME/.local/bin/gog-secretary" 2>/dev/null || true
 
 for unit in openclaw-dashboard.service openclaw-watchdog.service openclaw-watchdog.timer \

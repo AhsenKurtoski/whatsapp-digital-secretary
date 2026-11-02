@@ -11,6 +11,8 @@
 - [ ] `python3 -m unittest discover -s tests -v`
 - [ ] `python3 -m py_compile *.py google-bridge/*.py`
 - [ ] `node google-bridge/test_code_gs.js`
+- [ ] `python3 monitor.py --self-test` and `python3 watchdog.py --self-test`
+- [ ] `python3 healthcheck.py --self-test`
 - [ ] Manual test (describe):
 
 ## Checklist

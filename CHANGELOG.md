@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- **The Docker dashboard now ships `healthcheck.py`**: without it the Health tab scan
+  failed inside the container (`docker-entrypoint.sh` copies it into the data volume on
+  start).
+- `scripts/install.sh` creates `~/.local/bin` before installing the `gog-secretary`
+  wrapper, so the wrapper is no longer silently skipped on a fresh user.
+
+### Changed
+
+- Added `.editorconfig`; `CONTRIBUTING.md`, the pull request template and
+  `docs/TESTING.md` now list the healthcheck self-test and the real test count.
+- The Code of Conduct points to a concrete private reporting route.
+
 ## [1.1.1] - 2026-11-02
 
 ### Fixed

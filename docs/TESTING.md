@@ -10,10 +10,13 @@ python3 -m py_compile *.py google-bridge/*.py
 node google-bridge/test_code_gs.js
 python3 monitor.py --self-test
 python3 watchdog.py --self-test
+python3 healthcheck.py --self-test
 ```
 
-Expected result: 27 tests pass, compile check is silent, Code.gs prints
-`Code.gs handlers: OK`, and both self-tests exit with code 0.
+Expected result: the whole suite passes (54 tests at the time of writing), the compile
+check is silent, Code.gs prints `Code.gs handlers: OK`, and every self-test prints
+`SELF-TEST OK` with exit code 0. CI runs the same commands on Python 3.11, 3.12, 3.13
+and 3.14.
 
 The suite is hermetic: it uses a temporary home, a demo configuration and no network.
 If a test needs a tool that is missing (for example `gog`), it asserts the graceful

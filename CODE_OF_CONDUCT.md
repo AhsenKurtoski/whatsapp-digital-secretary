@@ -50,8 +50,9 @@ individual is officially representing the community in public spaces.
 ## Enforcement
 
 Instances of abusive, harassing or otherwise unacceptable behaviour may be reported to
-the maintainers through the repository's private contact channel. All complaints will
-be reviewed and investigated promptly and fairly.
+the maintainers through the repository's [private report form](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/security/advisories/new)
+or by contacting [@AhsenKurtoski](https://github.com/AhsenKurtoski) directly on GitHub.
+All complaints will be reviewed and investigated promptly and fairly.
 
 Maintainers are obligated to respect the privacy and security of the reporter.
 
