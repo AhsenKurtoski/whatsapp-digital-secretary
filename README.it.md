@@ -179,6 +179,12 @@ Ci sono due strade:
    l'approvazione. Le app in Testing possono richiedere una nuova autorizzazione dopo
    circa sette giorni.
 
+Quando il token sta per scadere o è scaduto, la dashboard mostra un avviso in alto su
+ogni scheda. Il pulsante **Riautorizza Google** genera il link di consenso reale; dopo
+“Consenti” basta incollare nella scheda Health l'indirizzo finale (`…/oauth2/callback?code=…`)
+e la dashboard scambia il codice e verifica Gmail. Solo i redirect su loopback sono
+accettati e il codice non viene scritto nei log.
+
 Il bot non ha un tool diretto per Gmail/Calendar. Può solo creare una richiesta di
 approvazione; la dashboard esegue l'azione approvata.
 

@@ -270,12 +270,18 @@ def health_state() -> dict:
 
 def health_summary() -> dict:
     data = health_state()
+    tokens = [
+        t for t in (data.get("tokens") or [])
+        if isinstance(t, dict) and str(t.get("status")) in {"critical", "warn"}
+    ]
     return {
         "available": bool(data.get("available")),
         "overall": str(data.get("overall") or "unknown"),
         "counts": data.get("counts") or {},
         "generated_at": data.get("generated_at"),
         "age_seconds": data.get("age_seconds"),
+        "tokens": tokens[:8],
+        "expiring": data.get("expiring") or [],
     }
 
 
@@ -361,6 +367,83 @@ def gog_env() -> dict:
     if env.get("GOG_KEYRING_PASSWORD"):
         out["GOG_KEYRING_PASSWORD"] = env["GOG_KEYRING_PASSWORD"]
     return out
+
+
+RENEW_SERVICES = "gmail,calendar"
+GOOGLE_REDIRECT_RE = re.compile(r"^https?://(127\.0\.0\.1|localhost)(:\d+)?/")
+
+
+def google_renew_start() -> dict:
+    """Genera l'URL di consenso Google senza far uscire nulla dal PC.
+
+    Usa il flusso ``--remote --step 1`` di gog: stampa solo l'URL di consenso e
+    termina. Il codice viene scambiato da :func:`google_renew_finish`, così
+    nessun processo resta appeso e la dashboard non blocca un thread.
+    """
+    if not GOOGLE_ACCOUNT:
+        return {"ok": False, "error": "google_account non configurato"}
+    if not (os.path.isfile(GOG) and os.access(GOG, os.X_OK)):
+        return {"ok": False, "error": f"CLI gog non trovata in {GOG}"}
+    cmd = [
+        GOG, "auth", "add", GOOGLE_ACCOUNT,
+        "--services", RENEW_SERVICES,
+        "--gmail-scope", "read-send",
+        "--force-consent",
+        "--remote", "--step", "1", "--json",
+    ]
+    rc, out, err = run(cmd, timeout=60, extra_env=gog_env())
+    data = {}
+    try:
+        data = json.loads(out[out.find("{"):])
+    except Exception:
+        data = {}
+    url = str(data.get("auth_url") or "")
+    if rc != 0 or not url.startswith("https://accounts.google.com/"):
+        detail = str(data.get("error") or err or out or f"gog exit {rc}")[:300]
+        log("google renew start failed: " + detail[:160])
+        return {"ok": False, "error": detail}
+    log("google renew url generated")
+    return {"ok": True, "auth_url": url, "account": GOOGLE_ACCOUNT}
+
+
+def google_renew_finish(auth_url: str) -> dict:
+    """Scambia il codice del redirect con un refresh token e verifica Gmail."""
+    auth_url = str(auth_url or "").strip()
+    if not auth_url or len(auth_url) > 4096:
+        return {"ok": False, "error": "incolla l'indirizzo completo del browser"}
+    if not GOOGLE_REDIRECT_RE.match(auth_url) or "code=" not in auth_url:
+        return {"ok": False, "error": "indirizzo non valido: serve quello con ?code=..."}
+    cmd = [
+        GOG, "auth", "add", GOOGLE_ACCOUNT,
+        "--services", RENEW_SERVICES,
+        "--gmail-scope", "read-send",
+        "--remote", "--step", "2",
+        "--auth-url", auth_url,
+        "--json",
+    ]
+    rc, out, err = run(cmd, timeout=120, extra_env=gog_env())
+    data = {}
+    try:
+        data = json.loads(out[out.find("{"):])
+    except Exception:
+        data = {}
+    if rc != 0 or (isinstance(data.get("error"), dict)):
+        detail = str(data.get("error") or err or out or f"gog exit {rc}")[:400]
+        log("google renew finish failed: " + detail[:160])
+        return {"ok": False, "error": detail}
+    probe_rc, probe_out, probe_err = run(
+        [GOG, "--account", GOOGLE_ACCOUNT, "--json", "gmail", "labels", "list"],
+        timeout=40,
+        extra_env=gog_env(),
+    )
+    if probe_rc != 0:
+        log("google renew probe failed")
+        return {
+            "ok": False,
+            "error": "autorizzazione salvata ma Gmail non risponde: " + str(probe_err or probe_out)[:300],
+        }
+    log("google renew ok")
+    return {"ok": True, "account": GOOGLE_ACCOUNT, "result": "Gmail e Calendar riautorizzati."}
 
 
 def bridge_status() -> dict:
@@ -1101,6 +1184,13 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/health/notify":
             rc, out, err = run([sys.executable, os.path.join(BASE, "healthcheck.py"), "--notify", "--force", "--summary"], timeout=120)
             self._json({"ok": rc == 0, "output": out[-500:], "error": err[-400:]})
+            return
+        if path == "/api/google/renew/start":
+            self._json(google_renew_start())
+            return
+        if path == "/api/google/renew/finish":
+            data = self._json_body()
+            self._json(google_renew_finish(str(data.get("auth_url") or "")))
             return
         if path == "/api/keys/status":
             self._json({"ok": True, "keys": keys_status()})

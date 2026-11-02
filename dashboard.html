@@ -187,6 +187,14 @@ select option{background:#081420}
 .health-banner .health-score{margin-left:auto;text-align:right}
 .health-banner .health-score strong{display:block;font-size:26px;line-height:1}
 .health-banner .health-score small{color:var(--muted);font-size:11px}
+#tokenAlert[hidden],#tokenAlertRenew[hidden],#googleRenewClose[hidden]{display:none}
+.tab-alert{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 16px;padding:15px 18px}
+.tab-alert .row{margin-left:auto;gap:8px}
+.tab-alert h2{font-size:17px;margin:0 0 3px}
+.tab-alert p{margin:0;font-size:12.3px;color:var(--muted);max-width:720px}
+#renewBox[hidden]{display:none}
+.renew-step{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.renew-step .input{flex:1;min-width:220px}
 @media (max-width:1050px){.span3,.span4,.span6{grid-column:span 6}.span5,.span7,.span8,.span12{grid-column:span 12}.metric{font-size:29px}}
 @media (max-width:680px){.span3,.span4,.span6{grid-column:span 12}.app{padding:18px 14px 44px}.brand{min-width:0}.header-right{width:100%;margin-left:0}.clock{display:none}.tabs{padding:5px}.tab{padding:9px 10px}.hero{padding:19px}.hero-side{width:100%}.hero-chip{flex:1}.metric{font-size:27px}}
 </style>
@@ -236,6 +244,17 @@ select option{background:#081420}
   </nav>
 
   <main>
+    <div id="tokenAlert" class="health-banner critical tab-alert" hidden>
+      <div>
+        <h2 id="tokenAlertTitle">Token Google da rinnovare</h2>
+        <p id="tokenAlertText">Gmail e Calendar non sono raggiungibili finché non riautorizzi l'account.</p>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="tokenAlertRenew" type="button">Riautorizza Google</button>
+        <button class="btn ghost" id="tokenAlertDetails" type="button">Dettagli</button>
+      </div>
+    </div>
+
     <section id="tab-overview" class="section active">
       <div class="grid">
         <div class="card hero">
@@ -338,6 +357,24 @@ select option{background:#081420}
         <div class="card span12">
           <h2>Token e scadenze</h2>
           <div class="table-wrap"><table><thead><tr><th>Elemento</th><th>Stato</th><th>Scadenza</th><th>Dettaglio</th></tr></thead><tbody id="healthTokens"></tbody></table></div>
+        </div>
+        <div class="card span12">
+          <h2>Riautorizza Google</h2>
+          <p class="sub" id="renewState">Autorizza Gmail e Calendar senza uscire dal PC: si apre la pagina Google, tu premi Consenti e incolli qui l'indirizzo finale.</p>
+          <div class="row" style="margin-top:10px">
+            <button class="btn primary" id="googleRenewBtn" type="button">Riautorizza Google</button>
+            <button class="btn ghost" id="googleRenewClose" type="button" hidden>Annulla</button>
+          </div>
+          <div id="renewBox" hidden>
+            <div class="divider"></div>
+            <div class="kv"><span>1. Apri la pagina di consenso</span><a class="btn ghost" id="renewLink" href="#" target="_blank" rel="noopener">Apri Google</a></div>
+            <div class="kv"><span>2. Dopo “Consenti” copia l'indirizzo della pagina</span><span class="mono" style="font-size:10.8px">quello con ?code=…</span></div>
+            <div class="renew-step">
+              <input class="input" id="renewUrl" placeholder="http://127.0.0.1:…/oauth2/callback?code=…" autocomplete="off" spellcheck="false">
+              <button class="btn primary" id="renewFinishBtn" type="button">Completa</button>
+            </div>
+            <p class="hint" style="margin-top:8px">Se la pagina non si apre non è un problema: l'indirizzo nella barra del browser contiene già il codice. Il codice resta sul PC e non viene registrato nei log.</p>
+          </div>
         </div>
         <div class="card span12">
           <h2>Avvisi automatici</h2>
@@ -684,6 +721,7 @@ function renderStatus(s, leads, alerts){
   $('heroKeys').textContent = safe(()=>`${k.total??0} / ${(k.gemini?.max??5)+(k.groq_backup?.max??5)}`);
   $('heroHealth').textContent = h.available ? (healthBad ? 'critico' : (healthWarn ? 'avvisi' : 'ok')) : 'da scansionare';
   $('heroHealth').className = healthBad ? 'danger' : (healthWarn ? 'gold' : 'ok');
+  renderTokenAlert(h);
   $('heroApprovals').textContent = c.approvals_pending??0;
   const badge=$('approvalBadge');
   if(badge){ badge.textContent=c.approvals_pending??0; badge.style.display=(c.approvals_pending??0)>0?'inline-flex':'none'; }
@@ -760,6 +798,59 @@ function healthItem(c){
     ${c.expires?`<div class="health-exp">Scadenza: ${esc(c.expires)}</div>`:''}
     ${c.action?`<div class="health-action">→ ${esc(c.action)}</div>`:''}
   </div>`;
+}
+function renderTokenAlert(h){
+  const box=$('tokenAlert'); if(!box) return;
+  const tokens=(h&&h.tokens)||[];
+  const google=tokens.find(t=>t.id==='google_oauth');
+  // Un Google da rinnovare è l'azione più utile da mostrare per prima.
+  const worst=(google && google.status!=='ok')
+    ? google
+    : (tokens.find(t=>t.status==='critical')||google||tokens[0]);
+  const show=!!(google && google.status!=='ok') || !!tokens.find(t=>t.status==='critical');
+  box.hidden=!show;
+  if(!show || !worst) return;
+  const isGoogle=worst.id==='google_oauth';
+  box.className='health-banner tab-alert '+(worst.status==='critical'?'critical':'warn');
+  $('tokenAlertTitle').textContent = isGoogle
+    ? (worst.status==='critical'?'Gmail e Calendar sono fermi':'Token Google in scadenza')
+    : (worst.label||'Token da rinnovare');
+  $('tokenAlertText').textContent = String(worst.detail||'').trim() + (worst.expires?` Scadenza: ${worst.expires}.`:'');
+  $('tokenAlertRenew').hidden=!isGoogle;
+}
+let renewAuthUrl='';
+async function googleRenewStart(){
+  const btn=$('googleRenewBtn'), alertBtn=$('tokenAlertRenew');
+  [btn,alertBtn].forEach(b=>{if(b) b.disabled=true;});
+  if(btn) btn.textContent='Preparo il link…';
+  try{
+    const r=await api('/api/google/renew/start',{method:'POST',body:'{}'});
+    if(!r.ok) throw new Error(r.error||'avvio non riuscito');
+    renewAuthUrl=r.auth_url;
+    $('renewLink').href=r.auth_url;
+    $('renewBox').hidden=false;
+    $('googleRenewClose').hidden=false;
+    $('renewState').textContent=`Consenso pronto per ${r.account}. Apri Google, premi Consenti e incolla qui l'indirizzo finale.`;
+    $('renewUrl').value='';
+    switchTab('health');
+    window.open(r.auth_url,'_blank','noopener');
+    $('renewUrl').focus();
+  }catch(e){ if(e.message!=='auth') toast('Google: '+e.message,true); }
+  finally{ if(btn) btn.textContent='Riautorizza Google'; [btn,alertBtn].forEach(b=>{if(b) b.disabled=false;}); }
+}
+async function googleRenewFinish(){
+  const url=$('renewUrl').value.trim();
+  if(!url){ toast("Incolla l'indirizzo completo con ?code=…",true); return; }
+  const b=$('renewFinishBtn'); b.disabled=true; const old=b.textContent; b.textContent='Verifico…';
+  try{
+    const r=await api('/api/google/renew/finish',{method:'POST',body:JSON.stringify({auth_url:url})});
+    if(!r.ok) throw new Error(r.error||'scambio non riuscito');
+    toast('Google riautorizzato: Gmail e Calendar sono attivi.');
+    $('renewBox').hidden=true; $('googleRenewClose').hidden=true; renewAuthUrl='';
+    $('renewState').textContent='Gmail e Calendar attivi: nessuna azione richiesta.';
+    await loadHealth(true); load();
+  }catch(e){ if(e.message!=='auth') toast('Google: '+e.message,true); }
+  finally{ b.disabled=false; b.textContent=old; }
 }
 function renderHealth(d){
   const data=d||{};
@@ -896,6 +987,12 @@ function switchTab(name){
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
 $('refreshBtn').addEventListener('click',load);
 $('healthScanBtn').addEventListener('click',()=>loadHealth(true));
+$('googleRenewBtn').addEventListener('click',googleRenewStart);
+$('tokenAlertRenew').addEventListener('click',googleRenewStart);
+$('renewFinishBtn').addEventListener('click',googleRenewFinish);
+$('renewUrl').addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); googleRenewFinish(); } });
+$('googleRenewClose').addEventListener('click',()=>{ $('renewBox').hidden=true; $('googleRenewClose').hidden=true; renewAuthUrl=''; });
+$('tokenAlertDetails').addEventListener('click',()=>switchTab('health'));
 $('healthNotifyBtn').addEventListener('click', async ()=>{
   if(!confirm('Inviare un messaggio di test Health su WhatsApp?')) return;
   const b=$('healthNotifyBtn'); b.disabled=true; const old=b.textContent; b.textContent='Invio…';

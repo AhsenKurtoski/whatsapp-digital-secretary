@@ -109,6 +109,71 @@ class DashboardTests(unittest.TestCase):
             dashboard.run = original
         self.assertIn("22:21", value)
 
+    def post_json(self, path, payload, token=None):
+        headers = {"X-Requested-With": "dashboard", "Content-Type": "application/json"}
+        if token:
+            headers["Authorization"] = "Bearer " + token
+        req = urllib.request.Request(
+            self.base + path,
+            data=json.dumps(payload).encode(),
+            method="POST",
+            headers=headers,
+        )
+        return urllib.request.urlopen(req, timeout=10)
+
+    def test_google_renew_requires_token(self):
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            self.post_json("/api/google/renew/start", {})
+        self.assertEqual(ctx.exception.code, 401)
+
+    def test_google_renew_rejects_foreign_redirect(self):
+        with self.post_json(
+            "/api/google/renew/finish",
+            {"auth_url": "https://evil.example/callback?code=abc"},
+            dashboard.DASH_TOKEN,
+        ) as response:
+            payload = json.loads(response.read())
+        self.assertFalse(payload["ok"])
+        self.assertIn("non valido", payload["error"])
+
+    def test_google_renew_start_without_cli_reports_the_problem(self):
+        original = dashboard.GOG
+        dashboard.GOG = "/nonexistent/gog"
+        try:
+            result = dashboard.google_renew_start()
+        finally:
+            dashboard.GOG = original
+        self.assertFalse(result["ok"])
+        self.assertIn("gog", result["error"])
+
+    def test_health_summary_includes_problem_tokens(self):
+        original = dashboard.HEALTH_STATE
+        path = ROOT / "tests" / "_health_tmp.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "available": True,
+                    "overall": "critical",
+                    "counts": {"critical": 1, "warn": 0, "ok": 2},
+                    "generated_at": "2026-11-01T20:00:00+01:00",
+                    "tokens": [
+                        {"id": "google_oauth", "label": "Google OAuth", "status": "critical", "expires": "01/11/2026 15:53"},
+                        {"id": "dashboard_token", "label": "Token dashboard", "status": "ok", "expires": "nessuna scadenza"},
+                    ],
+                    "expiring": [{"id": "google_oauth", "label": "Google OAuth", "days_left": -1, "expired": True}],
+                }
+            ),
+            encoding="utf-8",
+        )
+        dashboard.HEALTH_STATE = str(path)
+        try:
+            summary = dashboard.health_summary()
+        finally:
+            dashboard.HEALTH_STATE = original
+            path.unlink(missing_ok=True)
+        self.assertEqual([t["id"] for t in summary["tokens"]], ["google_oauth"])
+        self.assertEqual(len(summary["expiring"]), 1)
+
     def test_login_sets_cookie_and_rejects_bad_token(self):
         opener = urllib.request.build_opener(NoRedirect)
         body = urllib.parse.urlencode({"token": dashboard.DASH_TOKEN}).encode()

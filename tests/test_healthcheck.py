@@ -61,6 +61,23 @@ class HealthcheckTests(unittest.TestCase):
         self.assertIn(check["status"], {"ok", "warn"})
         self.assertEqual(check["id"], "config")
 
+    def test_expiring_tokens_filters_and_sorts(self):
+        now = healthcheck.datetime.now(healthcheck.timezone.utc)
+        soon = (now + healthcheck.timedelta(days=3)).isoformat()
+        late = (now + healthcheck.timedelta(days=30)).isoformat()
+        past = (now - healthcheck.timedelta(days=1)).isoformat()
+        tokens = [
+            {"id": "a", "label": "Google OAuth", "status": "warn", "expires_iso": soon, "expires": "x"},
+            {"id": "b", "label": "Lontano", "status": "ok", "expires_iso": late, "expires": "y"},
+            {"id": "c", "label": "Scaduto", "status": "critical", "expires_iso": past, "expires": "z"},
+            {"id": "d", "label": "Senza scadenza", "status": "ok", "expires": "nessuna scadenza"},
+        ]
+        result = healthcheck.expiring_tokens(tokens)
+        self.assertEqual([item["id"] for item in result], ["c", "a"])
+        self.assertTrue(result[0]["expired"])
+        self.assertFalse(result[1]["expired"])
+        self.assertGreater(result[1]["days_left"], 2)
+
     def test_self_test(self):
         healthcheck.self_test()
 

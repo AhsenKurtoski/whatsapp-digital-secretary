@@ -178,6 +178,12 @@ There are two options:
 2. **Local `gog` CLI** — OAuth desktop flow. The dashboard invokes `gog` only after
    approval. Testing-mode apps may require re-authorization after about seven days.
 
+When the token is expired or about to expire, the dashboard shows a warning above every
+tab. **Riautorizza Google** generates the real consent URL; after “Consenti” you paste
+the final `…/oauth2/callback?code=…` address into Health and the dashboard exchanges the
+code and verifies Gmail. Only loopback redirects are accepted and the code is never
+logged.
+
 The bot itself has no direct Gmail/Calendar tool. It can only create an approval
 request; the dashboard executes the approved action.
 

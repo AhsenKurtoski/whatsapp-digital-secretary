@@ -4,9 +4,30 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [1.1.0] - 2026-11-01
+## [1.1.0] - 2026-11-02
 
 ### Added
+
+- **One-click Google re-authorization**: when the Gmail/Calendar token is expired or
+  about to expire, the dashboard shows a warning banner above every tab and a guided
+  card in Health. "Riautorizza Google" generates the real consent URL with gog
+  (`--remote --step 1`), and pasting the final `?code=…` address completes the exchange
+  (`--remote --step 2`). Only loopback redirect URLs are accepted and the code is never
+  written to logs.
+- **Upcoming expiries in the evening digest**: a "Scadenze entro 7 giorni" section lists
+  every token with a real expiry date, and a token expiring soon now triggers the digest
+  even on a day with no new contacts.
+- `expiring` in `health_state.json`, computed by `healthcheck.expiring_tokens()` from the
+  ISO expiry of each token.
+
+### Fixed
+
+- Google OAuth check now reads the account configured in `config.json` instead of the
+  first authorized account in the keyring.
+- The next scheduled run of monotonic systemd timers is resolved with
+  `systemctl list-timers --output=json`, so Health and Monitor no longer show `-`.
+- The dashboard warning banner uses an explicit `[hidden]` rule so it cannot stay
+  visible (or invisible) because of the flex layout.
 
 - **Health scan** (`healthcheck.py`): a complete check of configuration, persona,
   secrets, gateway, WhatsApp, dashboard, systemd timers, Google OAuth and Apps Script
@@ -97,4 +118,5 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - Log redaction for phone numbers and message content.
 
 [1.0.1]: https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.0.1
+[1.1.0]: https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.1.0
 [1.0.0]: https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.0.0

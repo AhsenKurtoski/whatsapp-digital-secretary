@@ -253,11 +253,39 @@ def _systemctl_active(unit: str) -> bool:
 
 
 def _systemctl_next(unit: str) -> str:
+    """Prossima esecuzione del timer, anche quando è monotono.
+
+    Per i timer con ``OnUnitActiveSec`` (es. Health ogni 30 minuti) systemd
+    lascia ``NextElapseUSecRealtime`` vuoto: l'istante reale è disponibile solo
+    in ``list-timers``. Prima si prova il campo realtime, poi la lista.
+    """
     out = _run(
         ["systemctl", "--user", "show", unit, "-p", "NextElapseUSecRealtime", "--value"],
         timeout=8,
     )[1]
-    return out.strip() or "-"
+    if out.strip():
+        return out.strip()
+    rc, listing, _ = _run(["systemctl", "--user", "list-timers", "--output=json", unit], timeout=8)
+    if rc != 0:
+        return "-"
+    try:
+        rows = json.loads(listing or "[]")
+    except Exception:
+        return "-"
+    for row in rows if isinstance(rows, list) else []:
+        if str(row.get("unit") or "") != unit:
+            continue
+        stamp = str(row.get("next") or "").strip()
+        if not stamp:
+            continue
+        # list-timers usa "2026-11-02 13:08:49 CET": data e ora locali, senza ISO.
+        for fmt in ("%Y-%m-%d %H:%M:%S %Z", "%Y-%m-%d %H:%M:%S"):
+            try:
+                parsed = datetime.strptime(stamp, fmt).replace(tzinfo=ROME)
+                return parsed.strftime("%d/%m %H:%M")
+            except Exception:
+                continue
+    return "-"
 
 
 def _uptime_text() -> str:
@@ -736,7 +764,12 @@ def check_google_oauth() -> dict:
         )
     rc, out, err = _run([GOG, "auth", "list", "--json"], timeout=20, extra_env=gog_env())
     accounts = (_json_from(out).get("accounts") or []) if rc == 0 else []
-    created = _parse_dt(accounts[0].get("created_at")) if accounts else None
+    # Con più account autorizzati conta quello configurato, non il primo della lista.
+    account_row = next(
+        (a for a in accounts if str(a.get("email") or "").lower() == account.lower()),
+        accounts[0] if accounts else None,
+    )
+    created = _parse_dt(account_row.get("created_at")) if account_row else None
     expires = created + timedelta(days=7) if created else None
     days_left = None
     if expires:
@@ -785,6 +818,7 @@ def check_google_oauth() -> dict:
             "label": "Google OAuth (gog)",
             "status": status,
             "expires": expires.astimezone(ROME).strftime("%d/%m/%Y %H:%M") if expires else "sconosciuta",
+            "expires_iso": expires.isoformat() if expires else "",
             "detail": detail,
             "action": f"gog-secretary auth add {account} --services gmail,calendar --gmail-scope read-send --manual",
         },
@@ -1000,10 +1034,39 @@ def collect() -> dict:
         },
         "checks": checks,
         "tokens": tokens,
+        "expiring": expiring_tokens(tokens),
         "alerts": build_alerts(checks),
     }
     _write_json(HEALTH_STATE, data)
     return data
+
+
+def expiring_tokens(tokens: list[dict], horizon_days: int = 7) -> list[dict]:
+    """Token con una scadenza reale entro l'orizzonte indicato.
+
+    Usa ``expires_iso`` (aggiunto dai check che conoscono la data esatta) e
+    ignora le voci senza scadenza fissa come la sessione WhatsApp.
+    """
+    now = datetime.now(timezone.utc)
+    out: list[dict] = []
+    for token in tokens:
+        if not isinstance(token, dict):
+            continue
+        stamp = _parse_dt(str(token.get("expires_iso") or ""))
+        if not stamp:
+            continue
+        days_left = (stamp - now).total_seconds() / 86400
+        if days_left > horizon_days:
+            continue
+        out.append({
+            "id": str(token.get("id") or ""),
+            "label": str(token.get("label") or token.get("id") or "Token"),
+            "status": str(token.get("status") or "info"),
+            "expires": str(token.get("expires") or ""),
+            "days_left": round(days_left, 1),
+            "expired": days_left < 0,
+        })
+    return sorted(out, key=lambda item: item["days_left"])
 
 
 def build_alerts(checks: list[dict]) -> list[dict]:

@@ -33,6 +33,16 @@ def health_state():
             },
         ],
         "tokens": [],
+        "expiring": [
+            {
+                "id": "google_oauth",
+                "label": "Google OAuth (gog)",
+                "status": "critical",
+                "expires": "01/11/2026 15:53",
+                "days_left": -0.9,
+                "expired": True,
+            }
+        ],
         "alerts": [],
     }
 
@@ -78,11 +88,31 @@ class DigestTests(unittest.TestCase):
         self.assertIn("Google OAuth", result.stdout)
         self.assertIn("Nessun nuovo contatto oggi", result.stdout)
 
+    def test_digest_lists_expiring_tokens(self):
+        result = self.run_digest()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Scadenze entro 7 giorni", result.stdout)
+        self.assertIn("Google OAuth (gog): già scaduto", result.stdout)
+
+    def test_expiring_token_alone_triggers_the_digest(self):
+        data = health_state()
+        data["overall"] = "ok"
+        data["counts"] = {"ok": 15, "info": 0, "warn": 0, "critical": 0}
+        data["checks"] = [{"id": "gateway", "label": "Gateway", "status": "ok", "detail": "ok"}]
+        data["expiring"] = [
+            {"id": "google_oauth", "label": "Google OAuth (gog)", "status": "warn", "expires": "05/11/2026 10:00", "days_left": 3.2, "expired": False}
+        ]
+        self.health.write_text(json.dumps(data), encoding="utf-8")
+        result = self.run_digest()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("tra 3 giorni", result.stdout)
+
     def test_healthy_day_without_leads_sends_nothing(self):
         data = health_state()
         data["overall"] = "ok"
         data["counts"] = {"ok": 15, "info": 0, "warn": 0, "critical": 0}
         data["checks"] = [{"id": "gateway", "label": "Gateway", "status": "ok", "detail": "ok"}]
+        data["expiring"] = []
         self.health.write_text(json.dumps(data), encoding="utf-8")
         result = self.run_digest()
         self.assertEqual(result.returncode, 0, result.stderr)

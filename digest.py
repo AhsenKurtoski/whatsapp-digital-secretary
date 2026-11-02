@@ -76,7 +76,22 @@ def health_section(path):
         lines.append("→ Dashboard → Health per il report completo.")
     else:
         lines.append("Nessun problema rilevato.")
-    return lines, bool(issues)
+    expiring = data.get("expiring") or []
+    if expiring:
+        lines.append("")
+        lines.append("⏳ Scadenze entro 7 giorni")
+        for token in expiring[:4]:
+            days = token.get("days_left")
+            if token.get("expired"):
+                when = "già scaduto"
+            elif isinstance(days, (int, float)) and days < 1:
+                when = "tra poche ore"
+            elif isinstance(days, (int, float)):
+                when = f"tra {int(days)} giorni"
+            else:
+                when = "in scadenza"
+            lines.append(f"• {token.get('label') or token.get('id')}: {when} ({token.get('expires') or '—'})")
+    return lines, bool(issues) or bool(expiring)
 
 
 def send_whatsapp(text, dry=False):
