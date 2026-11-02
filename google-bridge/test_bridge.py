@@ -18,12 +18,15 @@ import bridge_client  # noqa: E402
 
 SECRET = "test-" + "x" * 48
 RECEIVED: list[dict] = []
+RECEIVED_RAW: list[bytes] = []
 
 
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):  # noqa: N802
         length = int(self.headers.get("Content-Length") or 0)
-        raw = self.rfile.read(length).decode("utf-8")
+        raw_bytes = self.rfile.read(length)
+        RECEIVED_RAW.append(raw_bytes)
+        raw = raw_bytes.decode("utf-8")
         try:
             envelope = json.loads(raw)
             signed = envelope["data"]
@@ -78,6 +81,21 @@ def main() -> None:
         assert event.get("id") == "evt-1", event
         assert RECEIVED[-1]["action"] == "createEvent"
         assert RECEIVED[-1]["payload"]["summary"] == "Call"
+
+        # Apps Script può decodificare il POST come Latin-1: il corpo firmato deve
+        # restare ASCII puro, altrimenti gli accenti rompono la firma HMAC.
+        accented = bridge_client.send_email(
+            {
+                "to": "cliente@example.com",
+                "subject": "Città e più",
+                "body": "Perché è così",
+                "html": "<p>Perché è così</p>",
+            },
+            config,
+        )
+        assert accented.get("id") == "msg-1", accented
+        assert RECEIVED_RAW[-1].isascii(), "il corpo firmato deve restare ASCII"
+        assert RECEIVED[-1]["payload"]["body"] == "Perché è così"
 
         bad = dict(config)
         bad["secret"] = "wrong-" + "y" * 48

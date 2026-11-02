@@ -167,9 +167,12 @@ function createEvent(payload) {
 
   const calendar = CalendarApp.getDefaultCalendar();
   const event = calendar.createEvent(summary, start, end, options);
+  // Non tutti i calendari espongono getHtmlLink: la risposta non deve mai fallire
+  // dopo che l'evento è già stato creato (evita duplicati al retry).
+  const htmlLink = (event && typeof event.getHtmlLink === 'function') ? String(event.getHtmlLink()) : '';
   return {
-    id: event.getId(),
-    htmlLink: event.getHtmlLink(),
+    id: String(event.getId()),
+    htmlLink: htmlLink,
     summary: summary,
     start: start.toISOString(),
     end: end.toISOString(),

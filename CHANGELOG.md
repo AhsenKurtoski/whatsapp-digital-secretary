@@ -22,6 +22,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Bridge requests with accented text no longer fail with `unauthorized`**: the signed
+  envelope is serialized as pure ASCII (`\uXXXX` escapes), so Apps Script signature
+  verification cannot break when the POST body is decoded as Latin-1. This made every
+  HTML email (and the dashboard test email) fail while plain-ASCII emails worked.
+- **Bridge Calendar responses never fail after the event exists**: `createEvent` reads
+  `getHtmlLink()` only when the calendar exposes it, so a successful creation is not
+  reported as `server_error` (which caused duplicate events on retry).
+- **Health understands the bridge**: when the Apps Script bridge is configured, an
+  expired `gog` token and the unused Google Workspace MCP are reported as `info`
+  ("Gmail e Calendar passano dal bridge"), not as critical/warning, and no longer count
+  as an urgent expiry in the digest or in the dashboard banner.
 - Google OAuth check now reads the account configured in `config.json` instead of the
   first authorized account in the keyring.
 - The next scheduled run of monotonic systemd timers is resolved with

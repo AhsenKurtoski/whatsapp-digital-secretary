@@ -111,16 +111,19 @@ def _request(config: dict, body: bytes) -> dict:
 
 
 def _post(config: dict, action: str, payload: dict) -> dict:
+    # Il corpo firmato resta ASCII puro: Apps Script può decodificare il POST come
+    # Latin-1 (o perdere il charset sul redirect), quindi i caratteri accentati
+    # devono viaggiare come \\uXXXX per non rompere la firma HMAC.
     signed = json.dumps(
         {"ts": int(time.time()), "action": action, "payload": payload},
-        ensure_ascii=False,
+        ensure_ascii=True,
         separators=(",", ":"),
     )
     signature = hmac.new(
         config["secret"].encode("utf-8"), signed.encode("utf-8"), hashlib.sha256
     ).hexdigest()
     body = json.dumps(
-        {"data": signed, "sig": signature}, ensure_ascii=False, separators=(",", ":")
+        {"data": signed, "sig": signature}, ensure_ascii=True, separators=(",", ":")
     ).encode("utf-8")
     return _request(config, body)
 

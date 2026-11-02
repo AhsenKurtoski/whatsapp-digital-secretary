@@ -1,4 +1,5 @@
 import json
+import sys
 import unittest
 
 import support  # noqa: F401
@@ -34,6 +35,29 @@ class HealthcheckTests(unittest.TestCase):
         )
         alert = next(item for item in alerts if item["key"] == "google_oauth_expired")
         self.assertEqual(alert["severity"], "warn")
+
+    def test_google_oauth_is_informational_when_bridge_handles_gmail(self):
+        original_run = healthcheck._run
+        original_gog = healthcheck.GOG
+        original_bridge = healthcheck.bridge_configured
+        healthcheck.GOG = sys.executable
+        healthcheck.bridge_configured = lambda: True
+        healthcheck._run = lambda cmd, **kwargs: (
+            1,
+            "",
+            '{"error":{"message":"OAuth token expired or revoked (invalid_grant)"}}',
+        )
+        try:
+            check = healthcheck.check_google_oauth()
+        finally:
+            healthcheck._run = original_run
+            healthcheck.GOG = original_gog
+            healthcheck.bridge_configured = original_bridge
+        self.assertEqual(check["status"], "info")
+        self.assertIn("bridge", check["detail"].lower())
+        self.assertEqual(check["token"]["expires_iso"], "")
+        self.assertEqual(check["token"]["status"], "info")
+        self.assertEqual(healthcheck.build_alerts([check]), [])
 
     def test_message_is_bounded_and_has_a_title(self):
         message = healthcheck.render_message(

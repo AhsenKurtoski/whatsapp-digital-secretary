@@ -803,11 +803,11 @@ function renderTokenAlert(h){
   const box=$('tokenAlert'); if(!box) return;
   const tokens=(h&&h.tokens)||[];
   const google=tokens.find(t=>t.id==='google_oauth');
+  // Con il bridge attivo il token gog è "info": non deve generare un avviso.
+  const googleNeedsAction=!!google && (google.status==='critical' || google.status==='warn');
   // Un Google da rinnovare è l'azione più utile da mostrare per prima.
-  const worst=(google && google.status!=='ok')
-    ? google
-    : (tokens.find(t=>t.status==='critical')||google||tokens[0]);
-  const show=!!(google && google.status!=='ok') || !!tokens.find(t=>t.status==='critical');
+  const worst=googleNeedsAction ? google : tokens.find(t=>t.status==='critical');
+  const show=!!worst;
   box.hidden=!show;
   if(!show || !worst) return;
   const isGoogle=worst.id==='google_oauth';

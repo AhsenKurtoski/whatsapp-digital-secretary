@@ -752,6 +752,18 @@ def check_ai() -> dict:
     )
 
 
+def bridge_configured() -> bool:
+    """True quando il bridge Apps Script locale è configurato (solo file, no rete)."""
+    try:
+        import bridge_client
+    except Exception:
+        return False
+    try:
+        return bool(bridge_client.load_config(str(BRIDGE_CONFIG)))
+    except Exception:
+        return False
+
+
 def check_google_oauth() -> dict:
     account = str(CFG.get("google_account") or "ACCOUNT")
     if not (os.path.isfile(GOG) and os.access(GOG, os.X_OK)):
@@ -814,6 +826,15 @@ def check_google_oauth() -> dict:
         detail += f" Autorizzato il {created.astimezone(ROME).strftime('%d/%m %H:%M')}."
     if expires:
         detail += f" Stima scadenza {expires.astimezone(ROME).strftime('%d/%m %H:%M')} (app Testing)."
+    bridge_in_use = status in {"critical", "warn"} and bridge_configured()
+    if bridge_in_use:
+        # Il token gog in Testing scade dopo 7 giorni: se il bridge è attivo non è
+        # un problema, quindi niente allarme e niente falsa scadenza urgente.
+        status = "info"
+        detail = (
+            "Non in uso: Gmail e Calendar passano dal bridge Apps Script permanente. "
+            + detail
+        )
     return _check(
         "google_oauth",
         "Google OAuth (gog)",
@@ -826,9 +847,13 @@ def check_google_oauth() -> dict:
             "label": "Google OAuth (gog)",
             "status": status,
             "expires": expires.astimezone(ROME).strftime("%d/%m/%Y %H:%M") if expires else "sconosciuta",
-            "expires_iso": expires.isoformat() if expires else "",
+            "expires_iso": expires.isoformat() if (expires and not bridge_in_use) else "",
             "detail": detail,
-            "action": f"gog-secretary auth add {account} --services gmail,calendar --gmail-scope read-send --manual",
+            "action": (
+                "Il bridge è attivo: nessuna azione richiesta"
+                if bridge_in_use
+                else f"gog-secretary auth add {account} --services gmail,calendar --gmail-scope read-send --manual"
+            ),
         },
         meta={"valid": valid, "expired": expired, "days_left": days_left, "created": created.isoformat() if created else None},
     )
@@ -922,6 +947,14 @@ def check_mcp() -> dict:
             meta={"tools": len(tools)},
         )
     detail = str((server or {}).get("error") or err or "probe non riuscito")[:180]
+    if bridge_configured():
+        # Il MCP userebbe lo stesso token gog: col bridge attivo non serve.
+        return _check(
+            "mcp",
+            "MCP Google Workspace",
+            "info",
+            "Non necessario: Gmail e Calendar passano dal bridge Apps Script. " + detail,
+        )
     return _check(
         "mcp",
         "MCP Google Workspace",
