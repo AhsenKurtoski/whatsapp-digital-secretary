@@ -22,6 +22,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Next timer run parses on Python 3.11+**: `strptime` with `%Z` accepts only
+  UTC/GMT/local time, so a `CET`/`CEST` timestamp raised `ValueError` and the field
+  showed `-`; the abbreviation is now stripped and the configured timezone applied.
 - **Bridge requests with accented text no longer fail with `unauthorized`**: the signed
   envelope is serialized as pure ASCII (`\uXXXX` escapes), so Apps Script signature
   verification cannot break when the POST body is decoded as Latin-1. This made every
