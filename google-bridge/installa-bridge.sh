@@ -37,7 +37,24 @@ if [ ! -f ".clasp.json" ]; then
   echo "Creo il progetto Apps Script privato…"
   cp -f Code.gs /tmp/digital-secretary-bridge-Code.gs
   cp -f appsscript.json /tmp/digital-secretary-bridge-appsscript.json
-  "${CLASP[@]}" create --type standalone --title "Digital Secretary Bridge" --rootDir .
+  if ! CREATE_OUT="$("${CLASP[@]}" create --type standalone --title "Digital Secretary Bridge" --rootDir . 2>&1)"; then
+    printf '%s\n' "$CREATE_OUT"
+    if printf '%s' "$CREATE_OUT" | grep -q "has not enabled the Apps Script API"; then
+      cat <<'MSG' >&2
+
+L'account Google non ha ancora attivato l'Apps Script API (interruttore per-utente,
+non attivabile da terminale). Fai così, una volta sola:
+  1. Apri https://script.google.com/home/usersettings con lo stesso account;
+  2. attiva "Apps Script API" (Google Apps Script API: ON);
+  3. rilancia questo script: riparte da qui senza rifare il login.
+Il login clasp è già salvato, i file sono già pronti.
+MSG
+      exit 3
+    fi
+    echo "Creazione progetto non riuscita." >&2
+    exit 1
+  fi
+  printf '%s\n' "$CREATE_OUT"
   cp -f /tmp/digital-secretary-bridge-Code.gs Code.gs
   cp -f /tmp/digital-secretary-bridge-appsscript.json appsscript.json
   rm -f Code.js /tmp/digital-secretary-bridge-Code.gs /tmp/digital-secretary-bridge-appsscript.json
