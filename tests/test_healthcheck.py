@@ -1,3 +1,4 @@
+import json
 import unittest
 
 import support  # noqa: F401
@@ -77,6 +78,30 @@ class HealthcheckTests(unittest.TestCase):
         self.assertTrue(result[0]["expired"])
         self.assertFalse(result[1]["expired"])
         self.assertGreater(result[1]["days_left"], 2)
+
+    def test_systemctl_next_parses_json_microseconds(self):
+        payload = json.dumps([{"unit": "openclaw-secretary-health.timer", "next": 1793622558821633}])
+        original = healthcheck._run
+
+        def fake(cmd, **kwargs):
+            return (0, "", "") if "show" in cmd else (0, payload, "")
+
+        healthcheck._run = fake
+        try:
+            value = healthcheck._systemctl_next("openclaw-secretary-health.timer")
+        finally:
+            healthcheck._run = original
+        self.assertRegex(value, r"^\d{2}/\d{2} \d{2}:\d{2}$")
+
+    def test_systemctl_next_ignores_other_units(self):
+        payload = json.dumps([{"unit": "other.timer", "next": 1793622558821633}])
+        original = healthcheck._run
+        healthcheck._run = lambda cmd, **kw: (0, "", "") if "show" in cmd else (0, payload, "")
+        try:
+            value = healthcheck._systemctl_next("openclaw-secretary-health.timer")
+        finally:
+            healthcheck._run = original
+        self.assertEqual(value, "-")
 
     def test_self_test(self):
         healthcheck.self_test()

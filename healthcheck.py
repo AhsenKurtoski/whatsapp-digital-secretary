@@ -275,13 +275,21 @@ def _systemctl_next(unit: str) -> str:
     for row in rows if isinstance(rows, list) else []:
         if str(row.get("unit") or "") != unit:
             continue
-        stamp = str(row.get("next") or "").strip()
-        if not stamp:
+        stamp = row.get("next")
+        # Con --output=json systemd restituisce microsecondi epoch (intero).
+        if isinstance(stamp, (int, float)) and stamp > 0:
+            try:
+                parsed = datetime.fromtimestamp(stamp / 1_000_000, tz=timezone.utc)
+                return parsed.astimezone(ROME).strftime("%d/%m %H:%M")
+            except Exception:
+                continue
+        text = str(stamp or "").strip()
+        if not text:
             continue
-        # list-timers usa "2026-11-02 13:08:49 CET": data e ora locali, senza ISO.
+        # In output testuale: "2026-11-02 13:08:49 CET" (ora locale, senza ISO).
         for fmt in ("%Y-%m-%d %H:%M:%S %Z", "%Y-%m-%d %H:%M:%S"):
             try:
-                parsed = datetime.strptime(stamp, fmt).replace(tzinfo=ROME)
+                parsed = datetime.strptime(text, fmt).replace(tzinfo=ROME)
                 return parsed.strftime("%d/%m %H:%M")
             except Exception:
                 continue
