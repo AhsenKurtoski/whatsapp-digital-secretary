@@ -221,7 +221,11 @@ def next_elapse(unit: str) -> str:
     if seconds:
         _, last, _ = run(["systemctl", "--user", "show", unit, "-p", "LastTriggerUSec", "--value"], timeout=8)
         try:
-            stamp = datetime.strptime(last.strip(), "%a %Y-%m-%d %H:%M:%S %Z").replace(tzinfo=ROME)
+            # systemd aggiunge l'abbreviazione del fuso (CET/CEST/UTC). strptime
+            # accetta %Z solo per UTC/GMT/local time, quindi la togliamo e usiamo
+            # il fuso configurato: lo stesso codice funziona su ogni Python.
+            raw = re.sub(r"\s+[A-Za-z][A-Za-z0-9/_+-]{1,9}$", "", " ".join(last.split()))
+            stamp = datetime.strptime(raw, "%a %Y-%m-%d %H:%M:%S").replace(tzinfo=ROME)
             return (stamp + timedelta(seconds=seconds)).strftime("%d/%m %H:%M")
         except Exception:
             pass

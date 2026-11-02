@@ -203,6 +203,31 @@ class DashboardTests(unittest.TestCase):
             dashboard.run = original
         self.assertEqual(value, "02/11 13:31")
 
+    def test_next_elapse_accepts_any_timezone_abbreviation(self):
+        # strptime %Z accetta solo UTC/GMT/local time: CET e CEST devono funzionare
+        # comunque, su ogni versione di Python.
+        unit = "openclaw-secretary-health.timer"
+        original = dashboard.run
+
+        for stamp in ("Mon 2026-11-02 13:29:25 CET", "Mon 2026-11-02 13:29:25 CEST", "Mon 2026-11-02 13:29:25"):
+            def fake(cmd, **kwargs):
+                if "list-timers" in cmd:
+                    return 0, json.dumps([{"unit": unit, "next": 0}]), ""
+                if "NextElapseUSecRealtime" in cmd:
+                    return 0, "", ""
+                if "TimersMonotonic" in cmd:
+                    return 0, "{ OnUnitActiveUSec=2min }", ""
+                if "LastTriggerUSec" in cmd:
+                    return 0, stamp, ""
+                return 1, "", ""
+
+            dashboard.run = fake
+            try:
+                value = dashboard.next_elapse(unit)
+            finally:
+                dashboard.run = original
+            self.assertEqual(value, "02/11 13:31", stamp)
+
     def test_login_sets_cookie_and_rejects_bad_token(self):
         opener = urllib.request.build_opener(NoRedirect)
         body = urllib.parse.urlencode({"token": dashboard.DASH_TOKEN}).encode()
