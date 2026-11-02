@@ -3,7 +3,7 @@
 [![CI](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml/badge.svg)](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/AhsenKurtoski/whatsapp-digital-secretary?color=5eead4&label=release)](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-7dd3fc.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-3776ab.svg)](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-3776ab.svg)](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml)
 
 Una segreteria digitale **self-hosted** e privata per WhatsApp. Risponde ai clienti
 con il tono della tua attività, conosce servizi e prezzi, raccoglie lead e richieste
@@ -81,7 +81,7 @@ Nessun dato dei clienti viene inviato a un servizio dashboard di terze parti.
 ## Requisiti
 
 - Linux o WSL2 con systemd utente
-- Python **3.11+**, testato in CI su 3.11, 3.12 e 3.13 (solo standard library; su
+- Python **3.11+**, testato in CI su 3.11, 3.12, 3.13 e 3.14 (solo standard library; su
   Windows nativo installa `tzdata` per il database completo dei fusi orari IANA)
 - Node.js **22+** e [OpenClaw](https://openclaw.ai) installato globalmente
 - Un account WhatsApp per il bot (consigliato un numero dedicato)

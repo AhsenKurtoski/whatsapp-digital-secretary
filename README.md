@@ -3,7 +3,7 @@
 [![CI](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml/badge.svg)](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/AhsenKurtoski/whatsapp-digital-secretary?color=5eead4&label=release)](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-7dd3fc.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-3776ab.svg)](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-3776ab.svg)](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml)
 
 A self-hosted, private digital secretary for WhatsApp. It answers customers in your
 business tone, knows your services and prices, collects leads and appointment
@@ -82,7 +82,7 @@ customer data is sent to a third-party dashboard service.
 ## Requirements
 
 - Linux or WSL2 with systemd user services
-- Python **3.11+**, tested in CI on 3.11, 3.12 and 3.13 (standard library only; on
+- Python **3.11+**, tested in CI on 3.11, 3.12, 3.13 and 3.14 (standard library only; on
   native Windows install `tzdata` for the full IANA timezone database)
 - Node.js **22+** and [OpenClaw](https://openclaw.ai) installed globally
 - A WhatsApp account for the bot (a separate number is recommended)
