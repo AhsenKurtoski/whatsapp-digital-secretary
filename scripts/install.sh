@@ -38,6 +38,10 @@ install -m 700 "$HERE/monitor.py" "$BASE/monitor.py"
 install -m 700 "$HERE/digest.py" "$BASE/digest.py"
 install -m 700 "$HERE/approval_store.py" "$BASE/approval_store.py"
 install -m 700 "$HERE/email_template.py" "$BASE/email_template.py"
+install -m 700 "$HERE/quote_pdf.py" "$BASE/quote_pdf.py"
+install -m 700 "$HERE/contacts.py" "$BASE/contacts.py"
+install -m 700 "$HERE/reminders.py" "$BASE/reminders.py"
+install -m 700 "$HERE/gateway_policy.py" "$BASE/gateway_policy.py"
 install -m 700 "$HERE/approval_mcp.py" "$BASE/approval_mcp.py"
 install -m 700 "$HERE/approval_setup.py" "$BASE/approval_setup.py"
 install -d -m 700 "$BASE/plugins"
@@ -58,7 +62,8 @@ install -m 700 "$HERE/gog-secretary" "$HOME/.local/bin/gog-secretary" 2>/dev/nul
 for unit in openclaw-dashboard.service openclaw-watchdog.service openclaw-watchdog.timer \
             openclaw-secretary-monitor.service openclaw-secretary-monitor.timer \
             openclaw-secretary-digest.service openclaw-secretary-digest.timer \
-            openclaw-secretary-health.service openclaw-secretary-health.timer; do
+            openclaw-secretary-health.service openclaw-secretary-health.timer \
+            openclaw-secretary-reminders.service openclaw-secretary-reminders.timer; do
   install -m 644 "$HERE/systemd/$unit" "$UNIT_DIR/$unit"
 done
 install -m 644 "$HERE/systemd/gateway-secrets.conf" "$DROPIN/secretary.conf"
@@ -72,6 +77,9 @@ EOF
 systemctl --user daemon-reload
 
 "$PYTHON" "$BASE/sync_fallbacks.py" || true
+# Anti-raffica WhatsApp: unisce debounce e queue senza sovrascrivere le scelte
+# già presenti nel file openclaw.json.
+"$PYTHON" "$BASE/gateway_policy.py" || true
 "$PYTHON" "$BASE/approval_setup.py" || true
 
 systemctl --user enable --now openclaw-dashboard.service
@@ -79,6 +87,7 @@ systemctl --user enable --now openclaw-watchdog.timer
 systemctl --user enable --now openclaw-secretary-monitor.timer
 systemctl --user enable --now openclaw-secretary-digest.timer
 systemctl --user enable --now openclaw-secretary-health.timer
+systemctl --user enable --now openclaw-secretary-reminders.timer
 systemctl --user restart openclaw-dashboard.service
 
 if command -v openclaw >/dev/null 2>&1; then

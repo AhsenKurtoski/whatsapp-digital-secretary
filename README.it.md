@@ -46,12 +46,27 @@ Web. Non è un prodotto WhatsApp Business API e non è affiliato a Meta o WhatsA
   richiesta Calendar in coda per l'approvazione.
 - **Follow-up email** — scrive il testo, applica lato server un template HTML responsive
   e mette l'email in coda per l'approvazione.
+- **Preventivi PDF** — genera un preventivo A4 con l'identità dell'attività (voci,
+  quantità, prezzo, sconto, IVA e totale ricalcolati dal sistema), lo tiene scaricabile
+  dalla dashboard e lo allega all'email solo dopo l'approvazione. Un preventivo demo è
+  a un clic.
+- **Storico reale dei contatti** — legge in sola lettura le trascrizioni locali di
+  OpenClaw, le unisce ai lead e alle richieste aperte e manda al titolare un riepilogo
+  WhatsApp compatto su chi ha scritto, cosa ha chiesto e cosa è ancora in sospeso.
+- **Promemoria al titolare** — ogni ora, con deduplicazione, un messaggio WhatsApp per
+  approvazioni ferme da troppo tempo, appuntamenti imminenti e token in scadenza.
 - **Multilingua** — risponde in italiano o inglese in base al messaggio del cliente.
 - **Conversazioni multiple** — una sessione isolata per numero, con coda per i picchi.
   Configura `maxConcurrent` in base a macchina e quota del provider.
 - **Anti-truffa e anti-jailbreak** — non chiede mai OTP, password, documenti o pagamenti;
   ignora role-play ed estrazione del prompt; non rivela chiavi, istruzioni, file interni
   o dati di altri clienti.
+- **Solo argomenti dell'attività** — domande sulla vita privata del titolare, sui suoi
+  social, su altre persone o compiti generici ricevono una sola riga neutra ("non sono
+  abilitato a rispondere su questo") e la conversazione torna ai servizi.
+- **A prova di raffica** — il debounce e la coda `collect` di WhatsApp uniscono i
+  messaggi rapidi, e il plugin annulla una risposta identica ripetuta entro 45 secondi:
+  cinque "ciao" non possono bloccare il bot.
 - **Riconoscimento admin** — solo il numero verificato del titolare riceve riepiloghi
   operativi; un cliente non può diventare admin dichiarandosi tale.
 - **Guardia errori tecnici** — un plugin locale sostituisce errori del provider, rate
@@ -76,7 +91,7 @@ Gateway OpenClaw (Node.js, servizio systemd utente)
         ├── sessione + contesto per ogni cliente
         ├── pool modelli: prima Gemini, fallback Groq
         ├── plugin secretary-guard (nasconde gli errori tecnici)
-        └── tool MCP di approvazione (richiesta email / calendario)
+        └── tool MCP di approvazione (richiesta email / calendario / preventivo PDF)
                  │
                  ▼
 Dashboard locale (Python, 127.0.0.1:8787)
@@ -156,6 +171,12 @@ Tutti i dati dell'attività vivono in `~/.config/digital-secretary/config.json`.
 | `max_concurrent` | Chiamate AI in parallelo (default `3`) |
 | `max_reply_lines` | Lunghezza massima della risposta WhatsApp |
 | `whatsapp_number` | Numero del bot, solo per visualizzazione |
+| `quote_prefix` | Prefisso dei numeri preventivo (default `PREV`) |
+| `vat_rate` | IVA percentuale predefinita, es. `22` |
+| `quote_valid_days` | Validità del preventivo in giorni (default `30`) |
+| `payment_terms` | Condizioni di pagamento stampate sul preventivo |
+| `reminder_min_age_minutes` | Attesa prima del promemoria su un'approvazione |
+| `reminder_cooldown_hours` | Intervallo minimo tra due promemoria uguali |
 
 Variabili d'ambiente come `BUSINESS_NAME`, `OWNER_NUMBER` e `DASHBOARD_PORT` hanno
 precedenza sul file JSON.
@@ -207,8 +228,8 @@ approvazione; la dashboard esegue l'azione approvata.
 - Header di sicurezza: CSP, `X-Frame-Options: DENY`, `nosniff`, referrer policy.
 - Rate limiting sul login e rotazione del token dalla scheda Sicurezza.
 - I segreti stanno in file `600` fuori dal repository.
-- Profilo tool `minimal`; code mode disattivato; al modello sono esposti solo i due
-  tool MCP di approvazione.
+- Profilo tool `minimal`; code mode disattivato; al modello sono esposti solo i tre
+  tool MCP di approvazione (email, calendario, preventivo).
 - Il plugin guard ripulisce gli errori tecnici prima che arrivino su WhatsApp.
 - I log oscurano numeri di telefono e contenuto dei messaggi per default.
 
@@ -224,11 +245,15 @@ node google-bridge/test_code_gs.js
 python3 monitor.py --self-test
 python3 watchdog.py --self-test
 python3 healthcheck.py --self-test
+python3 contacts.py --self-test
+python3 reminders.py --self-test
+python3 gateway_policy.py --self-test
 ```
 
-La suite copre configurazione, rendering della persona, archivio approvazioni, sicurezza
-del template email, autenticazione/CSRF della dashboard, stato del watchdog, punteggio
-Health/avvisi token e selezione automatica dei modelli. L'integrazione con un numero WhatsApp reale e un account Google
+La suite copre configurazione, rendering della persona, archivio approvazioni, preventivi
+PDF, storico contatti, promemoria, sicurezza del template email, autenticazione/CSRF
+della dashboard, stato del watchdog, punteggio Health/avvisi token e selezione
+automatica dei modelli. L'integrazione con un numero WhatsApp reale e un account Google
 reale non è testabile in CI; vedi [docs/TESTING.md](docs/TESTING.md) per la checklist
 manuale.
 

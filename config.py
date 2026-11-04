@@ -43,6 +43,14 @@ DEFAULTS: dict[str, object] = {
     "max_concurrent": 3,
     "max_reply_lines": 6,
     "whatsapp_number": "",
+    # Preventivi PDF
+    "quote_prefix": "PREV",
+    "vat_rate": 22,
+    "quote_valid_days": 30,
+    "payment_terms": "Pagamento: 50% alla conferma, saldo alla consegna.",
+    # Promemoria al titolare
+    "reminder_cooldown_hours": 12,
+    "reminder_min_age_minutes": 30,
 }
 
 _ENV_KEYS = {
@@ -57,6 +65,10 @@ _ENV_KEYS = {
     "city": "BUSINESS_CITY",
     "hours": "BUSINESS_HOURS",
     "dashboard_port": "DASHBOARD_PORT",
+    "quote_prefix": "QUOTE_PREFIX",
+    "vat_rate": "VAT_RATE",
+    "quote_valid_days": "QUOTE_VALID_DAYS",
+    "payment_terms": "PAYMENT_TERMS",
 }
 
 

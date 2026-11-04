@@ -237,6 +237,8 @@ select option{background:#081420}
     <button class="tab" data-tab="leads">Lead</button>
     <button class="tab" data-tab="alerts">Alert</button>
     <button class="tab" data-tab="approvals">Approvazioni <span id="approvalBadge" class="chip gold" style="padding:2px 6px;margin-left:4px">0</span></button>
+    <button class="tab" data-tab="quotes">Preventivi</button>
+    <button class="tab" data-tab="contacts">Contatti</button>
     <button class="tab" data-tab="keys">Chiavi</button>
     <button class="tab" data-tab="connectors">Connettori</button>
     <button class="tab" data-tab="security">Sicurezza</button>
@@ -453,6 +455,61 @@ select option{background:#081420}
       </div>
     </section>
 
+    <section id="tab-quotes" class="section">
+      <div class="grid">
+        <div class="card span12">
+          <div class="row" style="justify-content:space-between;margin-bottom:10px">
+            <div>
+              <h2 style="margin:0 0 4px">Preventivi in PDF</h2>
+              <div class="sub">Il PDF viene generato in locale con il layout dell'attività e allegato all'email solo dopo la tua approvazione.</div>
+            </div>
+            <div class="row" style="gap:8px">
+              <button class="btn" id="demoQuoteBtn" type="button">＋ Preventivo demo</button>
+              <button class="btn" id="refreshQuotesBtn" type="button">↻ Aggiorna</button>
+            </div>
+          </div>
+          <div class="chips" id="quoteCounts" style="margin-bottom:12px"></div>
+          <div class="table-wrap"><table><thead><tr><th>Creato</th><th>Numero</th><th>Cliente</th><th>Totale</th><th>Stato</th><th>PDF</th></tr></thead><tbody id="quotesBody"></tbody></table></div>
+        </div>
+        <div class="card span12">
+          <h2>Flusso del preventivo</h2>
+          <div class="steps">
+            <div><b>1.</b> Il cliente chiede un preventivo: il bot raccoglie voci, quantità e prezzi confermati.</div>
+            <div><b>2.</b> Il sistema calcola subtotale, sconto, IVA e totale: il modello non può inventare i numeri.</div>
+            <div><b>3.</b> Tu apri il PDF, controlli e approvi: parte l'email con l'allegato.</div>
+            <div><b>4.</b> Il PDF resta scaricabile dalla dashboard anche dopo l'invio.</div>
+          </div>
+          <div class="divider"></div>
+          <div class="sub">Senza email del cliente il preventivo non può essere inviato: la richiesta resta in attesa e puoi scaricare il PDF e inoltrarlo tu.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-contacts" class="section">
+      <div class="grid">
+        <div class="card span12">
+          <div class="row" style="justify-content:space-between;margin-bottom:10px">
+            <div>
+              <h2 style="margin:0 0 4px">Contatti WhatsApp</h2>
+              <div class="sub">Storico reale delle conversazioni del bot, unito a lead, richieste passate e approvazioni aperte.</div>
+            </div>
+            <div class="row" style="gap:8px">
+              <button class="btn primary" id="contactsSummaryBtn" type="button">Invia riepilogo su WhatsApp</button>
+              <button class="btn" id="remindersBtn" type="button">Invia promemoria</button>
+              <button class="btn" id="refreshContactsBtn" type="button">↻ Aggiorna</button>
+            </div>
+          </div>
+          <div class="chips" id="contactsCounts" style="margin-bottom:12px"></div>
+          <div class="table-wrap"><table><thead><tr><th>Ultimo contatto</th><th>Nome</th><th>Numero</th><th>Msg in/out</th><th>Intento</th><th>Score</th><th>Ultimo messaggio</th></tr></thead><tbody id="contactsBody"></tbody></table></div>
+        </div>
+        <div class="card span12">
+          <h2>Riepilogo pronto per WhatsApp</h2>
+          <div class="sub" style="margin-bottom:10px">Questo è il testo che ricevi sul tuo numero: contatti, messaggi, richieste aperte e ultima richiesta di ciascuno.</div>
+          <pre class="pre" id="contactsSummary">Nessun riepilogo disponibile.</pre>
+        </div>
+      </div>
+    </section>
+
     <section id="tab-keys" class="section">
       <div class="grid">
         <div class="card span6">
@@ -650,7 +707,7 @@ select option{background:#081420}
 
 <script>
 const $ = (id) => document.getElementById(id);
-const state = { status:null, leads:[], alerts:[], approvals:null, tab:'overview', security:null, connectors:null, health:null };
+const state = { status:null, leads:[], alerts:[], approvals:null, quotes:[], contacts:null, tab:'overview', security:null, connectors:null, health:null };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = (v) => { if(!v) return '—'; const d = new Date(v); return isNaN(d) ? String(v) : d.toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); };
 const fmtMs = (v) => { if(!v) return '—'; const d = new Date(Number(v)); return isNaN(d) ? '—' : d.toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); };
@@ -887,7 +944,13 @@ async function loadHealth(force=false){
     catch(e){ if(e.message!=='auth') toast('Health: '+e.message,true); }
   }
 }
-function approvalType(x){ return x.type==='calendar' ? 'Appuntamento' : 'Email'; }
+function moneyText(value, currency){
+  if(value===null || value===undefined || value==='') return '—';
+  const cur=String(currency||'EUR').toUpperCase();
+  const n=Number(value).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return cur==='EUR' ? '€ '+n : n+' '+cur;
+}
+function approvalType(x){ return x.type==='calendar' ? 'Appuntamento' : (x.type==='quote' ? 'Preventivo' : 'Email'); }
 function approvalStatus(x){
   const s=String(x.status||'');
   const cls=s==='approved'?'ok':(s==='failed'?'bad':(s==='rejected'?'gold':''));
@@ -895,12 +958,18 @@ function approvalStatus(x){
 }
 function approvalCard(x){
   const p=x.payload||{};
+  const isQuote=x.type==='quote';
   const details = x.type==='calendar'
     ? `<div class="kv"><span>Quando</span><span>${esc(fmtDate(p.start))} → ${esc(fmtDate(p.end))}</span></div>
        <div class="kv"><span>Invitati</span><span>${esc((p.attendees||[]).join(', ')||'nessuno')}</span></div>`
-    : `<div class="kv"><span>A</span><span>${esc(p.to||'—')}</span></div>
-       <div class="kv"><span>Oggetto</span><span>${esc(p.subject||'—')}</span></div>`;
+    : isQuote
+      ? `<div class="kv"><span>A</span><span>${esc(p.to||'—')}</span></div>
+         <div class="kv"><span>Numero</span><span class="mono">${esc(p.number||'—')}</span></div>
+         <div class="kv"><span>Totale</span><span>${esc(moneyText(p.totals?.total,p.currency))}</span></div>`
+      : `<div class="kv"><span>A</span><span>${esc(p.to||'—')}</span></div>
+         <div class="kv"><span>Oggetto</span><span>${esc(p.subject||'—')}</span></div>`;
   const body = x.type==='calendar' ? (p.description||p.location||'') : (p.body||'');
+  const pdfLink = isQuote && p.pdf ? `<div class="row" style="margin-top:10px"><a class="btn" href="/api/quotes/${encodeURIComponent(x.id)}.pdf" target="_blank" rel="noopener">Scarica PDF</a></div>` : '';
   return `<div class="card" style="margin-bottom:10px;padding:14px">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
       <div class="row"><span class="chip violet">${approvalType(x)}</span>${approvalStatus(x)}</div>
@@ -910,6 +979,7 @@ function approvalCard(x){
     <div class="kv"><span>Titolo</span><span>${esc(x.type==='calendar'?(p.summary||'—'):(p.subject||'—'))}</span></div>
     ${details}
     <div class="kv"><span>Richiesta</span><span>${esc(x.reason||'—')}</span></div>
+    ${pdfLink}
     ${x.type==='email'&&p.html?`<details class="mailprev"><summary>Anteprima email HTML</summary><iframe title="Anteprima email" sandbox loading="lazy" srcdoc="${esc(p.html)}"></iframe></details>`:''}
     ${body?`<pre class="pre" style="max-height:180px;margin:10px 0">${esc(body)}</pre>`:''}
     ${x.status==='pending'?`<div class="row"><button class="btn primary" data-approve="${esc(x.id)}" type="button">Approva e ${x.type==='calendar'?'crea':'invia'}</button><button class="btn danger" data-reject="${esc(x.id)}" type="button">Rifiuta</button></div>`:''}
@@ -954,6 +1024,64 @@ $('approvalsList').addEventListener('click', async (e)=>{
   }catch(err){ toast('Errore: '+err.message,true); }
   finally{ (a||r).disabled=false; }
 });
+function renderQuotes(d){
+  const rows=(d&&d.quotes)||state.quotes||[]; state.quotes=rows;
+  const c=(d&&d.counts)||{};
+  if($('quoteCounts')) $('quoteCounts').innerHTML = `<span class="chip gold">${c.quotes_pending??0} in attesa</span><span class="chip ok">${c.approved??0} inviate</span><span class="chip">${rows.length} preventivi</span>`;
+  if(!$('quotesBody')) return;
+  $('quotesBody').innerHTML = rows.length ? rows.map(x=>{
+    const status = x.status==='approved'?'<span class="chip ok">inviato</span>':(x.status==='failed'?'<span class="chip bad">fallito</span>':(x.status==='rejected'?'<span class="chip gold">rifiutato</span>':'<span class="chip gold">da approvare</span>'));
+    return `<tr><td class="muted">${fmtDate(x.created_at)}</td><td class="mono">${esc(x.number||'—')}</td><td>${esc(x.client||'—')}<div class="muted" style="font-size:11px">${esc(x.email||'')}</div></td><td>${esc(moneyText(x.total,x.currency))}</td><td>${status}</td><td>${x.has_pdf?`<a class="btn" href="/api/quotes/${encodeURIComponent(x.id)}.pdf" target="_blank" rel="noopener">PDF</a>`:'<span class="muted">—</span>'}</td></tr>`;
+  }).join('') : '<tr><td colspan="6" class="empty">Nessun preventivo. Creane uno demo per vedere il layout.</td></tr>';
+}
+async function loadQuotes(){
+  try{ const r=await api('/api/quotes'); renderQuotes(r.data||{}); }
+  catch(e){ if(e.message!=='auth') toast('Preventivi: '+e.message,true); }
+}
+$('refreshQuotesBtn').addEventListener('click',loadQuotes);
+$('demoQuoteBtn').addEventListener('click', async ()=>{
+  const b=$('demoQuoteBtn'); b.disabled=true; const old=b.textContent; b.textContent='Genero…';
+  try{
+    const r=await api('/api/quotes/demo',{method:'POST',body:'{}'});
+    toast('Preventivo demo '+(r.number||'')+' creato: PDF pronto.');
+    await loadQuotes(); await loadApprovals(); load();
+  }catch(e){ toast('Preventivo: '+e.message,true); }
+  finally{ b.disabled=false; b.textContent=old; }
+});
+
+function renderContacts(d){
+  const data=(d&&d.contacts!==undefined)?d:(state.contacts||{}); state.contacts=data;
+  const rows=data.contacts||[];
+  const pending=Object.values(data.pending_by_phone||{}).reduce((a,b)=>a+b,0);
+  if($('contactsCounts')) $('contactsCounts').innerHTML = `<span class="chip">${data.total??rows.length} contatti</span><span class="chip">${data.messages??0} messaggi</span>` + (pending?`<span class="chip gold">${pending} richieste aperte</span>`:'');
+  if($('contactsSummary')) $('contactsSummary').textContent=data.summary||'Nessun riepilogo disponibile.';
+  if(!$('contactsBody')) return;
+  $('contactsBody').innerHTML = rows.length ? rows.map(x=>{
+    const last=((x.last_messages||[]).slice(-1)[0]||{}).text||'';
+    return `<tr><td class="muted">${fmtDate(x.last_at)}</td><td>${esc(x.name||'—')}</td><td class="mono">${esc(x.phone||'—')}</td><td>${x.messages_in??0} / ${x.messages_out??0}</td><td>${intentLabel(x.intent)}</td><td>${scoreChip(x.score)}</td><td>${esc(last.slice(0,180))}</td></tr>`;
+  }).join('') : '<tr><td colspan="7" class="empty">Nessun contatto WhatsApp registrato.</td></tr>';
+}
+async function loadContacts(){
+  try{ const r=await api('/api/contacts'); renderContacts(r.data||{}); }
+  catch(e){ if(e.message!=='auth') toast('Contatti: '+e.message,true); }
+}
+$('refreshContactsBtn').addEventListener('click',loadContacts);
+$('contactsSummaryBtn').addEventListener('click', async ()=>{
+  if(!confirm('Inviare il riepilogo contatti sul tuo WhatsApp?')) return;
+  const b=$('contactsSummaryBtn'); b.disabled=true; const old=b.textContent; b.textContent='Invio…';
+  try{ const r=await api('/api/contacts/summary',{method:'POST',body:JSON.stringify({send:true})}); toast(r.sent?'Riepilogo inviato sul tuo WhatsApp.':'Riepilogo preparato (invio non eseguito).',!r.sent); }
+  catch(e){ toast('Riepilogo: '+e.message,true); }
+  finally{ b.disabled=false; b.textContent=old; }
+});
+$('remindersBtn').addEventListener('click', async ()=>{
+  const b=$('remindersBtn'); b.disabled=true; const old=b.textContent; b.textContent='Invio…';
+  try{
+    const r=await api('/api/reminders/run',{method:'POST',body:JSON.stringify({force:true})});
+    toast(r.sent?'Promemoria inviato su WhatsApp.':'Nessun promemoria da inviare.',!r.ok);
+  }catch(e){ toast('Promemoria: '+e.message,true); }
+  finally{ b.disabled=false; b.textContent=old; }
+});
+
 function renderKeys(){
   const k=state.status?.keys||{};
   $('geminiCount').textContent = `${k.gemini?.count??0} / ${k.gemini?.max??5}`;
@@ -981,6 +1109,8 @@ function switchTab(name){
   if(name==='security') loadSecurity();
   if(name==='connectors') loadConnectors();
   if(name==='approvals') loadApprovals();
+  if(name==='quotes') loadQuotes();
+  if(name==='contacts') loadContacts();
   if(name==='health') loadHealth();
   if(name==='system') $('logsBox').textContent='Premi “Carica log”.';
 }
@@ -1153,7 +1283,7 @@ $('rotateTokenBtn').addEventListener('click', async ()=>{
 document.addEventListener('keydown',(e)=>{
   if(e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
   if(e.metaKey||e.ctrlKey||e.altKey) return;
-  const tabs=['overview','health','leads','alerts','approvals','keys','connectors','security','system'];
+  const tabs=['overview','health','leads','alerts','approvals','quotes','contacts','keys','connectors','security','system'];
   if(/^[1-9]$/.test(e.key)) switchTab(tabs[Number(e.key)-1]);
   if(e.key.toLowerCase()==='r') load();
 });

@@ -72,7 +72,10 @@ class PersonaTests(unittest.TestCase):
             self.assertEqual(saved["dashboard_port"], 8799)
             self.assertEqual(saved["max_concurrent"], 7)
             self.assertEqual(saved["max_reply_lines"], 4)
-            self.assertEqual((workspace / "AGENTS.md").read_text(encoding="utf-8").count("Officina Demo"), 3)
+            # La persona cita il nome dell'attività anche nelle regole di perimetro.
+            self.assertGreaterEqual(
+                (workspace / "AGENTS.md").read_text(encoding="utf-8").count("Officina Demo"), 3
+            )
 
 
 if __name__ == "__main__":

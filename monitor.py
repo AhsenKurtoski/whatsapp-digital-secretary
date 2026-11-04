@@ -32,6 +32,9 @@ CLI = config.openclaw_cli()
 OWNER = str(CFG.get("owner_number") or "")
 ROME = config.resolve_timezone()
 SEEN_MAX = 1000
+# Dopo questo tempo lo stesso tipo di alert può essere rimandato: un cliente che
+# torna dopo giorni non deve restare invisibile per sempre.
+ALERT_COOLDOWN_MINUTES = 720
 
 
 def now_iso():
@@ -346,7 +349,10 @@ def process(db, state_path, leads_path, alerts_path, dry=False):
             hot = is_hot(e["text"])
             low = norm(e["text"])
             email_req = bool(EMAIL_ADDRESS.search(e["text"])) or bool(re.search(r"\b(email|e-mail|mail)\b", low))
-            alerted = state["alerted"].setdefault(sid, [])
+            alerted = state["alerted"].setdefault(sid, {})
+            if not isinstance(alerted, dict):  # migra lo stato del formato precedente
+                alerted = {str(kind): 0 for kind in alerted}
+                state["alerted"][sid] = alerted
             if scam:
                 kind = "scam"
             elif hot:
@@ -359,7 +365,15 @@ def process(db, state_path, leads_path, alerts_path, dry=False):
                 kind = "lead"
             else:
                 kind = None
-            if kind and kind not in alerted:
+            cooldown_ms = ALERT_COOLDOWN_MINUTES * 60 * 1000
+            if kind:
+                try:
+                    last_alert = int(alerted.get(kind) or 0)
+                except Exception:
+                    last_alert = 0
+                if last_alert and now_ms - last_alert < cooldown_ms:
+                    kind = None
+            if kind:
                 text = alert_text(kind, s["phone"], e["text"], matches, score, intent)
                 sent = send_whatsapp(text, dry=dry)
                 append_jsonl(alerts_path, {
@@ -369,8 +383,11 @@ def process(db, state_path, leads_path, alerts_path, dry=False):
                 })
                 stats["alerts"] += 1
                 stats["new"] += 1 if kind == "new" else 0
-                alerted.append(kind)
-                state["alerted"][sid] = alerted[-20:]
+                alerted[kind] = now_ms
+                if len(alerted) > 20:
+                    state["alerted"][sid] = dict(
+                        sorted(alerted.items(), key=lambda item: item[1], reverse=True)[:20]
+                    )
             state["seen"].append(e["id"])
             first_contact = False
             if e["seq"] > last:

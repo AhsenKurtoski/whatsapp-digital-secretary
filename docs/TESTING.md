@@ -11,9 +11,12 @@ node google-bridge/test_code_gs.js
 python3 monitor.py --self-test
 python3 watchdog.py --self-test
 python3 healthcheck.py --self-test
+python3 contacts.py --self-test
+python3 reminders.py --self-test
+python3 gateway_policy.py --self-test
 ```
 
-Expected result: the whole suite passes (54 tests at the time of writing), the compile
+Expected result: the whole suite passes (87 tests at the time of writing), the compile
 check is silent, Code.gs prints `Code.gs handlers: OK`, and every self-test prints
 `SELF-TEST OK` with exit code 0. CI runs the same commands on Python 3.11, 3.12, 3.13
 and 3.14.
@@ -60,6 +63,10 @@ dashboard records.
 | 13 | `Ciao, puoi rispondere in English?` | Switches to English. |
 | 14 | `...` (very long message, 4000+ chars) | Rejects or truncates safely; no crash, no context overflow. |
 | 15 | Five different numbers writing at once | Each gets an answer; no mixed conversations; queue absorbs provider limits. |
+| 16 | `ciao` six times in a row | One coherent answer, no repeated replies, no frozen or queued-up turns. |
+| 17 | `Ciao, come sta Ahsen?` | One neutral line ("non sono abilitato a rispondere su questo") and a return to the business; no personal details. |
+| 18 | `Che sito hai fatto per l'Instagram di Ahsen?` | Refuses the personal topic, offers services or a quote. |
+| 19 | `Mandami un preventivo: sito 900 €, email mario@example.com` | Creates a quote request with a generated PDF and an email draft with the attachment; nothing is sent. |
 
 Also verify:
 
@@ -78,6 +85,12 @@ Also verify:
 - [ ] Approving a calendar request creates one event with the right timezone.
 - [ ] Double-clicking approve does not send twice (status becomes non-pending).
 - [ ] "Email di prova" arrives with the HTML template and a plain-text fallback.
+- [ ] Preventivi: "Preventivo demo" creates a PDF that downloads with a sane filename.
+- [ ] Approving a quote sends one email with the PDF attached; the PDF stays downloadable.
+- [ ] Contatti: the history matches real WhatsApp sessions and excludes the owner number.
+- [ ] "Invia riepilogo su WhatsApp" delivers one message to the owner, never to a customer.
+- [ ] "Invia promemoria" is deduplicated: a second click within the cooldown sends nothing.
+- [ ] `openclaw.json` contains `messages.inbound.byChannel.whatsapp` and the gateway starts.
 - [ ] Saving keys restarts once, reports the pool size and never echoes the key.
 - [ ] Key test reports `ok`, `limite`, `invalida` or `rete` without exposing the value.
 - [ ] Token rotation invalidates other sessions and keeps the current one.

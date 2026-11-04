@@ -6,7 +6,34 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Automatic PDF quotes** (`quote_pdf.py`): a dependency-free PDF 1.4 writer draws a
+  branded A4 quote with gradient accent, client block, item table, discount, VAT and
+  totals. Totals are always recalculated server-side, the file lives in the private
+  `~/.openclaw/secretary/quotes` folder, is downloadable from the dashboard and is
+  attached to the approval email (both `gog --attach` and the Apps Script bridge).
+  `request_quote` is available to the bot as a third approval tool, and a demo quote can
+  be generated from the Preventivi tab.
+- **Real WhatsApp contact history** (`contacts.py`): read-only aggregation of the local
+  OpenClaw sessions and transcripts, merged with classified leads and open approvals.
+  The dashboard has a Contatti tab with the history and can send the owner a compact
+  WhatsApp summary of past requests.
+- **Owner reminders** (`reminders.py` + hourly systemd timer): pending approvals,
+  upcoming appointments and expiring tokens in one deduplicated WhatsApp message.
+- **Business-only scope** in the persona: personal questions about the owner or other
+  people get one neutral refusal and the conversation returns to the business.
+- **Burst protection**: `gateway_policy.py` adds the documented OpenClaw WhatsApp
+  debounce/queue settings without overriding user choices, and the guard plugin cancels
+  an identical reply repeated within 45 seconds.
+
 ### Fixed
+
+- **The monitor no longer silences a contact forever**: alert deduplication was a
+  permanent list per session, so a returning customer never produced a new hot/email
+  alert. Alerts now expire after 12 hours and the old state format is migrated.
+- **Terms with accented characters and the euro sign render correctly in PDF quotes**
+  (WinAnsi/cp1252 text encoding).
 
 - **The Docker dashboard now ships `healthcheck.py`**: without it the Health tab scan
   failed inside the container (`docker-entrypoint.sh` copies it into the data volume on
@@ -18,6 +45,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 - Added `.editorconfig`; `CONTRIBUTING.md`, the pull request template and
   `docs/TESTING.md` now list the healthcheck self-test and the real test count.
+- `scripts/install.sh` installs the new modules and the reminders timer, and applies
+  the WhatsApp burst policy to `openclaw.json` before restarting the gateway.
 - The Code of Conduct points to a concrete private reporting route.
 
 ## [1.1.1] - 2026-11-02

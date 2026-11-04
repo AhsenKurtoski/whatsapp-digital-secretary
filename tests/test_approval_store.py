@@ -54,6 +54,61 @@ class ApprovalStoreTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             approval_store.set_status(row["id"], "rejected")
 
+    def test_quote_request_generates_pdf(self):
+        row = approval_store.append_request(
+            "quote",
+            {
+                "client_name": "Mario Rossi",
+                "client_email": "cliente@example.com",
+                "items": [{"description": "Sito vetrina", "qty": 1, "unit_price": 900}],
+            },
+            client_name="Mario Rossi",
+            client_phone="+393331112222",
+            reason="preventivo richiesto",
+        )
+        payload = row["payload"]
+        self.assertEqual(row["type"], "quote")
+        self.assertTrue(payload["number"].startswith("PREV-"))
+        self.assertTrue(payload["pdf"].endswith(".pdf"))
+        self.assertEqual(payload["totals"]["total"], 1098.0)
+        self.assertEqual(payload["to"], "cliente@example.com")
+        self.assertIn("html", payload)
+        path = approval_store.quote_path(row)
+        self.assertIsNotNone(path)
+        self.assertEqual(path.read_bytes()[:8], b"%PDF-1.4")
+
+    def test_quote_requires_a_valid_email(self):
+        with self.assertRaises(ValueError):
+            approval_store.append_request(
+                "quote",
+                {"client_name": "Mario", "items": [{"description": "Sito", "unit_price": 10}]},
+            )
+
+    def test_duplicate_quote_returns_the_same_pdf(self):
+        payload = {
+            "client_name": "Mario Rossi",
+            "client_email": "cliente@example.com",
+            "items": [{"description": "Sito vetrina", "unit_price": 900}],
+        }
+        first = approval_store.append_request("quote", payload)
+        second = approval_store.append_request("quote", payload)
+        self.assertEqual(first["id"], second["id"])
+        self.assertEqual(first["payload"]["pdf"], second["payload"]["pdf"])
+
+    def test_mcp_quote_tool_creates_a_pending_request(self):
+        import approval_mcp
+
+        result = approval_mcp._handle_tool("request_quote", {
+            "client_name": "Mario Rossi",
+            "client_email": "cliente@example.com",
+            "items": [{"description": "Sito vetrina", "unit_price": 900}],
+            "reason": "richiesta cliente",
+        })
+        self.assertFalse(result["isError"])
+        self.assertEqual(result["structuredContent"]["type"], "quote")
+        self.assertTrue(result["structuredContent"]["pdf"])
+        self.assertIn("attesa di approvazione", result["content"][0]["text"])
+
     def test_html_escapes_untrusted_body(self):
         row = approval_store.append_request(
             "email",

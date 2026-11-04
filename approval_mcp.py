@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """MCP locale per la segreteria.
 
-Espone solo due tool che creano una richiesta in attesa di approvazione:
+Espone solo tre tool che creano una richiesta in attesa di approvazione:
 - request_email
 - request_calendar
+- request_quote  (preventivo PDF generato in locale e allegato all'email)
 
-Non esiste un tool per inviare email o creare eventi: l'azione la esegue
-solo la dashboard privata dopo il login e l'approvazione del titolare.
+Non esiste un tool per inviare email, creare eventi o scaricare file: l'azione
+la esegue solo la dashboard privata dopo il login e l'approvazione del titolare.
 """
 from __future__ import annotations
 
@@ -46,6 +47,51 @@ TOOLS = [
         },
     },
     {
+        "name": "request_quote",
+        "description": (
+            "Prepara un preventivo professionale in PDF e l'email con l'allegato, da far "
+            "approvare al titolare. Non invia nulla e non mostra prezzi non confermati: usa "
+            "solo voci, quantità e prezzi che il cliente ha approvato o che il titolare ha "
+            "indicato. Il sistema ricalcola subtotale, sconto, IVA e totale."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "client_name": {"type": "string", "description": "Nome del cliente."},
+                "client_email": {"type": "string", "description": "Email del cliente: obbligatoria per inviare il preventivo."},
+                "client_company": {"type": "string", "description": "Azienda del cliente, se nota."},
+                "client_phone": {"type": "string", "description": "Numero WhatsApp del cliente, se noto."},
+                "client_address": {"type": "string", "description": "Indirizzo o città del cliente, se nota."},
+                "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 40,
+                    "description": "Voci del preventivo. I totali vengono calcolati dal sistema.",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "description": {"type": "string", "description": "Descrizione della voce."},
+                            "qty": {"type": "number", "description": "Quantità, default 1."},
+                            "unit": {"type": "string", "description": "Unità, es. forfait, ora, mese."},
+                            "unit_price": {"type": "number", "description": "Prezzo unitario in euro, IVA esclusa."},
+                        },
+                        "required": ["description", "unit_price"],
+                    },
+                },
+                "discount_pct": {"type": "number", "description": "Sconto percentuale, 0-100."},
+                "vat_pct": {"type": "number", "description": "IVA percentuale; se assente usa quella dell'attività."},
+                "valid_days": {"type": "integer", "description": "Validità del preventivo in giorni."},
+                "notes": {"type": "string", "description": "Note o esclusioni riportate nel PDF."},
+                "subject": {"type": "string", "description": "Oggetto dell'email di accompagnamento."},
+                "body": {"type": "string", "description": "Testo semplice dell'email; se assente viene generato dal sistema."},
+                "reason": {"type": "string", "description": "Perché il titolare dovrebbe approvare questo preventivo."},
+            },
+            "required": ["client_name", "client_email", "items"],
+        },
+    },
+    {
         "name": "request_calendar",
         "description": (
             "Crea una richiesta di appuntamento da far approvare al titolare. "
@@ -81,20 +127,27 @@ def _send(payload: dict) -> None:
     sys.stdout.flush()
 
 
-def _result(request_id: str, kind: str) -> dict:
-    label = "email" if kind == "email" else "appuntamento"
+def _result(request_id: str, kind: str, extra: dict | None = None) -> dict:
+    label = {"email": "email", "calendar": "appuntamento", "quote": "preventivo PDF"}.get(kind, kind)
+    detail = ""
+    if extra:
+        if extra.get("number"):
+            detail = f" Numero {extra['number']}"
+            if extra.get("total") is not None:
+                detail += f", totale {extra['total']} {extra.get('currency') or 'EUR'}"
+            detail += "."
     return {
         "content": [
             {
                 "type": "text",
                 "text": (
-                    f"Richiesta {request_id} creata per {label}. "
-                    "È in attesa di approvazione del titolare: non dire al cliente che è già stato inviato o creato. "
-                    "Rispondi che hai preparato la richiesta e che il titolare la approva."
+                    f"Richiesta {request_id} creata per {label}.{detail} "
+                    "È in attesa di approvazione del titolare: non dire al cliente che è già stato inviato, "
+                    "creato o consegnato. Rispondi che hai preparato la richiesta e che il titolare la approva."
                 ),
             }
         ],
-        "structuredContent": {"request_id": request_id, "status": "pending", "type": kind},
+        "structuredContent": {"request_id": request_id, "status": "pending", "type": kind, **(extra or {})},
         "isError": False,
     }
 
@@ -114,6 +167,40 @@ def _handle_tool(name: str, arguments: dict) -> dict:
             reason=str(arguments.get("reason") or ""),
         )
         return _result(request["id"], "email")
+    if name == "request_quote":
+        # I campi opzionali assenti non devono sovrascrivere i default del sistema.
+        arguments = {key: value for key, value in arguments.items() if value is not None}
+        request = append_request(
+            "quote",
+            {
+                "to": arguments.get("client_email") or arguments.get("to"),
+                "client_name": arguments.get("client_name"),
+                "client_email": arguments.get("client_email"),
+                "client_company": arguments.get("client_company"),
+                "client_address": arguments.get("client_address"),
+                "items": arguments.get("items") or [],
+                "discount_pct": arguments.get("discount_pct") or 0,
+                "vat_pct": arguments.get("vat_pct"),
+                "valid_days": arguments.get("valid_days"),
+                "notes": arguments.get("notes") or "",
+                "subject": arguments.get("subject") or "",
+                "body": arguments.get("body") or "",
+            },
+            client_name=str(arguments.get("client_name") or ""),
+            client_phone=str(arguments.get("client_phone") or ""),
+            reason=str(arguments.get("reason") or ""),
+        )
+        payload = request.get("payload") or {}
+        return _result(
+            request["id"],
+            "quote",
+            {
+                "number": payload.get("number"),
+                "total": (payload.get("totals") or {}).get("total"),
+                "currency": payload.get("currency"),
+                "pdf": bool(payload.get("pdf")),
+            },
+        )
     if name == "request_calendar":
         request = append_request(
             "calendar",

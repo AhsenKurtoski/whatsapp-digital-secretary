@@ -47,12 +47,26 @@ Meta or WhatsApp.
   Calendar request for approval.
 - **Email follow-ups** — writes a plain-text email, applies a responsive HTML
   template server-side, and queues it for approval.
+- **PDF quotes** — builds a branded A4 quote (items, quantity, unit price, discount,
+  VAT and totals recalculated server-side), keeps it downloadable from the dashboard,
+  and attaches it to the approval email. A demo quote is one click away.
+- **Real contact history** — reads the local OpenClaw transcripts in read-only mode,
+  merges them with classified leads and open requests, and sends the owner a compact
+  WhatsApp summary of who wrote, what they asked and what is still pending.
+- **Owner reminders** — an hourly, deduplicated WhatsApp reminder for approvals waiting
+  too long, upcoming appointments and expiring tokens.
 - **Multilingual** — answers in Italian or English based on the customer's message.
 - **Multiple conversations** — one isolated session per phone number, with a queue
   for bursts. Configure `maxConcurrent` for your machine and provider quota.
 - **Anti-fraud and anti-jailbreak** — never asks for OTPs, passwords, documents or
   payments; ignores role-play and prompt-extraction attempts; never reveals keys,
   prompts, internal files or other customers' data.
+- **Business-only scope** — questions about the owner's private life, his social
+  profiles, other people or unrelated tasks get one neutral line ("non sono abilitato
+  a rispondere su questo") and the conversation returns to the business.
+- **Burst-safe** — WhatsApp inbound debounce and `collect` queueing coalesce rapid
+  messages, and the guard plugin cancels an identical reply repeated within 45 seconds,
+  so five "ciao" messages cannot freeze the bot.
 - **Admin recognition** — only the owner's verified number gets operational
   summaries; a customer cannot become admin by claiming to be the owner.
 - **Technical-error guard** — a local plugin replaces provider errors, rate limits
@@ -77,7 +91,7 @@ OpenClaw gateway (Node.js, systemd user service)
         ├── per-customer session + context
         ├── model pool: Gemini first, Groq fallback
         ├── secretary-guard plugin (scrubs technical errors)
-        └── approval MCP tools (request email / calendar)
+        └── approval MCP tools (request email / calendar / PDF quote)
                  │
                  ▼
 Local dashboard (Python, 127.0.0.1:8787)
@@ -157,6 +171,12 @@ All business data lives in `~/.config/digital-secretary/config.json`. Start from
 | `max_concurrent` | AI calls processed in parallel (default `3`) |
 | `max_reply_lines` | Maximum WhatsApp reply length |
 | `whatsapp_number` | Bot number, for display only |
+| `quote_prefix` | Prefix for quote numbers (default `PREV`) |
+| `vat_rate` | Default VAT percentage, e.g. `22` |
+| `quote_valid_days` | Quote validity in days (default `30`) |
+| `payment_terms` | Payment terms printed on every quote |
+| `reminder_min_age_minutes` | How long an approval may wait before a reminder |
+| `reminder_cooldown_hours` | Minimum gap between two reminders for the same item |
 
 Environment variables such as `BUSINESS_NAME`, `OWNER_NUMBER` and
 `DASHBOARD_PORT` override the JSON file.
@@ -196,7 +216,8 @@ code and verifies Gmail. Only loopback redirects are accepted and the code is ne
 logged.
 
 The bot itself has no direct Gmail/Calendar tool. It can only create an approval
-request; the dashboard executes the approved action.
+request; the dashboard executes the approved action. For quotes, the PDF is generated
+locally when the request is created and is attached only after approval.
 
 ## Security
 
@@ -206,8 +227,8 @@ request; the dashboard executes the approved action.
 - Security headers: CSP, `X-Frame-Options: DENY`, `nosniff`, referrer policy.
 - Login rate limiting and token rotation from the Security tab.
 - Secrets are stored in `600` files outside the repository.
-- Tool profile is `minimal`; code mode is disabled; only the two approval MCP tools
-  are exposed to the model.
+- Tool profile is `minimal`; code mode is disabled; only the three approval MCP tools
+  (email, calendar, quote) are exposed to the model.
 - The guard plugin scrubs technical errors before they reach WhatsApp.
 - Logs redact phone numbers and message content by default.
 
@@ -222,6 +243,9 @@ node google-bridge/test_code_gs.js
 python3 monitor.py --self-test
 python3 watchdog.py --self-test
 python3 healthcheck.py --self-test
+python3 contacts.py --self-test
+python3 reminders.py --self-test
+python3 gateway_policy.py --self-test
 ```
 
 The suite covers configuration, persona rendering, approval storage, email template

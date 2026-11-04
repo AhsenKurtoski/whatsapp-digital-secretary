@@ -37,15 +37,18 @@ This project runs on a personal computer or a private VPS. It is designed to pro
 | WhatsApp session | `~/.openclaw` | Filesystem permissions, never committed |
 | Google bridge secret | `~/.openclaw/secretary/google_bridge.json` | `600`, HMAC-SHA256 |
 | Conversations / leads | Local SQLite and JSONL under `~/.openclaw` | Local only, no cloud dashboard |
+| Quote PDFs | `~/.openclaw/secretary/quotes` | `700` directory, `600` files, served only after dashboard login |
 
 ### Trust boundaries
 
 - **WhatsApp inbound messages are untrusted.** They are validated, length-limited and
   never interpreted as instructions beyond the model's persona. Prompt injection is
   mitigated by a narrow tool profile and by never exposing secrets to the model.
-- **The model is untrusted.** It can only request an email or a calendar event through
-  two MCP tools. It cannot execute code, read files, change configuration, send
-  messages as the owner, or approve its own requests.
+- **The model is untrusted.** It can only request an email, a calendar event or a PDF
+  quote through three MCP tools. It cannot execute code, read arbitrary files, change
+  configuration, send messages as the owner, download the PDF, or approve its own
+  requests. Quote totals are recalculated from validated numbers, and the attachment
+  path is confined to the private quotes directory.
 - **The dashboard browser is trusted only after token login.** Mutations require a
   same-origin `Origin` header and `X-Requested-With`, which blocks cross-site form
   posts. The cookie is HttpOnly and SameSite=Strict.
@@ -71,6 +74,7 @@ This project runs on a personal computer or a private VPS. It is designed to pro
 - [ ] The setup wizard password/token has been rotated after the first login.
 - [ ] Backups of `~/.openclaw` are encrypted.
 - [ ] Logs are reviewed for unexpected `login failed` or `csrf` entries.
+- [ ] `~/.openclaw/secretary/quotes` is `700` and quote PDFs are `600`.
 - [ ] Third-party dependencies are updated (`npm audit` for OpenClaw, `pip-audit` if
   extra Python packages are added).
 

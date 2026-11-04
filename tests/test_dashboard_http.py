@@ -8,6 +8,7 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 import support  # noqa: F401
+import approval_store
 import dashboard
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +23,8 @@ class DashboardTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         dashboard.HTML_FILE = str(ROOT / "dashboard.html")
+        # La cartella base dei test è temporanea: collega esplicitamente la coda.
+        dashboard.approval_store = approval_store
         cls.server = ThreadingHTTPServer(("127.0.0.1", 0), dashboard.Handler)
         dashboard.PORT = cls.server.server_port
         cls.base = f"http://127.0.0.1:{cls.server.server_port}"
@@ -227,6 +230,61 @@ class DashboardTests(unittest.TestCase):
             finally:
                 dashboard.run = original
             self.assertEqual(value, "02/11 13:31", stamp)
+
+    def test_quotes_endpoint_requires_token(self):
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            self.get("/api/quotes")
+        self.assertEqual(ctx.exception.code, 401)
+
+    def test_contacts_endpoint_requires_token(self):
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            self.get("/api/contacts")
+        self.assertEqual(ctx.exception.code, 401)
+
+    def test_quote_pdf_download_requires_token(self):
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            self.get("/api/quotes/apr-20260101-000000-abcd.pdf")
+        self.assertEqual(ctx.exception.code, 401)
+
+    def test_demo_quote_creates_a_downloadable_pdf(self):
+        with self.post_json("/api/quotes/demo", {}, dashboard.DASH_TOKEN) as response:
+            payload = json.loads(response.read())
+        self.assertTrue(payload["ok"], payload)
+        quote_id = payload["id"]
+        self.assertTrue(payload["number"].startswith("PREV-"))
+        with self.get(f"/api/quotes/{quote_id}.pdf", dashboard.DASH_TOKEN) as response:
+            data = response.read()
+            self.assertEqual(response.headers.get("Content-Type"), "application/pdf")
+            self.assertIn("attachment", response.headers.get("Content-Disposition", ""))
+        self.assertTrue(data.startswith(b"%PDF-1.4"))
+        self.assertIn(b"PREVENTIVO", data)
+
+    def test_quote_email_includes_the_pdf_attachment(self):
+        row = approval_store.append_request(
+            "quote",
+            {
+                "client_name": "Mario Rossi",
+                "client_email": "cliente@example.com",
+                "items": [{"description": "Sito vetrina", "unit_price": 900}],
+            },
+        )
+        captured = {}
+        original_run = dashboard.run
+        original_gog = dashboard.GOG
+        dashboard.GOG = "/usr/bin/true"
+
+        def fake(cmd, **kwargs):
+            captured["cmd"] = cmd
+            return 0, '{"id":"msg-1"}', ""
+
+        dashboard.run = fake
+        try:
+            result = dashboard._execute_email(row["payload"])
+        finally:
+            dashboard.run = original_run
+            dashboard.GOG = original_gog
+        self.assertIn("--attach", captured["cmd"])
+        self.assertIn("PDF", result)
 
     def test_login_sets_cookie_and_rejects_bad_token(self):
         opener = urllib.request.build_opener(NoRedirect)

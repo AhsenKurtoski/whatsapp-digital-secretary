@@ -17,7 +17,8 @@ RUN groupadd --gid 1000 app \
 
 WORKDIR /app
 COPY dashboard.py dashboard.html config.py approval_store.py approval_mcp.py \
-     approval_setup.py email_template.py sync_fallbacks.py \
+     approval_setup.py email_template.py quote_pdf.py contacts.py reminders.py \
+     gateway_policy.py sync_fallbacks.py \
      monitor.py watchdog.py digest.py healthcheck.py ./
 COPY google-bridge/bridge_client.py ./bridge_client.py
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

@@ -18,5 +18,11 @@
   "dashboard_port": 8787,
   "max_concurrent": 3,
   "max_reply_lines": 6,
-  "whatsapp_number": ""
+  "whatsapp_number": "",
+  "quote_prefix": "PREV",
+  "vat_rate": 22,
+  "quote_valid_days": 30,
+  "payment_terms": "Pagamento: 50% alla conferma, saldo alla consegna.",
+  "reminder_cooldown_hours": 12,
+  "reminder_min_age_minutes": 30
 }

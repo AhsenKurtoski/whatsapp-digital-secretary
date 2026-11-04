@@ -5,6 +5,7 @@ Gira solo su 127.0.0.1. Richiede un token locale e un cookie HttpOnly.
 """
 from __future__ import annotations
 
+import base64
 import hmac
 import json
 import os
@@ -54,6 +55,14 @@ try:
     import bridge_client
 except Exception:
     bridge_client = None
+try:
+    import quote_pdf
+except Exception:
+    quote_pdf = None
+try:
+    import contacts as contacts_history
+except Exception:
+    contacts_history = None
 CONNECTOR_CACHE = {"ts": 0.0, "data": None}
 BRIDGE_CONFIG = os.path.join(BASE, "google_bridge.json")
 LOG = os.path.join(BASE, "dashboard.log")
@@ -824,6 +833,146 @@ def approvals_data(limit: int = 100) -> dict:
     return approval_store.list_requests(limit)
 
 
+def quotes_data(limit: int = 60) -> dict:
+    """Elenco dei preventivi con lo stato del PDF e dell'invio."""
+    if approval_store is None:
+        return {"quotes": [], "counts": {}, "error": "coda non disponibile"}
+    limit = max(1, min(int(limit or 60), 200))
+    data = approval_store.list_requests(max(limit, 120))
+    rows = [row for row in (data.get("recent") or []) if row.get("type") == "quote"]
+    quotes: list[dict] = []
+    for row in rows[:limit]:
+        payload = row.get("payload") or {}
+        quotes.append({
+            "id": row.get("id"),
+            "number": payload.get("number") or "",
+            "client": payload.get("client_name") or row.get("client_name") or "",
+            "email": payload.get("to") or "",
+            "total": (payload.get("totals") or {}).get("total"),
+            "currency": payload.get("currency") or "EUR",
+            "status": row.get("status") or "",
+            "created_at": row.get("created_at"),
+            "result": row.get("result") or "",
+            "error": row.get("error") or "",
+            "has_pdf": approval_store.quote_path(row) is not None,
+        })
+    return {"quotes": quotes, "counts": data.get("counts") or {}}
+
+
+def create_demo_quote() -> dict:
+    if approval_store is None or quote_pdf is None:
+        return {"ok": False, "error": "modulo preventivi non disponibile"}
+    try:
+        quote = quote_pdf.demo_quote()
+        request = approval_store.append_request(
+            "quote",
+            quote,
+            client_name=quote.get("client_name") or "Cliente Demo",
+            reason="Preventivo dimostrativo generato dalla dashboard.",
+        )
+    except Exception as exc:
+        log(f"demo quote failed: {str(exc)[:180]}")
+        return {"ok": False, "error": str(exc)[:400]}
+    payload = request.get("payload") or {}
+    log(f"demo quote created {request.get('id')}")
+    return {
+        "ok": True,
+        "id": request.get("id"),
+        "number": payload.get("number"),
+        "data": quotes_data(),
+    }
+
+
+def _pending_by_phone() -> dict[str, int]:
+    counts: dict[str, int] = {}
+    if approval_store is None:
+        return counts
+    for row in approval_store.list_requests(300).get("recent") or []:
+        if row.get("status") != "pending":
+            continue
+        phone = str(row.get("client_phone") or "").strip()
+        if phone:
+            counts[phone] = counts.get(phone, 0) + 1
+    return counts
+
+
+def contacts_data(limit: int = 60) -> dict:
+    """Storico reale dei contatti WhatsApp, unito a lead e richieste aperte."""
+    if contacts_history is None:
+        return {"contacts": [], "total": 0, "messages": 0, "error": "modulo contatti non disponibile"}
+    contacts = contacts_history.load_contacts(limit=limit)
+    pending = _pending_by_phone()
+    return {
+        "contacts": contacts,
+        "total": len(contacts),
+        "messages": sum(int(c.get("messages_in") or 0) for c in contacts),
+        "pending_by_phone": pending,
+        "summary": contacts_history.summary_text(contacts, pending_by_phone=pending),
+    }
+
+
+def send_contacts_summary(dry: bool = False) -> dict:
+    if contacts_history is None:
+        return {"ok": False, "error": "modulo contatti non disponibile"}
+    data = contacts_data(120)
+    text = contacts_history.summary_text(
+        data.get("contacts") or [], pending_by_phone=data.get("pending_by_phone") or {}
+    )
+    ok = contacts_history.send_whatsapp(text, dry=dry)
+    if not ok:
+        return {"ok": False, "error": "invio non riuscito: controlla owner_number e il gateway WhatsApp"}
+    log("contacts summary sent to owner")
+    return {"ok": True, "sent": not dry, "text": text[:1600]}
+
+
+def run_reminders(dry: bool = False, force: bool = False) -> dict:
+    """Esegue reminders.py senza bloccare il resto della dashboard."""
+    cmd = [sys.executable, os.path.join(BASE, "reminders.py"), "--json"]
+    if dry:
+        cmd.append("--dry-run")
+    if force:
+        cmd.append("--force")
+    rc, out, err = run(cmd, timeout=120)
+    data: dict = {}
+    try:
+        data = json.loads(out[out.find("{"):]) if "{" in out else {}
+    except Exception:
+        data = {}
+    if rc != 0:
+        return {"ok": False, "error": (err or out or f"reminders exit {rc}")[-400:]}
+    return {"ok": True, **(data if isinstance(data, dict) else {})}
+
+
+MAX_ATTACHMENT_BYTES = 1_200_000
+
+
+def _quote_attachments(payload: dict) -> list[str]:
+    """Percorso del PDF del preventivo, confinato alla cartella privata."""
+    if approval_store is None or not str(payload.get("pdf") or ""):
+        return []
+    path = approval_store.quote_path({"payload": payload})
+    return [str(path)] if path else []
+
+
+def _bridge_attachments(paths: list[str]) -> list[dict]:
+    out: list[dict] = []
+    for path in paths:
+        try:
+            with open(path, "rb") as handle:
+                data = handle.read(MAX_ATTACHMENT_BYTES + 1)
+        except OSError:
+            continue
+        if len(data) > MAX_ATTACHMENT_BYTES:
+            log("attachment too large, skipped")
+            continue
+        out.append({
+            "filename": os.path.basename(path),
+            "mimeType": "application/pdf",
+            "data": base64.b64encode(data).decode("ascii"),
+        })
+    return out
+
+
 def _execute_email(payload: dict) -> str:
     bridge = None
     if bridge_client is not None:
@@ -831,10 +980,18 @@ def _execute_email(payload: dict) -> str:
             bridge = bridge_client.load_config(BRIDGE_CONFIG)
         except Exception as exc:
             log(f"bridge config error: {str(exc)[:180]}")
+    attachments = _quote_attachments(payload)
+    suffix = " con PDF allegato" if attachments else ""
     if bridge:
-        result = bridge_client.send_email(payload, bridge)
+        request = dict(payload)
+        if attachments:
+            request["attachments"] = _bridge_attachments(attachments)
+        result = bridge_client.send_email(request, bridge)
         message_id = str((result or {}).get("id") or "")
-        return f"Email inviata a {payload.get('to')} via bridge Google" + (f" (id {message_id})" if message_id else "")
+        return (
+            f"Email inviata a {payload.get('to')} via bridge Google{suffix}"
+            + (f" (id {message_id})" if message_id else "")
+        )
 
     cmd = [
         GOG, "--account", GOOGLE_ACCOUNT, "--json", "--no-input",
@@ -850,8 +1007,10 @@ def _execute_email(payload: dict) -> str:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             handle.write(html_body)
         cmd += ["--body-html-file", html_path]
+    for path in attachments:
+        cmd += ["--attach", path]
     try:
-        rc, out, err = run(cmd, timeout=90, extra_env=gog_env())
+        rc, out, err = run(cmd, timeout=120, extra_env=gog_env())
     finally:
         if html_path:
             try:
@@ -865,7 +1024,10 @@ def _execute_email(payload: dict) -> str:
     except Exception:
         raw = {}
     message_id = raw.get("id") or raw.get("messageId") or raw.get("message_id") or ""
-    return f"Email inviata a {payload.get('to')}" + (f" (id {message_id})" if message_id else "")
+    return (
+        f"Email inviata a {payload.get('to')}{suffix}"
+        + (f" (id {message_id})" if message_id else "")
+    )
 
 
 def send_test_email() -> dict:
@@ -945,7 +1107,7 @@ def approve_request(request_id: str) -> dict:
     if request.get("status") != "pending":
         return {"ok": False, "error": "richiesta già gestita"}
     try:
-        if request.get("type") == "email":
+        if request.get("type") in {"email", "quote"}:
             result = _execute_email(request.get("payload") or {})
         elif request.get("type") == "calendar":
             result = _execute_calendar(request.get("payload") or {})
@@ -1017,6 +1179,20 @@ class Handler(BaseHTTPRequestHandler):
     def _html(self, body: str, code=200, extra=None):
         data = body.encode("utf-8")
         self._headers(code, "text/html; charset=utf-8", [("Content-Length", str(len(data)))] + (extra or []))
+        self.wfile.write(data)
+
+    def _pdf(self, path: str, filename: str):
+        try:
+            with open(path, "rb") as handle:
+                data = handle.read()
+        except OSError:
+            self._json({"ok": False, "error": "PDF non disponibile"}, 404)
+            return
+        safe_name = re.sub(r"[^A-Za-z0-9._-]+", "-", str(filename or ""))[:120] or "preventivo.pdf"
+        self._headers(200, "application/pdf", [
+            ("Content-Length", str(len(data))),
+            ("Content-Disposition", f'attachment; filename="{safe_name}"'),
+        ])
         self.wfile.write(data)
 
     def _cookie_token(self) -> str:
@@ -1166,6 +1342,45 @@ class Handler(BaseHTTPRequestHandler):
             _, out, _ = run(["journalctl", "--user", "-u", "openclaw-gateway", "-n", str(lines), "--no-pager", "-o", "cat"], timeout=20)
             self._json({"ok": True, "lines": out.splitlines()})
             return
+        if path == "/api/quotes":
+            if not self._require():
+                return
+            q = parse_qs(urlparse(self.path).query)
+            try:
+                limit = int((q.get("limit") or ["60"])[0])
+            except Exception:
+                limit = 60
+            self._json({"ok": True, "data": quotes_data(limit)})
+            return
+        pdf_match = re.match(r"^/api/quotes/([A-Za-z0-9-]{6,80})\.pdf$", path)
+        if pdf_match:
+            if not self._require():
+                return
+            if approval_store is None:
+                self._json({"ok": False, "error": "coda non disponibile"}, 404)
+                return
+            request = approval_store.get_request(pdf_match.group(1))
+            if not request or request.get("type") != "quote":
+                self._json({"ok": False, "error": "preventivo non trovato"}, 404)
+                return
+            path_pdf = approval_store.quote_path(request)
+            if path_pdf is None:
+                self._json({"ok": False, "error": "PDF non disponibile"}, 404)
+                return
+            payload = request.get("payload") or {}
+            filename = quote_pdf.quote_filename(payload) if quote_pdf is not None else "preventivo.pdf"
+            self._pdf(str(path_pdf), filename)
+            return
+        if path == "/api/contacts":
+            if not self._require():
+                return
+            q = parse_qs(urlparse(self.path).query)
+            try:
+                limit = int((q.get("limit") or ["60"])[0])
+            except Exception:
+                limit = 60
+            self._json({"ok": True, "data": contacts_data(limit)})
+            return
         self._json({"ok": False, "error": "not found"}, 404)
 
     def do_POST(self):
@@ -1270,6 +1485,17 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/security/rotate":
             new = rotate_token()
             self._json({"ok": True, "rotated": True}, 200, [("Set-Cookie", f"ocdash={new}; Path=/; Max-Age=604800; HttpOnly; SameSite=Strict")])
+            return
+        if path == "/api/quotes/demo":
+            self._json(create_demo_quote())
+            return
+        if path == "/api/contacts/summary":
+            data = self._json_body()
+            self._json(send_contacts_summary(dry=bool(data.get("dry_run"))))
+            return
+        if path == "/api/reminders/run":
+            data = self._json_body()
+            self._json(run_reminders(dry=bool(data.get("dry_run")), force=bool(data.get("force"))))
             return
         self._json({"ok": False, "error": "not found"}, 404)
 

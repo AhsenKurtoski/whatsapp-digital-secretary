@@ -26,14 +26,20 @@ try:
     from email_template import render_email
 except Exception:  # template opzionale: la coda continua a funzionare
     render_email = None
+try:
+    import quote_pdf
+except Exception:  # senza generatore PDF i preventivi restano disattivati
+    quote_pdf = None
 
 CFG = config.load()
 BASE = config.BASE
 QUEUE = BASE / "approvals.jsonl"
 LOCK = BASE / "approvals.lock"
+QUOTES_DIR = BASE / "quotes"
 ROME = config.resolve_timezone()
 MAX_PENDING = 30
 MAX_ROWS = 500
+MAX_QUOTE_BYTES = 1_200_000
 EMAIL_RE = re.compile(r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$")
 
 
@@ -96,6 +102,85 @@ def validate_email(payload: dict) -> dict:
     if not body:
         raise ValueError("testo email mancante")
     return {"to": ", ".join(to), "subject": subject, "body": body}
+
+
+def _quote_dir() -> Path:
+    QUOTES_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        QUOTES_DIR.chmod(0o700)
+    except OSError:
+        pass
+    return QUOTES_DIR
+
+
+def quote_path(request: dict) -> Path | None:
+    """Percorso del PDF di un preventivo, sempre dentro la cartella privata."""
+    name = str((request.get("payload") or {}).get("pdf") or "")
+    if not name:
+        return None
+    folder = _quote_dir().resolve()
+    candidate = (folder / Path(name).name).resolve()
+    if candidate.parent != folder:
+        return None
+    return candidate if candidate.is_file() else None
+
+
+def _next_quote_number(rows: list[dict], prefix: str) -> str:
+    year = datetime.now(ROME).strftime("%Y")
+    used = {
+        str((row.get("payload") or {}).get("number") or "")
+        for row in rows
+        if str(row.get("type")) == "quote"
+    }
+    for index in range(1, 10000):
+        candidate = f"{prefix}-{year}-{index:03d}"
+        if candidate not in used:
+            return candidate
+    raise ValueError("troppi preventivi quest'anno")
+
+
+def _validate_quote(payload: dict) -> dict:
+    """Valida il preventivo e il destinatario dell'email con l'allegato."""
+    if quote_pdf is None:
+        raise ValueError("generatore PDF non disponibile")
+    quote = quote_pdf.normalize_quote(payload)
+    to = _email(payload.get("to") or quote.get("client_email") or "")
+    return {
+        "quote": quote,
+        "to": to,
+        "subject": _clean(payload.get("subject"), 180),
+        "body": _clean(payload.get("body"), 8000, newlines=True),
+    }
+
+
+def _quote_email_body(quote: dict) -> str:
+    """Testo piano dell'email che accompagna il PDF."""
+    name = str(quote.get("client_name") or "ciao").strip()
+    currency = str(quote.get("currency") or "EUR")
+    totals = quote.get("totals") or {}
+    lines = [
+        f"Ciao {name},",
+        "",
+        f"in allegato trovi il preventivo {quote.get('number') or ''} con il dettaglio delle voci e i totali.",
+    ]
+    items = quote.get("items") or []
+    if items:
+        lines += ["", "Riepilogo:"]
+        for item in items[:12]:
+            amount = quote_pdf.money_text(item["total"], currency)
+            lines.append(f"- {item['description']}: {item['qty']:g} × {quote_pdf.money_text(item['unit_price'], currency)} = {amount}")
+        if len(items) > 12:
+            lines.append(f"- e altre {len(items) - 12} voci nel PDF")
+    lines += [
+        "",
+        f"Totale: {quote_pdf.money_text(totals.get('total', 0.0), currency)}",
+        "",
+        "Se ti torna tutto, rispondi a questa email o scrivimi su WhatsApp.",
+        "",
+        "A presto,",
+        str(CFG.get("owner_name") or "Il titolare"),
+    ]
+    return "\n".join(lines)
 
 
 def validate_calendar(payload: dict) -> dict:
@@ -196,17 +281,25 @@ def append_request(
     reason: str = "",
 ) -> dict:
     kind = str(kind or "").strip().lower()
-    if kind not in {"email", "calendar"}:
+    if kind not in {"email", "calendar", "quote"}:
         raise ValueError("tipo richiesta non valido")
-    clean_payload = validate_email(payload) if kind == "email" else validate_calendar(payload)
+    payload = payload if isinstance(payload, dict) else {}
+    prepared = None
+    if kind == "quote":
+        prepared = _validate_quote(payload)
+        clean_payload = prepared["quote"]
+    elif kind == "email":
+        clean_payload = validate_email(payload)
+        if render_email is not None:
+            # L'HTML è generato solo qui, mai preso dal testo non attendibile del bot.
+            clean_payload["html"] = render_email(
+                clean_payload.get("subject", ""),
+                clean_payload.get("body", ""),
+                client_name=_clean(client_name, 80),
+            )
+    else:
+        clean_payload = validate_calendar(payload)
     fingerprint = _fingerprint(kind, clean_payload)
-    if kind == "email" and render_email is not None:
-        # L'HTML è generato solo qui, mai preso dal testo non attendibile del bot.
-        clean_payload["html"] = render_email(
-            clean_payload.get("subject", ""),
-            clean_payload.get("body", ""),
-            client_name=_clean(client_name, 80),
-        )
     with _locked():
         rows = _read_unlocked()
         pending = [row for row in rows if row.get("status") == "pending"]
@@ -215,14 +308,41 @@ def append_request(
                 return row
         if len(pending) >= MAX_PENDING:
             raise ValueError("troppe richieste in attesa; attendi l'approvazione del titolare")
+        request_id = "apr-" + datetime.now(ROME).strftime("%Y%m%d-%H%M%S") + "-" + secrets.token_hex(2)
+        if prepared is not None:
+            quote = dict(prepared["quote"])
+            quote["number"] = quote.get("number") or _next_quote_number(
+                rows, str(CFG.get("quote_prefix") or "PREV")
+            )
+            pdf_bytes = quote_pdf.render_quote_pdf(quote)
+            if len(pdf_bytes) > MAX_QUOTE_BYTES:
+                raise ValueError("preventivo troppo grande")
+            pdf_name = f"{request_id}.pdf"
+            target = _quote_dir() / pdf_name
+            with open(target, "wb") as handle:
+                handle.write(pdf_bytes)
+            os.chmod(target, 0o600)
+            subject = prepared["subject"] or (
+                f"Preventivo {quote['number']} — {CFG.get('business_name') or ''}".strip(" —")
+            )
+            body = prepared["body"] or _quote_email_body(quote)
+            quote["to"] = prepared["to"]
+            quote["subject"] = subject
+            quote["body"] = body
+            if render_email is not None:
+                quote["html"] = render_email(
+                    subject, body, client_name=_clean(client_name or quote.get("client_name"), 80)
+                )
+            quote["pdf"] = pdf_name
+            clean_payload = quote
         request = {
-            "id": "apr-" + datetime.now(ROME).strftime("%Y%m%d-%H%M%S") + "-" + secrets.token_hex(2),
+            "id": request_id,
             "type": kind,
             "status": "pending",
             "created_at": now_iso(),
             "updated_at": now_iso(),
-            "client_name": _clean(client_name, 120),
-            "client_phone": _clean(client_phone, 40),
+            "client_name": _clean(client_name or clean_payload.get("client_name"), 120),
+            "client_phone": _clean(client_phone or clean_payload.get("client_phone"), 40),
             "reason": _clean(reason, 500),
             "payload": clean_payload,
             "fingerprint": fingerprint,
@@ -247,6 +367,10 @@ def list_requests(limit: int = 100) -> dict:
             "approved": sum(1 for row in rows if row.get("status") == "approved"),
             "rejected": sum(1 for row in rows if row.get("status") == "rejected"),
             "failed": sum(1 for row in rows if row.get("status") == "failed"),
+            "quotes": sum(1 for row in rows if row.get("type") == "quote"),
+            "quotes_pending": sum(
+                1 for row in rows if row.get("type") == "quote" and row.get("status") == "pending"
+            ),
         },
         "limits": {"max_pending": MAX_PENDING},
     }
