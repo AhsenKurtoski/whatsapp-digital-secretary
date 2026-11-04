@@ -75,9 +75,23 @@ START = time.time()
 STATUS_CACHE = {"ts": 0.0, "data": None}
 CHANNEL_CACHE = {"ts": 0.0, "data": None}
 LOGIN_FAILS: dict[str, list[float]] = {}
+ACTION_LIMIT: dict[str, float] = {}
 LAST_LOGIN: str | None = None
 TOKEN_ROTATED_AT: str | None = None
 MAX_POOL_KEYS = 7
+
+
+def _throttled(key: str, seconds: float = 15.0) -> bool:
+    """Limita azioni costose (invii, demo) senza dipendere da servizi esterni."""
+    now = time.time()
+    if len(ACTION_LIMIT) > 500:
+        for stale in [k for k, v in ACTION_LIMIT.items() if now - v > 3600]:
+            ACTION_LIMIT.pop(stale, None)
+    last = ACTION_LIMIT.get(key, 0.0)
+    if now - last < seconds:
+        return True
+    ACTION_LIMIT[key] = now
+    return False
 
 
 def now_iso() -> str:
@@ -943,6 +957,20 @@ def run_reminders(dry: bool = False, force: bool = False) -> dict:
     return {"ok": True, **(data if isinstance(data, dict) else {})}
 
 
+def run_doctor() -> dict:
+    """Esegue doctor.py e restituisce i controlli in forma leggibile."""
+    cmd = [sys.executable, os.path.join(BASE, "doctor.py"), "--json"]
+    rc, out, err = run(cmd, timeout=120)
+    data: dict = {}
+    try:
+        data = json.loads(out[out.find("{"):]) if "{" in out else {}
+    except Exception:
+        data = {}
+    if not data:
+        return {"ok": False, "error": (err or out or f"doctor exit {rc}")[-400:], "checks": []}
+    return data
+
+
 MAX_ATTACHMENT_BYTES = 1_200_000
 
 
@@ -1244,6 +1272,11 @@ class Handler(BaseHTTPRequestHandler):
         origin = (self.headers.get("Origin") or "").strip()
         if origin and origin not in {f"http://127.0.0.1:{PORT}", f"http://localhost:{PORT}"}:
             return False
+        # I browser moderni inviano Sec-Fetch-Site: se c'è e non è same-origin,
+        # la richiesta non arriva dalla nostra dashboard.
+        fetch_site = (self.headers.get("Sec-Fetch-Site") or "").strip().lower()
+        if not origin and fetch_site and fetch_site not in {"same-origin", "none"}:
+            return False
         return True
 
     def do_GET(self):
@@ -1369,7 +1402,13 @@ class Handler(BaseHTTPRequestHandler):
                 return
             payload = request.get("payload") or {}
             filename = quote_pdf.quote_filename(payload) if quote_pdf is not None else "preventivo.pdf"
+            log(f"quote pdf downloaded {request.get('id')}")
             self._pdf(str(path_pdf), filename)
+            return
+        if path == "/api/doctor":
+            if not self._require():
+                return
+            self._json(run_doctor())
             return
         if path == "/api/contacts":
             if not self._require():
@@ -1419,6 +1458,10 @@ class Handler(BaseHTTPRequestHandler):
         if not self._post_ok():
             self._json({"ok": False, "error": "csrf"}, 403)
             return
+        if path in {"/api/contacts/summary", "/api/reminders/run", "/api/quotes/demo"}:
+            if _throttled(f"{self.client_address[0]}:{path}", 15.0):
+                self._json({"ok": False, "error": "Attendi qualche secondo prima di ripetere."}, 429)
+                return
         if path == "/api/restart":
             subprocess.Popen(["systemctl", "--user", "restart", "openclaw-gateway"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
             log("restart requested")

@@ -25,6 +25,8 @@ const context = {
   Utilities: {
     computeHmacSha256Signature: (raw, secret) =>
       Array.from(crypto.createHmac("sha256", secret).update(raw, "utf8").digest()),
+    base64Decode: (data) => Array.from(Buffer.from(String(data), "base64")),
+    newBlob: (bytes, type, name) => ({ bytes, type, name }),
   },
   ContentService: {
     MimeType: { JSON: "application/json" },
@@ -81,6 +83,32 @@ const email = post(envelope({
 }));
 if (!email.ok || email.result.id !== "msg-test-1") throw new Error("sendEmail failed");
 if (sent[0].to !== "cliente@example.com" || sent[0].options.htmlBody !== "<p>Test</p>") throw new Error("email payload wrong");
+
+const pdfBase64 = Buffer.from("%PDF-1.4 preventivo di prova").toString("base64");
+const withAttachment = post(envelope({
+  ts: Math.floor(Date.now() / 1000),
+  action: "sendEmail",
+  payload: {
+    to: "cliente@example.com",
+    subject: "Preventivo PREV-2026-001",
+    body: "In allegato il preventivo.",
+    html: "<p>In allegato il preventivo.</p>",
+    attachments: [
+      { filename: "Preventivo-PREV-2026-001.pdf", mimeType: "application/pdf", data: pdfBase64 },
+      { filename: "rotto.pdf", mimeType: "application/pdf" },
+    ],
+  },
+}));
+if (!withAttachment.ok || withAttachment.result.attachments !== 1) throw new Error("attachment not sent");
+const attached = sent[sent.length - 1];
+if (!Array.isArray(attached.options.attachments) || attached.options.attachments.length !== 1) {
+  throw new Error("attachment missing from draft");
+}
+if (attached.options.attachments[0].name !== "Preventivo-PREV-2026-001.pdf") throw new Error("attachment name wrong");
+if (attached.options.attachments[0].type !== "application/pdf") throw new Error("attachment mime wrong");
+if (attached.options.attachments[0].bytes.length !== Buffer.from("%PDF-1.4 preventivo di prova").length) {
+  throw new Error("attachment bytes wrong");
+}
 
 const event = post(envelope({
   ts: Math.floor(Date.now() / 1000),

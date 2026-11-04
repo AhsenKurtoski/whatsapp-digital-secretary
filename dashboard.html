@@ -693,6 +693,16 @@ select option{background:#081420}
           <p class="sub">Il riavvio è rapido e non cancella lead, alert o configurazione. Il monitor controlla subito nuovi messaggi e truffe.</p>
           <pre class="pre" id="logsBox">Premi “Carica log”.</pre>
         </div>
+        <div class="card span12">
+          <div class="row" style="justify-content:space-between;margin-bottom:10px">
+            <div>
+              <h2 style="margin:0 0 4px">Diagnosi installazione</h2>
+              <div class="sub">Verifica in un clic file, schede Preventivi/Contatti, PDF, persona, policy anti-raffica e servizi.</div>
+            </div>
+            <button class="btn primary" id="doctorBtn" type="button">Esegui diagnosi</button>
+          </div>
+          <div id="doctorResult"><div class="empty">Nessuna diagnosi eseguita.</div></div>
+        </div>
       </div>
     </section>
   </main>
@@ -1169,6 +1179,29 @@ $('monitorBtn2').addEventListener('click',doMonitor);
 $('logsBtn').addEventListener('click', async ()=>{
   try{ const r=await api('/api/logs?lines=100'); $('logsBox').textContent=(r.lines||[]).join('\n')||'(nessuna riga)'; }catch(e){ toast('Errore: '+e.message,true); }
 });
+
+function doctorChip(status){
+  const map={ok:'ok',warn:'warn',fail:'critical',info:'info'};
+  return healthStatusChip(map[status]||'info');
+}
+function renderDoctor(d){
+  const rows=Array.isArray(d&&d.checks)?d.checks:[];
+  if(!rows.length){ $('doctorResult').innerHTML='<div class="empty">'+esc((d&&d.error)||'Nessun controllo disponibile.')+'</div>'; return; }
+  const c=(d&&d.counts)||{};
+  $('doctorResult').innerHTML=
+    `<div class="chips" style="margin-bottom:10px"><span class="chip ok">${c.ok||0} ok</span><span class="chip gold">${c.warn||0} avvisi</span><span class="chip bad">${c.fail||0} critici</span></div>`+
+    rows.map(x=>`<div class="health-item ${x.status==='fail'?'critical':(x.status==='warn'?'warn':'ok')}" style="margin-bottom:8px">`+
+      `<h3><span>${esc(x.label||'')}</span>${doctorChip(x.status)}</h3>`+
+      `<p>${esc(x.detail||'')}</p>`+
+      (x.action?`<div class="health-action">→ ${esc(x.action)}</div>`:'')+`</div>`).join('');
+}
+async function runDoctor(){
+  const btn=$('doctorBtn'); btn.disabled=true; btn.textContent='Diagnosi…';
+  try{ const r=await api('/api/doctor'); renderDoctor(r); toast(r.ok?'Diagnosi completata: nessun blocco.':'Diagnosi completata: vedi i critici.',!r.ok); }
+  catch(e){ toast('Errore: '+e.message,true); }
+  finally{ btn.disabled=false; btn.textContent='Esegui diagnosi'; }
+}
+$('doctorBtn').addEventListener('click',runDoctor);
 
 function poolFrom(id){ return ($(id).value||'').split(/[\n,]+/).map(x=>x.trim()).filter(Boolean); }
 async function savePool(kind){

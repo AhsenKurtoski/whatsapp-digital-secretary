@@ -19,7 +19,11 @@ BASE = config.BASE
 CONFIG = config.OPENCLAW_CONFIG
 OWNER = str(CFG.get("owner_number") or "").strip()
 OWNER_NAME = str(CFG.get("owner_name") or "il titolare").strip()
-TOOL_NAMES = ["secretary__request_email", "secretary__request_calendar"]
+TOOL_NAMES = [
+    "secretary__request_email",
+    "secretary__request_calendar",
+    "secretary__request_quote",
+]
 OWNER_PROMPT = (
     f"Modalità ADMIN. Il richiedente è {OWNER_NAME}, proprietario e unico admin, "
     f"dal numero verificato {OWNER}. Chiamalo {OWNER_NAME}. Puoi dargli un riepilogo "
@@ -51,7 +55,7 @@ def main() -> int:
         "enabled": True,
         "connectionTimeoutMs": 20000,
         "requestTimeoutMs": 30000,
-        "toolFilter": {"include": ["request_email", "request_calendar"]},
+        "toolFilter": {"include": ["request_email", "request_calendar", "request_quote"]},
     }
 
     tools = data.setdefault("tools", {})

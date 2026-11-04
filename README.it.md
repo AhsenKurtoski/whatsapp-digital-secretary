@@ -76,6 +76,11 @@ Web. Non è un prodotto WhatsApp Business API e non è affiliato a Meta o WhatsA
   approvazione e anteprima email.
 - **Operatività** — servizi systemd utente, watchdog, riepilogo giornaliero, dashboard
   Docker opzionale e procedura di primo avvio guidata.
+- **Autodiagnosi** — `doctor.py` controlla file installati, schede Preventivi/Contatti,
+  motore PDF, regole di perimetro, policy anti-raffica, allowlist dei tool MCP, unità
+  systemd e API locali, e stampa il comando esatto che risolve ogni problema. Lo stesso
+  report è a un clic nella dashboard (Sistema → Diagnosi) e viene eseguito al termine di
+  `scripts/install.sh`.
 - **Health e avvisi token** — una scansione ogni 30 minuti controlla configurazione,
   segreti, gateway, WhatsApp, dashboard, timer, Google OAuth/bridge, MCP, chiavi AI,
   approvazioni, disco e avvio Windows. Manda un avviso WhatsApp senza spam quando un
@@ -248,6 +253,8 @@ python3 healthcheck.py --self-test
 python3 contacts.py --self-test
 python3 reminders.py --self-test
 python3 gateway_policy.py --self-test
+python3 doctor.py --self-test
+python3 doctor.py --offline
 ```
 
 La suite copre configurazione, rendering della persona, archivio approvazioni, preventivi

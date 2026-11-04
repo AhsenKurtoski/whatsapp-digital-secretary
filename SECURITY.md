@@ -81,7 +81,9 @@ This project runs on a personal computer or a private VPS. It is designed to pro
 ## Privacy and GDPR
 
 - The bot stores conversations locally to keep context per customer.
-- Logs redact phone numbers and message bodies by default.
+- Logs redact phone numbers and message bodies by default. The anti-duplicate guard
+  writes only a truncated SHA-256 fingerprint and the text length, never the customer
+  message, and quote PDF downloads are audited by request id only.
 - Leads and alerts can be deleted from the dashboard; deleting `~/.openclaw` removes
   the local dataset.
 - The AI provider receives the message text needed to generate a reply. Choose a

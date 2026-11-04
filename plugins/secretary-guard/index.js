@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { appendFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -56,6 +57,12 @@ export function shouldSuppressDuplicate(to, text, now = Date.now()) {
   return false;
 }
 
+// Nel log non finisce mai il testo del cliente: solo un'impronta e la lunghezza,
+// abbastanza per capire un loop senza conservare conversazioni private.
+function fingerprint(text) {
+  return createHash("sha256").update(String(text)).digest("hex").slice(0, 16);
+}
+
 function guardLog(line) {
   try {
     const logPath = join(homedir(), ".openclaw", "secretary", "guard.log");
@@ -68,7 +75,7 @@ function guardLog(line) {
 export function scrubMessage(text) {
   if (typeof text !== "string" || !text.trim()) return text;
   if (!TECHNICAL_PATTERNS.some((re) => re.test(text))) return text;
-  guardLog(`replaced=${JSON.stringify(text.slice(0, 240))}`);
+  guardLog(`replaced hash=${fingerprint(text)} len=${text.length}`);
   return FALLBACK_TEXT;
 }
 
@@ -83,7 +90,7 @@ export default definePluginEntry({
       const cleaned = scrubMessage(content);
       if (cleaned !== content) return { content: cleaned };
       if (shouldSuppressDuplicate(event?.to, cleaned)) {
-        guardLog(`duplicate_suppressed to=${JSON.stringify(String(event?.to || "").slice(0, 32))} text=${JSON.stringify(String(cleaned).slice(0, 120))}`);
+        guardLog(`duplicate_suppressed hash=${fingerprint(cleaned)} len=${String(cleaned).length}`);
         return { cancel: true, cancelReason: "duplicate_reply" };
       }
     });

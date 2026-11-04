@@ -9,9 +9,12 @@
  * Il segreto viene letto da Script Properties oppure da Config.gs.
  */
 
-const BRIDGE_VERSION = '1.0.0';
-const MAX_BODY_BYTES = 200000;
+const BRIDGE_VERSION = '1.1.0';
+const MAX_BODY_BYTES = 2000000;
 const MAX_SKEW_SECONDS = 300;
+const MAX_ATTACHMENTS = 3;
+const MAX_ATTACHMENT_BYTES = 1000000;
+const MAX_ATTACHMENTS_TOTAL = 1500000;
 const OWNER_EMAIL = (typeof BRIDGE_OWNER_EMAIL !== 'undefined') ? String(BRIDGE_OWNER_EMAIL) : '';
 const BRIDGE_NAME = (typeof BRIDGE_BRAND !== 'undefined' && BRIDGE_BRAND) ? String(BRIDGE_BRAND) : 'Segreteria Digitale';
 
@@ -137,14 +140,43 @@ function sendEmail(payload) {
   if (OWNER_EMAIL) options.replyTo = OWNER_EMAIL;
   if (html) options.htmlBody = html;
 
+  // Allegati (il PDF del preventivo): base64 nel payload firmato. Un allegato
+  // non valido viene ignorato, l'email parte comunque.
+  const attachments = buildAttachments(payload.attachments);
+  if (attachments.length) options.attachments = attachments;
+
   const draft = GmailApp.createDraft(recipients.join(','), subject, body, options);
   const message = draft.send();
   return {
     id: message.getId(),
     threadId: message.getThread().getId(),
     to: recipients.join(','),
-    subject: subject
+    subject: subject,
+    attachments: attachments.length
   };
+}
+
+function buildAttachments(raw) {
+  if (!Array.isArray(raw) || !raw.length) return [];
+  const out = [];
+  let total = 0;
+  for (let i = 0; i < raw.length && out.length < MAX_ATTACHMENTS; i++) {
+    const item = raw[i] || {};
+    if (typeof item.data !== 'string' || !item.data) continue;
+    let bytes;
+    try {
+      bytes = Utilities.base64Decode(item.data);
+    } catch (err) {
+      continue;
+    }
+    if (!bytes || !bytes.length || bytes.length > MAX_ATTACHMENT_BYTES) continue;
+    total += bytes.length;
+    if (total > MAX_ATTACHMENTS_TOTAL) break;
+    const name = cleanText(item.filename, 120) || ('allegato-' + (out.length + 1) + '.pdf');
+    const mime = cleanText(item.mimeType, 80) || 'application/octet-stream';
+    out.push(Utilities.newBlob(bytes, mime, name));
+  }
+  return out;
 }
 
 function createEvent(payload) {

@@ -26,9 +26,23 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - **Burst protection**: `gateway_policy.py` adds the documented OpenClaw WhatsApp
   debounce/queue settings without overriding user choices, and the guard plugin cancels
   an identical reply repeated within 45 seconds.
+- **Self-diagnosis** (`doctor.py`): a PASS/WARN/FAIL report over installed files, the
+  Preventivi/Contatti tabs, the PDF engine, persona scope rules, anti-burst policy, the
+  MCP tool allowlist, AI keys, systemd units and the local dashboard APIs. Every failure
+  carries the command that fixes it. Available as `--json`, `--short`, `--offline`,
+  from `GET /api/doctor` and from the dashboard (Sistema → Diagnosi); `install.sh` runs it
+  at the end.
 
 ### Fixed
 
+- **PDF quotes could not be created by the bot**: `approval_setup.py` wrote an MCP
+  `toolFilter.include` list with only `request_email` and `request_calendar`, so
+  `request_quote` was filtered out even though the tool existed. Re-running the installer
+  now exposes it. This was the reason the PDF never appeared on existing installs.
+- **Apps Script bridge sent emails without the PDF**: `Code.gs` ignored
+  `payload.attachments`. It now decodes up to three base64 attachments (1 MB each,
+  1.5 MB total), skips invalid ones instead of failing the email, and the body limit was
+  raised to 2 MB. Requires `clasp push` and a new deployment.
 - **The monitor no longer silences a contact forever**: alert deduplication was a
   permanent list per session, so a returning customer never produced a new hot/email
   alert. Alerts now expire after 12 hours and the old state format is migrated.

@@ -44,6 +44,7 @@ install -m 700 "$HERE/reminders.py" "$BASE/reminders.py"
 install -m 700 "$HERE/gateway_policy.py" "$BASE/gateway_policy.py"
 install -m 700 "$HERE/approval_mcp.py" "$BASE/approval_mcp.py"
 install -m 700 "$HERE/approval_setup.py" "$BASE/approval_setup.py"
+install -m 700 "$HERE/doctor.py" "$BASE/doctor.py"
 install -d -m 700 "$BASE/plugins"
 rm -rf "$BASE/plugins/secretary-guard"
 cp -r "$HERE/plugins/secretary-guard" "$BASE/plugins/secretary-guard"
@@ -113,6 +114,9 @@ fi
 
 echo "dashboard: http://127.0.0.1:${DASHBOARD_PORT:-8787}"
 echo "token:     $BASE/dashboard_token"
+echo
+echo "Diagnosi installazione:" || true
+"$PYTHON" "$BASE/doctor.py" --short || true
 if command -v loginctl >/dev/null 2>&1; then
   linger="$(loginctl show-user "$USER" -p Linger --value 2>/dev/null || true)"
   if [ "$linger" != "yes" ]; then

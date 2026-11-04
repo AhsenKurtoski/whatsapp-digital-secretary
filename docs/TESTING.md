@@ -14,12 +14,21 @@ python3 healthcheck.py --self-test
 python3 contacts.py --self-test
 python3 reminders.py --self-test
 python3 gateway_policy.py --self-test
+python3 doctor.py --self-test
 ```
 
-Expected result: the whole suite passes (87 tests at the time of writing), the compile
+Expected result: the whole suite passes (94 tests at the time of writing), the compile
 check is silent, Code.gs prints `Code.gs handlers: OK`, and every self-test prints
 `SELF-TEST OK` with exit code 0. CI runs the same commands on Python 3.11, 3.12, 3.13
 and 3.14.
+
+## Installazione reale
+
+Dopo `bash scripts/install.sh`, esegui `python3 ~/.openclaw/secretary/doctor.py`: il
+report PASS/WARN/FAIL controlla i file installati, le schede Preventivi/Contatti, il
+motore PDF, le regole della persona, la policy anti-raffica, l'allowlist MCP, le unità
+systemd e le API locali. Ogni criticità stampa il comando che la risolve. Lo stesso
+report è in dashboard (Sistema → Diagnosi) e `install.sh` lo esegue automaticamente.
 
 The suite is hermetic: it uses a temporary home, a demo configuration and no network.
 If a test needs a tool that is missing (for example `gog`), it asserts the graceful

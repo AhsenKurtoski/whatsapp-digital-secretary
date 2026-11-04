@@ -8,7 +8,7 @@ mkdir -p "$BASE"
 # the token, approvals or JSONL data.
 for file in dashboard.py dashboard.html config.py approval_store.py approval_mcp.py \
             approval_setup.py email_template.py quote_pdf.py contacts.py reminders.py \
-            gateway_policy.py bridge_client.py sync_fallbacks.py \
+            gateway_policy.py bridge_client.py sync_fallbacks.py doctor.py \
             monitor.py watchdog.py digest.py healthcheck.py; do
   if [ -f "/app/$file" ]; then
     cp -f "/app/$file" "$BASE/$file"

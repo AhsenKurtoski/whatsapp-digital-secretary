@@ -65,6 +65,14 @@ dal bridge, non più dal token OAuth in Testing.
   contenuti di email nei log pubblici.
 - `expired`: l'orologio del PC è troppo avanti/indietro; correggi l'ora.
 
+## Allegati
+
+`sendEmail` accetta `payload.attachments`: una lista di
+`{filename, mimeType, data}` dove `data` è base64. Il bridge decodifica al massimo tre
+file da 1 MB (1,5 MB totali) e ignora un allegato non valido senza bloccare l'email;
+è così che il PDF del preventivo arriva al cliente. Dopo ogni modifica a `Code.gs`
+servono `clasp push` e un **nuovo deployment** (quello vecchio non si aggiorna da solo).
+
 ## Sicurezza e limiti
 
 - Non committare `Config.gs`, `.clasp.json` o `google_bridge.json`.

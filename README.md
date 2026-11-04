@@ -76,6 +76,11 @@ Meta or WhatsApp.
   approval queue, and email preview.
 - **Operations** — systemd user services, watchdog, daily digest, optional Docker
   dashboard, and a setup wizard.
+- **Self-diagnosis** — `doctor.py` checks the installed files, the Preventivi/Contatti
+  tabs, the PDF engine, the persona scope rules, the anti-burst policy, the MCP tool
+  allowlist, systemd units and the local APIs, then prints the exact command that fixes
+  each problem. The same report is one click away in the dashboard (Sistema → Diagnosi)
+  and runs at the end of `scripts/install.sh`.
 - **Health and token alerts** — a 30-minute scan checks configuration, secrets,
   gateway, WhatsApp, dashboard, timers, Google OAuth/bridge, MCP, AI keys, approvals,
   disk and Windows autostart. It sends a deduplicated WhatsApp alert to the owner when
@@ -246,6 +251,8 @@ python3 healthcheck.py --self-test
 python3 contacts.py --self-test
 python3 reminders.py --self-test
 python3 gateway_policy.py --self-test
+python3 doctor.py --self-test
+python3 doctor.py --offline
 ```
 
 The suite covers configuration, persona rendering, approval storage, email template
