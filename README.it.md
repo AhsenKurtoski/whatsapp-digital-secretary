@@ -14,6 +14,12 @@ locale.
 
 ![Dashboard](docs/screenshot-dashboard.png)
 
+<details>
+<summary>Email di preventivo — anteprima</summary>
+
+![Email preventivo](docs/email-preview.png)
+</details>
+
 ## Stato del progetto
 
 | | |

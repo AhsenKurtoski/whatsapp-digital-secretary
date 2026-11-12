@@ -18,7 +18,7 @@ python3 gateway_policy.py --self-test
 python3 doctor.py --self-test
 ```
 
-Expected result: the whole suite passes (113 tests at the time of writing), the compile
+Expected result: the whole suite passes (116 tests at the time of writing), the compile
 check is silent, Code.gs prints `Code.gs handlers: OK`, and every self-test prints
 `SELF-TEST OK` with exit code 0. CI runs the same commands on Python 3.11, 3.12, 3.13
 and 3.14.
