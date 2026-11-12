@@ -5,12 +5,19 @@ Controlla ciò che serve davvero perché preventivi, riepiloghi e promemoria
 funzionino: file installati, scheda Preventivi nella dashboard, persona,
 policy anti-raffica, tool MCP, motore PDF, servizi systemd e API locali.
 
-Non modifica nulla e non stampa segreti. Ogni problema ha un'azione concreta.
+Di default non modifica nulla e non stampa segreti. Ogni problema ha un'azione
+concreta; con ``--fix`` applica le riparazioni sicure, una alla volta e con conferma.
 
     python3 doctor.py            # report completo
     python3 doctor.py --short    # solo problemi
     python3 doctor.py --json     # per la dashboard
     python3 doctor.py --offline  # salta systemd e HTTP
+    python3 doctor.py --fix      # ripara ciò che può, con conferma
+
+``--fix`` non tocca mai i segreti e non reinstalla file: esegue solo le
+riparazioni locali sicure (allowlist MCP, policy anti-raffica, servizi inattivi)
+e chiede conferma prima di ogni modifica. ``--yes`` salta le domande per un uso
+non interattivo.
 """
 from __future__ import annotations
 
@@ -18,9 +25,11 @@ import argparse
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime
@@ -433,6 +442,232 @@ def run_checks(
     return checks
 
 
+def _script_command(base: Path, name: str) -> list[str] | None:
+    path = Path(base) / name
+    if not path.is_file():
+        return None
+    return [sys.executable or "python3", str(path)]
+
+
+def _fix_env(base: Path, config_path: Path, openclaw_config: Path) -> dict[str, str]:
+    """Ambiente esplicito: le riparazioni usano gli stessi percorsi della diagnosi."""
+    env = os.environ.copy()
+    env["SECRETARY_BASE"] = str(base)
+    env["SECRETARY_CONFIG"] = str(config_path)
+    env["OPENCLAW_CONFIG"] = str(openclaw_config)
+    return env
+
+
+def plan_fixes(
+    base: Path,
+    checks: list[dict],
+    config_path: Path,
+    openclaw_config: Path,
+    *,
+    can_restart: bool = True,
+) -> list[dict]:
+    """Elenca le riparazioni sicure, nell'ordine in cui vanno applicate.
+
+    Non reinstalla file e non inventa configurazione: richiama gli script già
+    usati dall'installer oppure riavvia un'unità systemd. Le correzioni che
+    richiedono ``git pull`` + ``install.sh`` restano manuali.
+    """
+    base = Path(base)
+    config_path = Path(config_path)
+    openclaw_config = Path(openclaw_config)
+    by_id = {str(check.get("id")): check for check in checks if check.get("id")}
+    systemd_missing = any(
+        check.get("id") == "services" and check.get("status") == "info"
+        for check in checks
+    )
+    restart = can_restart and not systemd_missing
+    plan: list[dict] = []
+    seen: set[str] = set()
+
+    def add(
+        key: str,
+        check_id: str,
+        title: str,
+        detail: str,
+        *,
+        command: list[str] | None = None,
+        env: dict[str, str] | None = None,
+        mkdir: str = "",
+        done: str = "",
+    ) -> None:
+        if key in seen:
+            return
+        seen.add(key)
+        plan.append({
+            "key": key,
+            "check_id": check_id,
+            "title": title,
+            "detail": detail,
+            "command": command,
+            "env": env,
+            "mkdir": mkdir,
+            "done": done,
+            "prompt": "Applicare questa correzione? [s/N] ",
+        })
+
+    config_changed = False
+    mcp = by_id.get("mcp_config")
+    if mcp and mcp.get("status") == "fail":
+        command = _script_command(base, "approval_setup.py")
+        if command:
+            add(
+                "approval_setup", "mcp_config",
+                "Ricollega i preventivi al bot",
+                "approval_setup.py reinserisce request_quote nell'allowlist MCP e salva "
+                "openclaw.json con un backup.",
+                command=command,
+                env=_fix_env(base, config_path, openclaw_config),
+                done="Approvazioni aggiornate (backup creato).",
+            )
+            config_changed = True
+
+    policy = by_id.get("policy")
+    if policy and policy.get("status") == "warn":
+        command = _script_command(base, "gateway_policy.py")
+        if command:
+            add(
+                "gateway_policy", "policy",
+                "Applica l'anti-raffica WhatsApp",
+                "gateway_policy.py aggiunge solo le chiavi mancanti (debounce e coda "
+                "WhatsApp): le scelte già presenti non vengono sovrascritte.",
+                command=command,
+                env=_fix_env(base, config_path, openclaw_config),
+                done="Policy anti-raffica aggiornata.",
+            )
+            config_changed = True
+
+    if restart:
+        for check in checks:
+            check_id = str(check.get("id") or "")
+            if not check_id.startswith("service:"):
+                continue
+            if check.get("status") not in {"fail", "warn"}:
+                continue
+            unit = check_id.split(":", 1)[1]
+            if check.get("status") == "warn":
+                add(
+                    "enable:" + unit, check_id, "Abilita " + unit,
+                    "Il timer non è attivo: enable --now lo avvia subito e lo mantiene "
+                    "attivo dopo i riavvii.",
+                    command=["systemctl", "--user", "enable", "--now", unit],
+                    done=unit + " abilitato e avviato.",
+                )
+            else:
+                add(
+                    "restart:" + unit, check_id, "Riavvia " + unit,
+                    "Il servizio non è attivo: un riavvio lo riporta in funzione.",
+                    command=["systemctl", "--user", "restart", unit],
+                    done=unit + " riavviato.",
+                )
+
+        if config_changed:
+            add(
+                "restart:openclaw-gateway.service", "mcp_config",
+                "Riavvia il gateway",
+                "Il gateway deve rileggere openclaw.json per esporre i tool e la nuova "
+                "policy a WhatsApp.",
+                command=["systemctl", "--user", "restart", "openclaw-gateway.service"],
+                done="Gateway riavviato: WhatsApp si riconnette in qualche decina di secondi.",
+            )
+
+        for check_id in ("http_dashboard", "http_quotes", "http_pdf"):
+            check = by_id.get(check_id)
+            if check and check.get("status") == "fail":
+                add(
+                    "restart:openclaw-dashboard.service", check_id,
+                    "Riavvia la dashboard",
+                    "La dashboard installata non risponde o serve una versione vecchia "
+                    "delle API.",
+                    command=["systemctl", "--user", "restart", "openclaw-dashboard.service"],
+                    done="Dashboard riavviata.",
+                )
+
+    return plan
+
+
+def apply_fix(item: dict, *, runner=subprocess.run) -> tuple[bool, str]:
+    """Esegue una sola riparazione. Restituisce (riuscita, messaggio)."""
+    if item.get("mkdir"):
+        path = Path(item["mkdir"])
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            if os.name != "nt":
+                os.chmod(path, 0o700)
+        except OSError as exc:
+            return False, f"cartella non creata: {exc}"
+        return True, item.get("done") or f"creata {path}"
+    command = item.get("command")
+    if not command:
+        return False, "nessun comando associato"
+    try:
+        result = runner(
+            command, capture_output=True, text=True, timeout=120, env=item.get("env")
+        )
+    except FileNotFoundError:
+        return False, f"comando non trovato: {command[0]}"
+    except Exception as exc:
+        return False, f"esecuzione fallita: {str(exc)[:160]}"
+    if result.returncode == 0:
+        return True, item.get("done") or "completato"
+    lines = ((result.stderr or "").strip() or (result.stdout or "").strip()).splitlines()
+    return False, (lines[-1][:200] if lines else f"exit {result.returncode}")
+
+
+def _confirm(prompt: str) -> bool:
+    try:
+        answer = input(prompt)
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return False
+    return answer.strip().lower() in {"s", "si", "sì", "y", "yes"}
+
+
+def run_fixes(
+    plan: list[dict],
+    *,
+    assume_yes: bool = False,
+    confirm=None,
+    runner=subprocess.run,
+    out=print,
+) -> dict:
+    """Applica le riparazioni una alla volta, chiedendo conferma per ognuna."""
+    applied: list[str] = []
+    failed: list[str] = []
+    skipped: list[str] = []
+    for index, item in enumerate(plan):
+        out("")
+        out("▸ " + item["title"])
+        if item.get("detail"):
+            out("  " + item["detail"])
+        if item.get("command"):
+            out("  Comando: " + shlex.join(item["command"]))
+        if item.get("mkdir"):
+            out("  Cartella: " + item["mkdir"])
+        if assume_yes:
+            approved = True
+        else:
+            ask = confirm or _confirm
+            try:
+                approved = bool(ask(item.get("prompt") or "Applicare? [s/N] "))
+            except KeyboardInterrupt:
+                out("  Interrotto: le correzioni restanti sono state saltate.")
+                skipped.extend(other["key"] for other in plan[index:])
+                break
+        if not approved:
+            out("  Saltata.")
+            skipped.append(item["key"])
+            continue
+        ok, message = apply_fix(item, runner=runner)
+        out(("  ✅ " if ok else "  ❌ ") + message)
+        (applied if ok else failed).append(item["key"])
+    return {"applied": applied, "failed": failed, "skipped": skipped}
+
+
 def summarize(checks: list[dict]) -> dict:
     counts = {"ok": 0, "warn": 0, "fail": 0, "info": 0}
     for check in checks:
@@ -494,6 +729,39 @@ def self_test() -> None:
     assert ui["status"] == "fail", ui
     assert "scripts/install.sh" in ui["action"], ui
     assert render(broken).startswith("Segreteria digitale — diagnosi")
+
+    broken_gateway = tmp / "openclaw-broken.json"
+    broken_gateway.write_text(json.dumps({
+        "messages": {"queue": {"mode": "steer"}},
+        "mcp": {"servers": {"secretary": {"toolFilter": {"include": [
+            "request_email", "request_calendar",
+        ]}}}},
+    }), encoding="utf-8")
+    broken_checks = run_checks(
+        base, config_path, broken_gateway, workspace, services=False, http=False
+    )
+    plan = plan_fixes(
+        base, broken_checks, config_path, broken_gateway, can_restart=False
+    )
+    assert [item["key"] for item in plan] == ["approval_setup", "gateway_policy"], plan
+    assert all("systemctl" not in (item.get("command") or []) for item in plan), plan
+    restart_plan = plan_fixes(
+        base, broken_checks, config_path, broken_gateway, can_restart=True
+    )
+    assert "restart:openclaw-gateway.service" in [item["key"] for item in restart_plan], restart_plan
+    assert "dashboard_ui" not in [item["check_id"] for item in restart_plan], restart_plan
+
+    calls: list[list[str]] = []
+
+    def fake_run(command, **_kwargs):
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "ok", "")
+
+    outcome = run_fixes(
+        plan[:1], assume_yes=True, runner=fake_run, out=lambda *_args: None
+    )
+    assert outcome["applied"] == ["approval_setup"], outcome
+    assert calls and calls[0][-1].endswith("approval_setup.py"), calls
     print("SELF-TEST OK")
     print(render(report))
 
@@ -508,20 +776,78 @@ def main() -> int:
     parser.add_argument("--short", action="store_true", help="mostra solo problemi")
     parser.add_argument("--strict", action="store_true", help="esce 1 anche con avvisi")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument(
+        "--fix", action="store_true",
+        help="ripara i problemi risolvibili, chiedendo conferma per ogni modifica",
+    )
+    parser.add_argument(
+        "--yes", action="store_true",
+        help="applica tutte le correzioni senza chiedere (richiede --fix)",
+    )
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
+    if args.json and args.fix:
+        parser.error("--json non può essere combinato con --fix")
+    if args.yes and not args.fix:
+        parser.error("--yes richiede --fix")
     if args.self_test:
         self_test()
         return 0
-    checks = run_checks(
-        Path(args.base), Path(args.config), Path(args.openclaw), Path(args.workspace),
-        services=not args.offline, http=not args.offline,
-    )
+
+    base = Path(args.base)
+    config_path = Path(args.config)
+    openclaw_config = Path(args.openclaw)
+
+    def collect() -> list[dict]:
+        return run_checks(
+            base, config_path, openclaw_config, Path(args.workspace),
+            services=not args.offline, http=not args.offline,
+        )
+
+    checks = collect()
     report = summarize(checks)
     if args.json:
         print(json.dumps({"ok": report["counts"]["fail"] == 0, **report}, ensure_ascii=False))
     else:
         print(render(report, short=args.short))
+
+    plan = plan_fixes(
+        base, checks, config_path, openclaw_config, can_restart=not args.offline
+    )
+    if args.fix:
+        if not plan:
+            if report["counts"]["fail"] or report["counts"]["warn"]:
+                print("\nNessuna correzione automatica: i problemi restanti richiedono "
+                      "git pull e bash scripts/install.sh.")
+            else:
+                print("\nNessuna correzione necessaria.")
+        elif not args.yes and not sys.stdin.isatty():
+            print("\nInput non interattivo: nessuna modifica eseguita. "
+                  "Rilancia con --yes per applicare le correzioni.")
+        else:
+            if args.yes:
+                print(f"\nApplico {len(plan)} correzioni (--yes).")
+            else:
+                print(f"\n{len(plan)} correzioni proposte; conferma richiesta per ognuna.")
+            outcome = run_fixes(plan, assume_yes=args.yes)
+            print(
+                "\nRiepilogo correzioni: "
+                f"{len(outcome['applied'])} applicate · "
+                f"{len(outcome['failed'])} fallite · "
+                f"{len(outcome['skipped'])} saltate"
+            )
+            if any(
+                key.startswith(("restart:", "enable:")) for key in outcome["applied"]
+            ):
+                time.sleep(2)
+            checks = collect()
+            report = summarize(checks)
+            print("\nDopo le correzioni:")
+            print(render(report))
+    elif not args.json and plan:
+        print(f"\n{len(plan)} correzioni automatiche disponibili. "
+              "Eseguile con: python3 doctor.py --fix")
+
     if report["counts"]["fail"]:
         return 1
     if args.strict and report["counts"]["warn"]:

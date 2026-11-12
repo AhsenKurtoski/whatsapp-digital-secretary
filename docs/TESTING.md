@@ -17,7 +17,7 @@ python3 gateway_policy.py --self-test
 python3 doctor.py --self-test
 ```
 
-Expected result: the whole suite passes (94 tests at the time of writing), the compile
+Expected result: the whole suite passes (102 tests at the time of writing), the compile
 check is silent, Code.gs prints `Code.gs handlers: OK`, and every self-test prints
 `SELF-TEST OK` with exit code 0. CI runs the same commands on Python 3.11, 3.12, 3.13
 and 3.14.
@@ -29,6 +29,11 @@ report PASS/WARN/FAIL controlla i file installati, le schede Preventivi/Contatti
 motore PDF, le regole della persona, la policy anti-raffica, l'allowlist MCP, le unità
 systemd e le API locali. Ogni criticità stampa il comando che la risolve. Lo stesso
 report è in dashboard (Sistema → Diagnosi) e `install.sh` lo esegue automaticamente.
+
+Se un controllo è critico, `python3 ~/.openclaw/secretary/doctor.py --fix` propone le
+riparazioni locali sicure (allowlist MCP, policy anti-raffica, servizi inattivi) e chiede
+conferma per ognuna; `--yes` salta le domande per l'uso non interattivo. Le correzioni
+che richiedono file nuovi restano manuali: `git pull && bash scripts/install.sh`.
 
 The suite is hermetic: it uses a temporary home, a demo configuration and no network.
 If a test needs a tool that is missing (for example `gog`), it asserts the graceful

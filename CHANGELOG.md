@@ -31,7 +31,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
   MCP tool allowlist, AI keys, systemd units and the local dashboard APIs. Every failure
   carries the command that fixes it. Available as `--json`, `--short`, `--offline`,
   from `GET /api/doctor` and from the dashboard (Sistema → Diagnosi); `install.sh` runs it
-  at the end.
+  at the end. `--fix` applies the repairs it can make locally (MCP allowlist, anti-burst
+  policy, inactive services) one at a time, asking confirmation before each change;
+  `--yes` skips the questions for non-interactive runs.
 
 ### Fixed
 

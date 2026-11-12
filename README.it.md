@@ -80,7 +80,9 @@ Web. Non è un prodotto WhatsApp Business API e non è affiliato a Meta o WhatsA
   motore PDF, regole di perimetro, policy anti-raffica, allowlist dei tool MCP, unità
   systemd e API locali, e stampa il comando esatto che risolve ogni problema. Lo stesso
   report è a un clic nella dashboard (Sistema → Diagnosi) e viene eseguito al termine di
-  `scripts/install.sh`.
+  `scripts/install.sh`. Con `--fix` applica le riparazioni sicure che trova (allowlist
+  MCP, policy anti-raffica, servizi inattivi) chiedendo conferma per ogni modifica;
+  `--yes` salta le domande per l'uso non interattivo.
 - **Health e avvisi token** — una scansione ogni 30 minuti controlla configurazione,
   segreti, gateway, WhatsApp, dashboard, timer, Google OAuth/bridge, MCP, chiavi AI,
   approvazioni, disco e avvio Windows. Manda un avviso WhatsApp senza spam quando un

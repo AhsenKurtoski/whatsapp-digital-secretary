@@ -80,7 +80,9 @@ Meta or WhatsApp.
   tabs, the PDF engine, the persona scope rules, the anti-burst policy, the MCP tool
   allowlist, systemd units and the local APIs, then prints the exact command that fixes
   each problem. The same report is one click away in the dashboard (Sistema → Diagnosi)
-  and runs at the end of `scripts/install.sh`.
+  and runs at the end of `scripts/install.sh`. `--fix` applies the safe repairs it finds
+  (MCP allowlist, anti-burst policy, inactive services) after a confirmation for every
+  change; `--yes` skips the questions for scripted runs.
 - **Health and token alerts** — a 30-minute scan checks configuration, secrets,
   gateway, WhatsApp, dashboard, timers, Google OAuth/bridge, MCP, AI keys, approvals,
   disk and Windows autostart. It sends a deduplicated WhatsApp alert to the owner when
