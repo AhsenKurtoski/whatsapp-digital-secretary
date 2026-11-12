@@ -53,6 +53,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Dashboard at 375 px**: tabs now wrap instead of being cut off horizontally, empty tables hide their header and show the message at full width, and the demo email fits the preview frame at 309 px without horizontal scrolling. Added `docs/dashboard-preview-mobile.png`.
 - **PDF quotes could not be created by the bot**: `approval_setup.py` wrote an MCP
   `toolFilter.include` list with only `request_email` and `request_calendar`, so
   `request_quote` was filtered out even though the tool existed. Re-running the installer
@@ -80,6 +81,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - `scripts/install.sh` installs the new modules and the reminders timer, and applies
   the WhatsApp burst policy to `openclaw.json` before restarting the gateway.
 - The Code of Conduct points to a concrete private reporting route.
+- `docs/PUBLISHING.md` now documents the next v1.2.0 release, the current topics and
+  the release checklist.
 
 ## [1.1.1] - 2026-11-02
 
