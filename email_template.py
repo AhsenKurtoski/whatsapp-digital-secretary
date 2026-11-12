@@ -128,11 +128,11 @@ def _quote_panel(quote: dict) -> str:
           <td bgcolor="{CARD_2}" style="background-color:{CARD_2};padding:20px 22px 18px 22px;border-radius:0 16px 16px 0">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td style="font-family:Inter,'Segoe UI',Arial,sans-serif">
+                <td class="quote-head" style="font-family:Inter,'Segoe UI',Arial,sans-serif">
                   <div style="color:{CYAN};font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Preventivo pronto</div>
                   <div style="color:{TEXT};font-size:20px;font-weight:800;letter-spacing:-0.3px;line-height:1.25">{number}</div>
                 </td>
-                <td align="right" style="font-family:Inter,'Segoe UI',Arial,sans-serif">
+                <td class="quote-badge" align="right" style="font-family:Inter,'Segoe UI',Arial,sans-serif">
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="right">
                     <tr><td bgcolor="{VIOLET}" style="background-color:{VIOLET};border-radius:999px;padding:7px 13px;color:{WHITE};font-size:10px;font-weight:800;letter-spacing:1.4px">PDF ALLEGATO</td></tr>
                   </table>
@@ -141,12 +141,12 @@ def _quote_panel(quote: dict) -> str:
             </table>
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px">
               <tr>
-                <td bgcolor="{ROW}" style="background-color:{ROW};border-radius:12px;padding:14px 16px;font-family:Inter,'Segoe UI',Arial,sans-serif">
+                <td class="quote-cell" bgcolor="{ROW}" style="background-color:{ROW};border-radius:12px;padding:14px 16px;font-family:Inter,'Segoe UI',Arial,sans-serif">
                   <div style="color:{MUTED};font-size:9px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;margin-bottom:4px">Totale</div>
                   <div style="color:{TEXT};font-size:26px;font-weight:800;letter-spacing:-0.6px;line-height:1.1">{total}</div>
                 </td>
-                <td width="10" style="width:10px;font-size:0;line-height:0">&nbsp;</td>
-                <td bgcolor="{CARD}" style="background-color:{CARD};border-radius:12px;padding:14px 16px;font-family:Inter,'Segoe UI',Arial,sans-serif">
+                <td class="quote-gap" width="10" style="width:10px;font-size:0;line-height:0">&nbsp;</td>
+                <td class="quote-cell" bgcolor="{CARD}" style="background-color:{CARD};border-radius:12px;padding:14px 16px;font-family:Inter,'Segoe UI',Arial,sans-serif">
                   <div style="color:{MUTED};font-size:9px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;margin-bottom:4px">Valido fino al</div>
                   <div style="color:{TEXT};font-size:15px;font-weight:700;line-height:1.3">{valid or "—"}</div>
                   <div style="color:{MUTED};font-size:11px;line-height:1.4;margin-top:4px">{len(items)} voci · dettaglio nel PDF</div>
@@ -242,6 +242,9 @@ def render_email(
     .cta {{ display:block !important; width:100% !important; box-sizing:border-box !important; }}
     .quote-cell {{ display:block !important; width:100% !important; }}
     .quote-gap {{ display:none !important; }}
+    .quote-head {{ display:block !important; width:100% !important; }}
+    .quote-badge {{ display:block !important; width:100% !important; padding-top:10px !important; }}
+    .quote-badge table {{ float:none !important; }}
   }}
 </style>
 </head>

@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import support  # noqa: F401
+import approval_store
 import dashboard
 
 
@@ -87,6 +88,18 @@ class EmailDeliveryTests(unittest.TestCase):
         self.assertFalse(Path(captured["paths"][0]).exists())
         self.assertTrue(result["ok"])
         self.assertTrue(result["pdf"])
+
+    def test_demo_preview_returns_html_and_pdf_without_queueing(self):
+        before = len(approval_store.list_requests(200).get("recent") or [])
+        result = dashboard.demo_quote_preview()
+        after = len(approval_store.list_requests(200).get("recent") or [])
+        self.assertTrue(result["ok"], result)
+        self.assertFalse(result["sent"])
+        self.assertIn("PDF ALLEGATO", result["html"])
+        self.assertIn("Preventivo pronto", result["html"])
+        self.assertTrue(result["number"].startswith("DEMO-"))
+        self.assertTrue(base64.b64decode(result["pdf_base64"]).startswith(b"%PDF-1.4"))
+        self.assertEqual(before, after)
 
     def test_quote_attachment_comes_from_the_private_quotes_folder(self):
         out = dashboard._quote_attachments({"pdf": "../secrets.env"})

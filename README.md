@@ -18,6 +18,8 @@ dashboard.
 <summary>Email di preventivo — anteprima</summary>
 
 ![Email preventivo](docs/email-preview.png)
+
+![Email preventivo su mobile, 375 px](docs/email-preview-mobile.png)
 </details>
 
 ## Project status
@@ -60,6 +62,10 @@ Meta or WhatsApp.
   and attaches it to the approval email. The email also shows a summary card with
   number, total and validity, and **Preventivo di prova** sends a complete demo with a
   real PDF so you can check Gmail colours and delivery in one click.
+- **Local demo preview** — *Anteprima demo* in the Preventivi tab renders the full email
+  and the generated PDF in the dashboard without queueing a request or sending anything.
+  The same template stacks cleanly at 375 px, so colours and mobile layout can be
+  checked before the real test email.
 - **Real contact history** — reads the local OpenClaw transcripts in read-only mode,
   merges them with classified leads and open requests, and sends the owner a compact
   WhatsApp summary of who wrote, what they asked and what is still pending.

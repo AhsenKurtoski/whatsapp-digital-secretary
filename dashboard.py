@@ -1059,12 +1059,10 @@ def _execute_email(payload: dict, attachments: list[str] | None = None) -> str:
     )
 
 
-def send_test_quote_email() -> dict:
-    """Invia al titolare un preventivo demo con PDF: verifica colori e allegato."""
+def _demo_quote_message() -> dict:
+    """Costruisce preventivo demo e HTML senza inviare né accodare nulla."""
     if email_template is None or quote_pdf is None:
-        return {"ok": False, "error": "template email o generatore PDF non disponibile"}
-    if not GOOGLE_ACCOUNT:
-        return {"ok": False, "error": "configura google_account o GOOGLE_ACCOUNT"}
+        raise RuntimeError("template email o generatore PDF non disponibile")
     owner = str(CFG.get("owner_name") or "titolare").strip()
     brand = str(CFG.get("business_name") or "Nome Attività").strip()
     demo = quote_pdf.demo_quote(CFG)
@@ -1081,22 +1079,61 @@ def send_test_quote_email() -> dict:
             f"A presto,\n{owner}"
         )
     try:
-        try:
-            html = email_template.render_email(
-                subject, body, client_name=owner, quote=demo
-            )
-        except TypeError:  # template vecchio durante un aggiornamento parziale
-            html = email_template.render_email(subject, body, client_name=owner)
-        pdf = quote_pdf.render_quote_pdf(demo)
+        html = email_template.render_email(
+            subject, body, client_name=owner, quote=demo
+        )
+    except TypeError:  # template vecchio durante un aggiornamento parziale
+        html = email_template.render_email(subject, body, client_name=owner)
+    return {"quote": demo, "subject": subject, "body": body, "html": html}
+
+
+def _demo_quote_pdf(message: dict | None = None) -> tuple[bytes, str]:
+    """Genera il PDF demo e il suo nome senza toccare la coda."""
+    message = message or _demo_quote_message()
+    quote = message["quote"]
+    return quote_pdf.render_quote_pdf(quote), quote_pdf.quote_filename(quote)
+
+
+def demo_quote_preview() -> dict:
+    """Anteprima locale del preventivo demo: nessuna email, nessuna coda."""
+    try:
+        message = _demo_quote_message()
+        pdf, pdf_filename = _demo_quote_pdf(message)
+    except Exception as exc:
+        log(f"demo quote preview failed: {str(exc)[:180]}")
+        return {"ok": False, "error": str(exc)[:400]}
+    quote = message["quote"]
+    return {
+        "ok": True,
+        "sent": False,
+        "subject": message["subject"],
+        "html": message["html"],
+        "pdf_base64": base64.b64encode(pdf).decode("ascii"),
+        "pdf_filename": pdf_filename,
+        "number": quote.get("number") or "",
+        "total": (quote.get("totals") or {}).get("total"),
+        "currency": quote.get("currency") or "EUR",
+        "items": len(quote.get("items") or []),
+        "valid_until": quote.get("valid_until") or "",
+    }
+
+
+def send_test_quote_email() -> dict:
+    """Invia al titolare il preventivo demo già usato dall'anteprima."""
+    if not GOOGLE_ACCOUNT:
+        return {"ok": False, "error": "configura google_account o GOOGLE_ACCOUNT"}
+    try:
+        message = _demo_quote_message()
+        pdf = quote_pdf.render_quote_pdf(message["quote"])
         fd, pdf_path = tempfile.mkstemp(prefix="secretary-quote-demo-", suffix=".pdf")
         try:
             with os.fdopen(fd, "wb") as handle:
                 handle.write(pdf)
             result = _execute_email({
                 "to": GOOGLE_ACCOUNT,
-                "subject": subject,
-                "body": body,
-                "html": html,
+                "subject": message["subject"],
+                "body": message["body"],
+                "html": message["html"],
             }, attachments=[pdf_path])
         finally:
             try:
@@ -1268,10 +1305,13 @@ class Handler(BaseHTTPRequestHandler):
         except OSError:
             self._json({"ok": False, "error": "PDF non disponibile"}, 404)
             return
+        self._pdf_bytes(data, filename)
+
+    def _pdf_bytes(self, data: bytes, filename: str, disposition: str = "attachment"):
         safe_name = re.sub(r"[^A-Za-z0-9._-]+", "-", str(filename or ""))[:120] or "preventivo.pdf"
         self._headers(200, "application/pdf", [
             ("Content-Length", str(len(data))),
-            ("Content-Disposition", f'attachment; filename="{safe_name}"'),
+            ("Content-Disposition", f'{disposition}; filename="{safe_name}"'),
         ])
         self.wfile.write(data)
 
@@ -1436,6 +1476,22 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 limit = 60
             self._json({"ok": True, "data": quotes_data(limit)})
+            return
+        if path == "/api/quotes/demo/preview":
+            if not self._require():
+                return
+            self._json(demo_quote_preview())
+            return
+        if path == "/api/quotes/demo.pdf":
+            if not self._require():
+                return
+            try:
+                pdf, filename = _demo_quote_pdf()
+            except Exception as exc:
+                log(f"demo quote pdf failed: {str(exc)[:180]}")
+                self._json({"ok": False, "error": str(exc)[:400]})
+                return
+            self._pdf_bytes(pdf, filename, disposition="inline")
             return
         pdf_match = re.match(r"^/api/quotes/([A-Za-z0-9-]{6,80})\.pdf$", path)
         if pdf_match:

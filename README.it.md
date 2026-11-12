@@ -18,6 +18,8 @@ locale.
 <summary>Email di preventivo — anteprima</summary>
 
 ![Email preventivo](docs/email-preview.png)
+
+![Email preventivo su mobile, 375 px](docs/email-preview-mobile.png)
 </details>
 
 ## Stato del progetto
@@ -59,6 +61,10 @@ Web. Non è un prodotto WhatsApp Business API e non è affiliato a Meta o WhatsA
   dalla dashboard e lo allega all'email solo dopo l'approvazione. L'email mostra anche
   numero, totale e validità, e **Preventivo di prova** invia un esempio completo con PDF
   reale per controllare colori e consegna su Gmail in un clic.
+- **Anteprima demo locale** — *Anteprima demo* nella scheda Preventivi mostra l'email
+  completa e il PDF generato dentro la dashboard, senza creare richieste né inviare
+  nulla. Lo stesso template si impila correttamente a 375 px, così puoi controllare
+  colori e layout mobile prima dell'email di prova reale.
 - **Storico reale dei contatti** — legge in sola lettura le trascrizioni locali di
   OpenClaw, le unisce ai lead e alle richieste aperte e manda al titolare un riepilogo
   WhatsApp compatto su chi ha scritto, cosa ha chiesto e cosa è ancora in sospeso.

@@ -143,6 +143,8 @@ select option{background:#081420}
 .mailprev summary::-webkit-details-marker{display:none}
 .mailprev summary:before{content:'✉';color:#a78bfa}
 .mailprev iframe{width:100%;height:500px;border:0;display:block;background:#09090b}
+.demo-email-frame{width:100%;height:680px;border:1px solid var(--stroke);border-radius:15px;background:#09090b;margin-top:12px;display:block}
+#demoPreviewCard{scroll-margin-top:92px}
 .bars{display:flex;align-items:flex-end;gap:8px;height:130px;padding:8px 2px 0}
 .bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0}
 .bar{width:100%;max-width:40px;min-height:5px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,rgba(125,211,252,.95),rgba(94,234,212,.55));box-shadow:0 0 18px rgba(125,211,252,.14);transition:height .4s ease}
@@ -196,7 +198,7 @@ select option{background:#081420}
 .renew-step{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
 .renew-step .input{flex:1;min-width:220px}
 @media (max-width:1050px){.span3,.span4,.span6{grid-column:span 6}.span5,.span7,.span8,.span12{grid-column:span 12}.metric{font-size:29px}}
-@media (max-width:680px){.span3,.span4,.span6{grid-column:span 12}.app{padding:18px 14px 44px}.brand{min-width:0}.header-right{width:100%;margin-left:0}.clock{display:none}.tabs{padding:5px}.tab{padding:9px 10px}.hero{padding:19px}.hero-side{width:100%}.hero-chip{flex:1}.metric{font-size:27px}}
+@media (max-width:680px){.span3,.span4,.span6{grid-column:span 12}.app{padding:18px 14px 44px}.brand{min-width:0}.header-right{width:100%;margin-left:0}.clock{display:none}.tabs{padding:5px}.tab{padding:9px 10px}.hero{padding:19px}.hero-side{width:100%}.hero-chip{flex:1}.metric{font-size:27px}.demo-email-frame{height:560px}}
 </style>
 </head>
 <body>
@@ -465,12 +467,27 @@ select option{background:#081420}
               <div class="sub">Il PDF viene generato in locale con il layout dell'attività e allegato all'email solo dopo la tua approvazione. Con <b>Preventivo di prova</b> ricevi subito un esempio completo, PDF incluso.</div>
             </div>
             <div class="row" style="gap:8px">
+              <button class="btn primary" id="previewDemoBtn" type="button">👁 Anteprima demo</button>
               <button class="btn" id="demoQuoteBtn" type="button">＋ Preventivo demo</button>
               <button class="btn" id="refreshQuotesBtn" type="button">↻ Aggiorna</button>
             </div>
           </div>
           <div class="chips" id="quoteCounts" style="margin-bottom:12px"></div>
           <div class="table-wrap"><table><thead><tr><th>Creato</th><th>Numero</th><th>Cliente</th><th>Totale</th><th>Stato</th><th>PDF</th></tr></thead><tbody id="quotesBody"></tbody></table></div>
+        </div>
+        <div class="card span12" id="demoPreviewCard" hidden>
+          <div class="row" style="justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <div>
+              <h2 style="margin:0 0 4px">Anteprima preventivo demo</h2>
+              <div class="sub">Generata in locale: <b>nessuna email inviata</b> e nessuna richiesta in coda. Controlla colori, testi e PDF prima di usare “Preventivo di prova”.</div>
+            </div>
+            <div class="row" style="gap:8px">
+              <a class="btn primary" id="demoPreviewPdf" href="#" target="_blank" rel="noopener">Apri PDF demo</a>
+              <button class="btn" id="closeDemoPreview" type="button">Chiudi</button>
+            </div>
+          </div>
+          <div class="chips" id="demoPreviewMeta"></div>
+          <iframe id="demoPreviewFrame" class="demo-email-frame" title="Anteprima email preventivo demo" sandbox loading="lazy"></iframe>
         </div>
         <div class="card span12">
           <h2>Flusso del preventivo</h2>
@@ -1066,6 +1083,26 @@ $('demoQuoteBtn').addEventListener('click', async ()=>{
     toast('Preventivo demo '+(r.number||'')+' creato: PDF pronto.');
     await loadQuotes(); await loadApprovals(); load();
   }catch(e){ toast('Preventivo: '+e.message,true); }
+  finally{ b.disabled=false; b.textContent=old; }
+});
+function closeDemoPreview(){
+  $('demoPreviewCard').hidden=true;
+  $('demoPreviewFrame').srcdoc='';
+  $('demoPreviewPdf').href='#';
+}
+$('closeDemoPreview').addEventListener('click',closeDemoPreview);
+$('previewDemoBtn').addEventListener('click', async ()=>{
+  const b=$('previewDemoBtn'); b.disabled=true; const old=b.textContent; b.textContent='Preparo…';
+  try{
+    const r=await api('/api/quotes/demo/preview');
+    if(!r.ok) throw new Error(r.error||'anteprima non disponibile');
+    $('demoPreviewCard').hidden=false;
+    $('demoPreviewFrame').srcdoc=r.html||'';
+    $('demoPreviewMeta').innerHTML=`<span class="chip ok">Nessun invio</span><span class="chip mono">${esc(r.number||'demo')}</span><span class="chip">${esc(moneyText(r.total,r.currency))}</span><span class="chip">${Number(r.items)||0} voci</span><span class="chip">PDF ${esc(r.pdf_filename||'')}</span>`;
+    $('demoPreviewPdf').href='/api/quotes/demo.pdf';
+    $('demoPreviewCard').scrollIntoView({behavior:'smooth',block:'start'});
+    toast('Anteprima pronta: nessuna email inviata.');
+  }catch(e){ toast('Anteprima: '+e.message,true); }
   finally{ b.disabled=false; b.textContent=old; }
 });
 

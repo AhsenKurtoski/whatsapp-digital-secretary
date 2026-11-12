@@ -1,3 +1,4 @@
+import base64
 import json
 import threading
 import unittest
@@ -264,6 +265,41 @@ class DashboardTests(unittest.TestCase):
         with self.assertRaises(urllib.error.HTTPError) as ctx:
             self.get("/api/quotes/apr-20260101-000000-abcd.pdf")
         self.assertEqual(ctx.exception.code, 401)
+
+    def test_demo_quote_preview_requires_token(self):
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            self.get("/api/quotes/demo/preview")
+        self.assertEqual(ctx.exception.code, 401)
+
+    def test_demo_quote_preview_is_local_and_returns_a_pdf(self):
+        before = len(approval_store.list_requests(200).get("recent") or [])
+        with self.get("/api/quotes/demo/preview", dashboard.DASH_TOKEN) as response:
+            self.assertEqual(response.status, 200)
+            payload = json.loads(response.read())
+        after = len(approval_store.list_requests(200).get("recent") or [])
+        self.assertTrue(payload["ok"], payload)
+        self.assertFalse(payload["sent"])
+        self.assertIn("PDF ALLEGATO", payload["html"])
+        self.assertTrue(base64.b64decode(payload["pdf_base64"]).startswith(b"%PDF-1.4"))
+        self.assertEqual(before, after)
+
+    def test_demo_quote_pdf_is_inline_and_does_not_queue(self):
+        before = len(approval_store.list_requests(200).get("recent") or [])
+        with self.get("/api/quotes/demo.pdf", dashboard.DASH_TOKEN) as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers.get("Content-Type"), "application/pdf")
+            self.assertIn("inline", response.headers.get("Content-Disposition", ""))
+            data = response.read()
+        after = len(approval_store.list_requests(200).get("recent") or [])
+        self.assertTrue(data.startswith(b"%PDF-1.4"))
+        self.assertEqual(before, after)
+
+    def test_index_wires_demo_preview_without_creating_a_request(self):
+        body = (ROOT / "dashboard.html").read_text(encoding="utf-8")
+        self.assertIn('id="previewDemoBtn"', body)
+        self.assertIn('id="demoPreviewCard"', body)
+        self.assertIn("/api/quotes/demo/preview", body)
+        self.assertIn("nessuna email inviata", body)
 
     def test_demo_quote_creates_a_downloadable_pdf(self):
         with self.post_json("/api/quotes/demo", {}, dashboard.DASH_TOKEN) as response:

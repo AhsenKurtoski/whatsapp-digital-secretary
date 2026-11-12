@@ -17,6 +17,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - **Demo quote email**: *Preventivo di prova* in the Approvazioni tab sends the owner a
   complete example with the generated PDF attached, to verify colours and delivery on a
   real Gmail account without involving a customer.
+- **Local demo preview**: *Anteprima demo* in the Preventivi tab renders the demo email
+  and its PDF in the dashboard without queueing or sending anything. The template also
+  stacks the quote number, PDF badge, total and validity cells at 375 px, with a mobile
+  reference screenshot in `docs/email-preview-mobile.png`.
 - **Email delivery tests** (`tests/test_email_delivery.py`): assert that gog receives the
   HTML file and the PDF attachment, that the Apps Script bridge receives base64
   attachments, and that the demo quote email embeds a real PDF.
