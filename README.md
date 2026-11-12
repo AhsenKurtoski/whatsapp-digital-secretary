@@ -19,7 +19,7 @@ dashboard.
 | | |
 |---|---|
 | **Latest release** | [v1.1.1](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.1.1) — reliable Google bridge, accurate health with an active bridge |
-| **CI on `main`** | [All checks passing](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml) (last verified 2 Nov 2026): unit tests, monitor and watchdog self-tests, Apps Script bridge handlers, shell syntax |
+| **CI on `main`** | [All checks passing](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml) (last verified 12 Nov 2026): unit tests, every Python self-test, email delivery tests, Apps Script bridge handlers, shell syntax |
 | **Python** | 3.11, 3.12, 3.13 and 3.14, all covered by CI |
 | **Platform** | Linux or WSL2 with systemd user services; optional Docker dashboard |
 | **License** | MIT |
@@ -45,11 +45,15 @@ Meta or WhatsApp.
   messages; scores leads; writes an audit trail.
 - **Appointment requests** — collects date/time and attendees, then queues a
   Calendar request for approval.
-- **Email follow-ups** — writes a plain-text email, applies a responsive HTML
-  template server-side, and queues it for approval.
+- **Email follow-ups** — writes a plain-text email and applies a fully coloured,
+  responsive HTML template server-side (violet/cyan on deep indigo, quote summary,
+  buttons and footer). Preview it in the dashboard before approving; there are no
+  remote images, web fonts or tracking pixels.
 - **PDF quotes** — builds a branded A4 quote (items, quantity, unit price, discount,
   VAT and totals recalculated server-side), keeps it downloadable from the dashboard,
-  and attaches it to the approval email. A demo quote is one click away.
+  and attaches it to the approval email. The email also shows a summary card with
+  number, total and validity, and **Preventivo di prova** sends a complete demo with a
+  real PDF so you can check Gmail colours and delivery in one click.
 - **Real contact history** — reads the local OpenClaw transcripts in read-only mode,
   merges them with classified leads and open requests, and sends the owner a compact
   WhatsApp summary of who wrote, what they asked and what is still pending.
@@ -247,6 +251,7 @@ See [SECURITY.md](SECURITY.md) for the threat model and how to report a vulnerab
 python3 -m unittest discover -s tests -v
 python3 -m py_compile *.py google-bridge/*.py
 node google-bridge/test_code_gs.js
+python3 google-bridge/test_bridge.py
 python3 monitor.py --self-test
 python3 watchdog.py --self-test
 python3 healthcheck.py --self-test

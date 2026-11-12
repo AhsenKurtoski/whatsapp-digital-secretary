@@ -8,6 +8,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Full-colour transactional email** (`email_template.py`): a self-contained
+  violet/cyan/indigo design with a coloured hero, body card, quote summary (number,
+  total, validity, PDF badge), call to action and footer. Every block carries an explicit
+  `bgcolor` so Gmail and Outlook keep the colours; there are no remote images, web
+  fonts, tracking pixels or external CSS. Quote emails now include the summary, and both
+  email types can be previewed in the dashboard.
+- **Demo quote email**: *Preventivo di prova* in the Approvazioni tab sends the owner a
+  complete example with the generated PDF attached, to verify colours and delivery on a
+  real Gmail account without involving a customer.
+- **Email delivery tests** (`tests/test_email_delivery.py`): assert that gog receives the
+  HTML file and the PDF attachment, that the Apps Script bridge receives base64
+  attachments, and that the demo quote email embeds a real PDF.
 - **Automatic PDF quotes** (`quote_pdf.py`): a dependency-free PDF 1.4 writer draws a
   branded A4 quote with gradient accent, client block, item table, discount, VAT and
   totals. Totals are always recalculated server-side, the file lives in the private
@@ -42,7 +54,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `request_quote` was filtered out even though the tool existed. Re-running the installer
   now exposes it. This was the reason the PDF never appeared on existing installs.
 - **Apps Script bridge sent emails without the PDF**: `Code.gs` ignored
-  `payload.attachments`. It now decodes up to three base64 attachments (1 MB each,
+  `payload.attachments`. It now decodes up to three base64 attachments (1.2 MB each,
   1.5 MB total), skips invalid ones instead of failing the email, and the body limit was
   raised to 2 MB. Requires `clasp push` and a new deployment.
 - **The monitor no longer silences a contact forever**: alert deduplication was a

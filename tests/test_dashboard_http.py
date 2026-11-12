@@ -124,6 +124,25 @@ class DashboardTests(unittest.TestCase):
         )
         return urllib.request.urlopen(req, timeout=10)
 
+    def test_index_has_demo_quote_email_button(self):
+        with self.get("/") as response:
+            body = response.read().decode("utf-8")
+        self.assertIn("testQuoteEmailBtn", body)
+        self.assertIn("Preventivo di prova", body)
+
+    def test_demo_quote_email_route_is_wired(self):
+        original = dashboard.send_test_quote_email
+        dashboard.send_test_quote_email = lambda: {"ok": True, "result": "demo", "pdf": True}
+        dashboard.ACTION_LIMIT.pop("test-email", None)
+        try:
+            with self.post_json("/api/email/test-quote", {}, dashboard.DASH_TOKEN) as response:
+                payload = json.loads(response.read())
+        finally:
+            dashboard.send_test_quote_email = original
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["result"], "demo")
+        self.assertTrue(payload["pdf"])
+
     def test_google_renew_requires_token(self):
         with self.assertRaises(urllib.error.HTTPError) as ctx:
             self.post_json("/api/google/renew/start", {})

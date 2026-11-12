@@ -86,6 +86,8 @@ This project runs on a personal computer or a private VPS. It is designed to pro
   message, and quote PDF downloads are audited by request id only.
 - Leads and alerts can be deleted from the dashboard; deleting `~/.openclaw` removes
   the local dataset.
+- Transactional emails are self-contained: no remote images, web fonts, tracking
+  pixels or third-party CSS, so opening a quote does not notify anyone else.
 - The AI provider receives the message text needed to generate a reply. Choose a
   provider and plan that match your data-processing obligations; do not send special
   category data.

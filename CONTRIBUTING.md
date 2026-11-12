@@ -13,7 +13,7 @@ small, readable and safe to self-host.
 ## Development setup
 
 ```bash
-git clone https://github.com/your-name/whatsapp-digital-secretary.git
+git clone https://github.com/AhsenKurtoski/whatsapp-digital-secretary.git
 cd whatsapp-digital-secretary
 python3 -m unittest discover -s tests -v
 ```
@@ -46,6 +46,11 @@ node google-bridge/test_code_gs.js
 python3 monitor.py --self-test
 python3 watchdog.py --self-test
 python3 healthcheck.py --self-test
+python3 contacts.py --self-test
+python3 reminders.py --self-test
+python3 gateway_policy.py --self-test
+python3 doctor.py --self-test
+python3 google-bridge/test_bridge.py
 ```
 
 If your change needs a real WhatsApp number or Google account, describe the manual test

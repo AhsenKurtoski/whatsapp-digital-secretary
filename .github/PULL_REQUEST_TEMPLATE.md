@@ -11,8 +11,10 @@
 - [ ] `python3 -m unittest discover -s tests -v`
 - [ ] `python3 -m py_compile *.py google-bridge/*.py`
 - [ ] `node google-bridge/test_code_gs.js`
-- [ ] `python3 monitor.py --self-test` and `python3 watchdog.py --self-test`
-- [ ] `python3 healthcheck.py --self-test`
+- [ ] `python3 google-bridge/test_bridge.py`
+- [ ] every self-test: monitor, watchdog, healthcheck, contacts, reminders,
+      gateway_policy and doctor
+- [ ] Email changes: sent a demo quote and checked colours + PDF on Gmail web/mobile
 - [ ] Manual test (describe):
 
 ## Checklist

@@ -19,7 +19,7 @@ locale.
 | | |
 |---|---|
 | **Ultima release** | [v1.1.1](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.1.1) — bridge Google affidabile, salute corretta con bridge attivo |
-| **CI su `main`** | [Tutti i controlli verdi](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml) (ultima verifica 2 nov 2026): test unitari, self-test di monitor e watchdog, handler del bridge Apps Script, sintassi degli script shell |
+| **CI su `main`** | [Tutti i controlli verdi](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml) (ultima verifica 12 nov 2026): test unitari, tutti i self-test Python, test di consegna email, handler del bridge Apps Script, sintassi degli script shell |
 | **Python** | 3.11, 3.12, 3.13 e 3.14, tutte coperte dalla CI |
 | **Piattaforme** | Linux o WSL2 con systemd utente; dashboard Docker opzionale |
 | **Licenza** | MIT |
@@ -44,12 +44,15 @@ Web. Non è un prodotto WhatsApp Business API e non è affiliato a Meta o WhatsA
   sospetti; assegna un punteggio; scrive un registro locale.
 - **Richieste di appuntamento** — raccoglie data, ora e partecipanti, poi mette la
   richiesta Calendar in coda per l'approvazione.
-- **Follow-up email** — scrive il testo, applica lato server un template HTML responsive
-  e mette l'email in coda per l'approvazione.
+- **Follow-up email** — scrive il testo e applica lato server un template HTML
+  completamente colorato e responsive (viola/ciano su indaco profondo, riepilogo,
+  pulsanti e footer). Puoi vederne l'anteprima in dashboard prima di approvare; non usa
+  immagini remote, font esterni o pixel di tracciamento.
 - **Preventivi PDF** — genera un preventivo A4 con l'identità dell'attività (voci,
   quantità, prezzo, sconto, IVA e totale ricalcolati dal sistema), lo tiene scaricabile
-  dalla dashboard e lo allega all'email solo dopo l'approvazione. Un preventivo demo è
-  a un clic.
+  dalla dashboard e lo allega all'email solo dopo l'approvazione. L'email mostra anche
+  numero, totale e validità, e **Preventivo di prova** invia un esempio completo con PDF
+  reale per controllare colori e consegna su Gmail in un clic.
 - **Storico reale dei contatti** — legge in sola lettura le trascrizioni locali di
   OpenClaw, le unisce ai lead e alle richieste aperte e manda al titolare un riepilogo
   WhatsApp compatto su chi ha scritto, cosa ha chiesto e cosa è ancora in sospeso.
@@ -249,6 +252,7 @@ vulnerabilità.
 python3 -m unittest discover -s tests -v
 python3 -m py_compile *.py google-bridge/*.py
 node google-bridge/test_code_gs.js
+python3 google-bridge/test_bridge.py
 python3 monitor.py --self-test
 python3 watchdog.py --self-test
 python3 healthcheck.py --self-test

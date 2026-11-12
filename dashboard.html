@@ -435,6 +435,7 @@ select option{background:#081420}
             </div>
             <div class="row" style="gap:8px">
               <button class="btn" id="testEmailBtn" type="button">✉ Email di prova</button>
+              <button class="btn" id="testQuoteEmailBtn" type="button">✉ Preventivo di prova</button>
               <button class="btn" id="refreshApprovalsBtn" type="button">↻ Aggiorna</button>
             </div>
           </div>
@@ -461,7 +462,7 @@ select option{background:#081420}
           <div class="row" style="justify-content:space-between;margin-bottom:10px">
             <div>
               <h2 style="margin:0 0 4px">Preventivi in PDF</h2>
-              <div class="sub">Il PDF viene generato in locale con il layout dell'attività e allegato all'email solo dopo la tua approvazione.</div>
+              <div class="sub">Il PDF viene generato in locale con il layout dell'attività e allegato all'email solo dopo la tua approvazione. Con <b>Preventivo di prova</b> ricevi subito un esempio completo, PDF incluso.</div>
             </div>
             <div class="row" style="gap:8px">
               <button class="btn" id="demoQuoteBtn" type="button">＋ Preventivo demo</button>
@@ -990,7 +991,7 @@ function approvalCard(x){
     ${details}
     <div class="kv"><span>Richiesta</span><span>${esc(x.reason||'—')}</span></div>
     ${pdfLink}
-    ${x.type==='email'&&p.html?`<details class="mailprev"><summary>Anteprima email HTML</summary><iframe title="Anteprima email" sandbox loading="lazy" srcdoc="${esc(p.html)}"></iframe></details>`:''}
+    ${(x.type==='email'||x.type==='quote')&&p.html?`<details class="mailprev"><summary>Anteprima email HTML${isQuote?' con PDF':''}</summary><iframe title="Anteprima email" sandbox loading="lazy" srcdoc="${esc(p.html)}"></iframe></details>`:''}
     ${body?`<pre class="pre" style="max-height:180px;margin:10px 0">${esc(body)}</pre>`:''}
     ${x.status==='pending'?`<div class="row"><button class="btn primary" data-approve="${esc(x.id)}" type="button">Approva e ${x.type==='calendar'?'crea':'invia'}</button><button class="btn danger" data-reject="${esc(x.id)}" type="button">Rifiuta</button></div>`:''}
     ${x.result?`<div class="sub ok" style="margin-top:8px">${esc(x.result)}</div>`:''}
@@ -1016,6 +1017,15 @@ $('testEmailBtn').addEventListener('click', async ()=>{
   try{
     const res=await api('/api/email/test',{method:'POST',body:'{}'});
     toast(res.result||'Email di prova inviata.',!res.ok);
+  }catch(e){ toast('Errore: '+e.message,true); }
+  finally{ b.disabled=false; b.textContent=old; }
+});
+$('testQuoteEmailBtn').addEventListener('click', async ()=>{
+  if(!confirm('Inviare a {{GOOGLE_ACCOUNT}} un preventivo demo con PDF allegato? Serve a controllare colori e allegato.')) return;
+  const b=$('testQuoteEmailBtn'); b.disabled=true; const old=b.textContent; b.textContent='Invio…';
+  try{
+    const res=await api('/api/email/test-quote',{method:'POST',body:'{}'});
+    toast(res.result||'Preventivo di prova inviato con PDF.',!res.ok);
   }catch(e){ toast('Errore: '+e.message,true); }
   finally{ b.disabled=false; b.textContent=old; }
 });

@@ -330,9 +330,19 @@ def append_request(
             quote["subject"] = subject
             quote["body"] = body
             if render_email is not None:
-                quote["html"] = render_email(
-                    subject, body, client_name=_clean(client_name or quote.get("client_name"), 80)
-                )
+                # Il riquadro con numero e totale rende l'email del preventivo
+                # riconoscibile a colpo d'occhio; il PDF resta l'allegato.
+                try:
+                    quote["html"] = render_email(
+                        subject, body,
+                        client_name=_clean(client_name or quote.get("client_name"), 80),
+                        quote=quote,
+                    )
+                except TypeError:  # template vecchio durante un aggiornamento parziale
+                    quote["html"] = render_email(
+                        subject, body,
+                        client_name=_clean(client_name or quote.get("client_name"), 80),
+                    )
             quote["pdf"] = pdf_name
             clean_payload = quote
         request = {

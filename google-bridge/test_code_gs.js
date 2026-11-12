@@ -110,6 +110,26 @@ if (attached.options.attachments[0].bytes.length !== Buffer.from("%PDF-1.4 preve
   throw new Error("attachment bytes wrong");
 }
 
+// Il limite locale dei preventivi è 1,2 MB: il bridge deve accettarli tutti.
+const largePdf = Buffer.alloc(1100000, 7);
+const withLargeAttachment = post(envelope({
+  ts: Math.floor(Date.now() / 1000),
+  action: "sendEmail",
+  payload: {
+    to: "cliente@example.com",
+    subject: "Preventivo grande",
+    body: "In allegato.",
+    attachments: [
+      { filename: "Preventivo-grande.pdf", mimeType: "application/pdf", data: largePdf.toString("base64") },
+    ],
+  },
+}));
+if (!withLargeAttachment.ok || withLargeAttachment.result.attachments !== 1) {
+  throw new Error("large attachment not sent");
+}
+const largeAttached = sent[sent.length - 1].options.attachments[0];
+if (largeAttached.bytes.length !== largePdf.length) throw new Error("large attachment truncated");
+
 const event = post(envelope({
   ts: Math.floor(Date.now() / 1000),
   action: "createEvent",

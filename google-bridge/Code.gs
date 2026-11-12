@@ -13,7 +13,7 @@ const BRIDGE_VERSION = '1.1.0';
 const MAX_BODY_BYTES = 2000000;
 const MAX_SKEW_SECONDS = 300;
 const MAX_ATTACHMENTS = 3;
-const MAX_ATTACHMENT_BYTES = 1000000;
+const MAX_ATTACHMENT_BYTES = 1200000;
 const MAX_ATTACHMENTS_TOTAL = 1500000;
 const OWNER_EMAIL = (typeof BRIDGE_OWNER_EMAIL !== 'undefined') ? String(BRIDGE_OWNER_EMAIL) : '';
 const BRIDGE_NAME = (typeof BRIDGE_BRAND !== 'undefined' && BRIDGE_BRAND) ? String(BRIDGE_BRAND) : 'Segreteria Digitale';

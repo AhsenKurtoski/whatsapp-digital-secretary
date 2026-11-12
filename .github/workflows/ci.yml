@@ -32,11 +32,21 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
 
-      - name: Run monitor self-test
-        run: python monitor.py --self-test
+      - name: Run every self-test
+        run: |
+          python monitor.py --self-test
+          python watchdog.py --self-test
+          python healthcheck.py --self-test
+          python contacts.py --self-test
+          python reminders.py --self-test
+          python gateway_policy.py --self-test
+          python doctor.py --self-test
 
-      - name: Run watchdog self-test
-        run: python watchdog.py --self-test
+      - name: Test signed bridge client
+        run: python google-bridge/test_bridge.py
+
+      - name: Generate a demo quote PDF
+        run: python quote_pdf.py /tmp/preventivo-demo.pdf
 
   apps-script:
     name: Apps Script bridge test

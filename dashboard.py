@@ -1001,14 +1001,15 @@ def _bridge_attachments(paths: list[str]) -> list[dict]:
     return out
 
 
-def _execute_email(payload: dict) -> str:
+def _execute_email(payload: dict, attachments: list[str] | None = None) -> str:
     bridge = None
     if bridge_client is not None:
         try:
             bridge = bridge_client.load_config(BRIDGE_CONFIG)
         except Exception as exc:
             log(f"bridge config error: {str(exc)[:180]}")
-    attachments = _quote_attachments(payload)
+    if attachments is None:
+        attachments = _quote_attachments(payload)
     suffix = " con PDF allegato" if attachments else ""
     if bridge:
         request = dict(payload)
@@ -1056,6 +1057,57 @@ def _execute_email(payload: dict) -> str:
         f"Email inviata a {payload.get('to')}{suffix}"
         + (f" (id {message_id})" if message_id else "")
     )
+
+
+def send_test_quote_email() -> dict:
+    """Invia al titolare un preventivo demo con PDF: verifica colori e allegato."""
+    if email_template is None or quote_pdf is None:
+        return {"ok": False, "error": "template email o generatore PDF non disponibile"}
+    if not GOOGLE_ACCOUNT:
+        return {"ok": False, "error": "configura google_account o GOOGLE_ACCOUNT"}
+    owner = str(CFG.get("owner_name") or "titolare").strip()
+    brand = str(CFG.get("business_name") or "Nome Attività").strip()
+    demo = quote_pdf.demo_quote(CFG)
+    demo["number"] = "DEMO-" + datetime.now(ROME).strftime("%Y%m%d")
+    subject = f"Preventivo demo — {brand}"
+    if approval_store is not None and hasattr(approval_store, "_quote_email_body"):
+        body = approval_store._quote_email_body(demo)
+    else:
+        body = (
+            f"Ciao {owner},\n\n"
+            "in allegato trovi un preventivo dimostrativo con il layout dell'attività.\n\n"
+            f"Totale: {quote_pdf.money_text(demo['totals']['total'])}.\n\n"
+            "Serve solo a verificare colori, link e allegato PDF.\n\n"
+            f"A presto,\n{owner}"
+        )
+    try:
+        try:
+            html = email_template.render_email(
+                subject, body, client_name=owner, quote=demo
+            )
+        except TypeError:  # template vecchio durante un aggiornamento parziale
+            html = email_template.render_email(subject, body, client_name=owner)
+        pdf = quote_pdf.render_quote_pdf(demo)
+        fd, pdf_path = tempfile.mkstemp(prefix="secretary-quote-demo-", suffix=".pdf")
+        try:
+            with os.fdopen(fd, "wb") as handle:
+                handle.write(pdf)
+            result = _execute_email({
+                "to": GOOGLE_ACCOUNT,
+                "subject": subject,
+                "body": body,
+                "html": html,
+            }, attachments=[pdf_path])
+        finally:
+            try:
+                os.unlink(pdf_path)
+            except OSError:
+                pass
+    except Exception as exc:
+        log(f"test quote email failed: {str(exc)[:180]}")
+        return {"ok": False, "error": str(exc)[:400]}
+    log("test quote email sent")
+    return {"ok": True, "result": result, "to": GOOGLE_ACCOUNT, "pdf": True}
 
 
 def send_test_email() -> dict:
@@ -1502,7 +1554,16 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"ok": True, "results": test_keys()})
             return
         if path == "/api/email/test":
+            if _throttled("test-email", 15):
+                self._json({"ok": False, "error": "attendi 15 secondi prima di un altro invio"})
+                return
             self._json(send_test_email())
+            return
+        if path == "/api/email/test-quote":
+            if _throttled("test-email", 15):
+                self._json({"ok": False, "error": "attendi 15 secondi prima di un altro invio"})
+                return
+            self._json(send_test_quote_email())
             return
         if path == "/api/approvals/approve":
             data = self._json_body()

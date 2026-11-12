@@ -8,6 +8,7 @@ Run these before every release:
 python3 -m unittest discover -s tests -v
 python3 -m py_compile *.py google-bridge/*.py
 node google-bridge/test_code_gs.js
+python3 google-bridge/test_bridge.py
 python3 monitor.py --self-test
 python3 watchdog.py --self-test
 python3 healthcheck.py --self-test
@@ -17,7 +18,7 @@ python3 gateway_policy.py --self-test
 python3 doctor.py --self-test
 ```
 
-Expected result: the whole suite passes (102 tests at the time of writing), the compile
+Expected result: the whole suite passes (113 tests at the time of writing), the compile
 check is silent, Code.gs prints `Code.gs handlers: OK`, and every self-test prints
 `SELF-TEST OK` with exit code 0. CI runs the same commands on Python 3.11, 3.12, 3.13
 and 3.14.
@@ -29,6 +30,12 @@ report PASS/WARN/FAIL controlla i file installati, le schede Preventivi/Contatti
 motore PDF, le regole della persona, la policy anti-raffica, l'allowlist MCP, le unità
 systemd e le API locali. Ogni criticità stampa il comando che la risolve. Lo stesso
 report è in dashboard (Sistema → Diagnosi) e `install.sh` lo esegue automaticamente.
+
+Per verificare colori e allegato su Gmail reale apri **Approvazioni → Preventivo di
+prova**: arriva un'email con hero viola, card indaco, riepilogo del preventivo e PDF
+allegato. Controlla anche l'anteprima HTML nella card del preventivo e apri il messaggio
+su Gmail web e mobile. Se i colori non si vedono, disattiva la modalità scura forzata del
+client: il template dichiara `color-scheme: light only` proprio per evitare l'inversione.
 
 Se un controllo è critico, `python3 ~/.openclaw/secretary/doctor.py --fix` propone le
 riparazioni locali sicure (allowlist MCP, policy anti-raffica, servizi inattivi) e chiede

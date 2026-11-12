@@ -109,8 +109,9 @@ def main() -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "bridge.json")
             bridge_client.write_config("https://script.google.com/macros/s/abc/exec", SECRET, path)
-            mode = stat.S_IMODE(os.stat(path).st_mode)
-            assert mode == 0o600, oct(mode)
+            if os.name != "nt":  # Windows does not expose POSIX permission bits.
+                mode = stat.S_IMODE(os.stat(path).st_mode)
+                assert mode == 0o600, oct(mode)
             loaded = bridge_client.load_config(path)
             assert loaded and loaded["secret"] == SECRET
 
