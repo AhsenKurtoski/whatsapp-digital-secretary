@@ -101,6 +101,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Deterministic dashboard HTTP tests on Windows**: the test harness now uses one
+  sequential loopback server per test class instead of a shared threaded server, so a
+  slow or lingering handler cannot leak into the next test and cause transient 10 s
+  timeouts. Requests, timeouts and assertions are unchanged. Five consecutive full
+  suite runs passed locally (144 tests each).
 - **Remote access helper now really installed**: `scripts/install.sh` copies
   `remote_access.py` into `~/.openclaw/secretary` without the previous
   `2>/dev/null || true`, which could hide a missing source. Required source files are

@@ -5,7 +5,7 @@ import unittest
 import urllib.error
 import urllib.parse
 import urllib.request
-from http.server import ThreadingHTTPServer
+from http.server import HTTPServer
 from pathlib import Path
 
 import support  # noqa: F401
@@ -20,13 +20,19 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+class DashboardHTTPServer(HTTPServer):
+    """Server di test sequenziale, senza thread concorrenti sul loopback."""
+
+    allow_reuse_address = True
+
+
 class DashboardTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         dashboard.HTML_FILE = str(ROOT / "dashboard.html")
         # La cartella base dei test è temporanea: collega esplicitamente la coda.
         dashboard.approval_store = approval_store
-        cls.server = ThreadingHTTPServer(("127.0.0.1", 0), dashboard.Handler)
+        cls.server = DashboardHTTPServer(("127.0.0.1", 0), dashboard.Handler)
         dashboard.PORT = cls.server.server_port
         cls.base = f"http://127.0.0.1:{cls.server.server_port}"
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
@@ -36,6 +42,7 @@ class DashboardTests(unittest.TestCase):
     def tearDownClass(cls):
         cls.server.shutdown()
         cls.server.server_close()
+        cls.thread.join(timeout=5)
 
     def get(self, path, token=None):
         headers = {"Authorization": "Bearer " + token} if token else {}
