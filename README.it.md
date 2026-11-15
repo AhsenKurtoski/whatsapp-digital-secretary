@@ -1,5 +1,8 @@
 # Segreteria Digitale per WhatsApp
 
+> **Repository ufficiale** della Segreteria Digitale self-hosted. È un progetto
+> indipendente: non è un prodotto WhatsApp/Meta e non è affiliato a WhatsApp o Meta.
+
 [![CI](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml/badge.svg)](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/AhsenKurtoski/whatsapp-digital-secretary?color=5eead4&label=release)](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-7dd3fc.svg)](LICENSE)
@@ -39,8 +42,9 @@ progetto gira sul tuo computer, usa i tuoi dati reali, mantiene la memoria separ
 ogni cliente e non invia mai un'email né crea un evento in calendario senza la tua
 approvazione esplicita.
 
-È costruito sopra [OpenClaw](https://openclaw.ai) e sul client non ufficiale WhatsApp
-Web. Non è un prodotto WhatsApp Business API e non è affiliato a Meta o WhatsApp.
+È costruito sopra [OpenClaw](https://openclaw.ai) e sul client WhatsApp Web. È
+software indipendente, non è un prodotto WhatsApp Business API e non è affiliato a
+Meta o WhatsApp.
 
 ## Funzionalità
 
@@ -106,7 +110,7 @@ Web. Non è un prodotto WhatsApp Business API e non è affiliato a Meta o WhatsA
 ## Architettura
 
 ```text
-WhatsApp (client Web non ufficiale)
+WhatsApp (client Web)
         │
         ▼
 Gateway OpenClaw (Node.js, servizio systemd utente)
@@ -296,7 +300,7 @@ Il compose monta `~/.openclaw` e `~/.config/digital-secretary`, pubblica la port
 sul loopback dell'host e raggiunge il gateway tramite il localhost forwarding di
 Linux/WSL2. Dentro il container la dashboard ascolta su `0.0.0.0`, ma non è mai
 esposta oltre `127.0.0.1` sull'host. L'immagine presuppone UID/GID 1000 (il primo
-utente Linux/WSL2). Non è un container WhatsApp completo: il client non ufficiale e la
+utente Linux/WSL2). Non è un container WhatsApp completo: il client WhatsApp Web e la
 sua sessione restano intenzionalmente sull'host, e i widget basati su systemd (uptime
 gateway, timer) non sono disponibili nel container. La gestione chiavi e il pulsante di
 riavvio nel container non comandano il gateway dell'host: modifica
@@ -330,7 +334,7 @@ Non esporre la porta 8787 su Internet.
 
 ## Roadmap
 
-- Adattatore ufficiale WhatsApp Business Cloud API
+- Adattatore WhatsApp Business Cloud API
 - Canali Telegram ed email
 - Calendario interno con regole di disponibilità
 - Export CSV e webhook CRM
@@ -349,7 +353,7 @@ MIT — vedi [LICENSE](LICENSE).
 
 ## Avvertenza
 
-Questo progetto usa l'automazione non ufficiale di WhatsApp Web. Non è approvato da
-WhatsApp, Meta, Google, Groq o OpenClaw e non è affiliato a queste società. Sei
+Questo progetto usa l'automazione di WhatsApp Web e non è approvato da WhatsApp,
+Meta, Google, Groq o OpenClaw e non è affiliato a queste società. Sei
 responsabile del rispetto dei Termini di servizio di WhatsApp, delle policy API di
 Google e della normativa privacy applicabile (GDPR incluso). Uso a proprio rischio.

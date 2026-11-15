@@ -1,5 +1,9 @@
 # WhatsApp Digital Secretary
 
+> **Official source repository** for the self-hosted WhatsApp Digital Secretary.
+> This is an independent project: it is not a WhatsApp/Meta product and is not
+> affiliated with WhatsApp or Meta.
+
 [![CI](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml/badge.svg)](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/AhsenKurtoski/whatsapp-digital-secretary?color=5eead4&label=release)](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-7dd3fc.svg)](LICENSE)
@@ -39,9 +43,9 @@ project is different: it runs on your computer, uses your real business data, ke
 conversation memory per customer, and never sends an email or creates a calendar
 event without an explicit approval.
 
-It is built on top of [OpenClaw](https://openclaw.ai) and the unofficial WhatsApp
-Web client. It is not a WhatsApp Business API product and is not affiliated with
-Meta or WhatsApp.
+It is built on top of [OpenClaw](https://openclaw.ai) and the WhatsApp Web client.
+It is independent software, not a WhatsApp Business API product and not affiliated
+with Meta or WhatsApp.
 
 ## Features
 
@@ -107,7 +111,7 @@ Meta or WhatsApp.
 ## Architecture
 
 ```text
-WhatsApp (unofficial Web client)
+WhatsApp (Web client)
         │
         ▼
 OpenClaw gateway (Node.js, systemd user service)
@@ -293,8 +297,8 @@ The compose file mounts `~/.openclaw` and `~/.config/digital-secretary`, publish
 port on host loopback only, and reaches the gateway through the WSL2/Linux localhost
 forwarding. Inside the container the dashboard listens on `0.0.0.0`, but it is never
 exposed beyond `127.0.0.1` on the host. The image expects host UID/GID 1000 (the
-default first Linux/WSL2 user). This is not a full WhatsApp container: the unofficial
-WhatsApp client and its session are intentionally kept on the host, and systemd-only
+default first Linux/WSL2 user). This is not a full WhatsApp container: the
+WhatsApp Web client and its session are intentionally kept on the host, and systemd-only
 widgets (gateway uptime, timers) are unavailable inside the container. Key management
 and the restart button in the container do not control the host gateway: edit
 `~/.openclaw/secretary/secrets.env` on the host or use the host dashboard.
@@ -327,7 +331,7 @@ Do not expose port 8787 to the public Internet.
 
 ## Roadmap
 
-- Official WhatsApp Business Cloud API adapter
+- WhatsApp Business Cloud API adapter
 - Telegram and email channels
 - Internal calendar with availability rules
 - CSV export and CRM webhooks
@@ -346,7 +350,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Disclaimer
 
-This project uses unofficial WhatsApp Web automation. It is not endorsed by or
-affiliated with WhatsApp, Meta, Google, Groq or OpenClaw. You are responsible for
+This project uses WhatsApp Web automation and is not endorsed by or affiliated with
+WhatsApp, Meta, Google, Groq or OpenClaw. You are responsible for
 complying with WhatsApp's Terms of Service, Google's API policies, and applicable
 privacy law (GDPR included). Use at your own risk.
