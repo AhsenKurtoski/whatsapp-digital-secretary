@@ -6,8 +6,9 @@ It is public and MIT-licensed. The latest published release is
 
 `main` currently contains the changes listed under `## [Unreleased]` in
 [CHANGELOG.md](../CHANGELOG.md). They are prepared for the next minor release,
-**v1.2.0** (new demo quote preview, mobile email layout, approval-flow tests and
-related documentation). v1.2.0 is not tagged yet.
+**v1.2.0** (new demo quote preview, mobile email layout, approval-flow tests,
+inbound burst protection before the model, signed Gmail/Calendar bridge health, AI agent
+setup guide and related documentation). v1.2.0 is not tagged yet.
 
 | Version | State |
 |---|---|

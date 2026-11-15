@@ -38,13 +38,26 @@ class Handler(BaseHTTPRequestHandler):
             if abs(time.time() - float(data["ts"])) > 300:
                 raise ValueError("expired")
             RECEIVED.append(data)
-            if data["action"] == "sendEmail":
-                result = {"id": "msg-1", "to": data["payload"]["to"]}
+            if data["action"] == "health":
+                response = {
+                    "ok": True,
+                    "healthy": True,
+                    "services": {"gmail": True, "calendar": True},
+                    "version": "test",
+                }
+            elif data["action"] == "sendEmail":
+                response = {
+                    "ok": True,
+                    "result": {"id": "msg-1", "to": data["payload"]["to"]},
+                }
             elif data["action"] == "createEvent":
-                result = {"id": "evt-1", "summary": data["payload"]["summary"]}
+                response = {
+                    "ok": True,
+                    "result": {"id": "evt-1", "summary": data["payload"]["summary"]},
+                }
             else:
                 raise ValueError("unknown")
-            body = json.dumps({"ok": True, "result": result}).encode()
+            body = json.dumps(response).encode()
             self.send_response(200)
         except Exception as exc:
             body = json.dumps({"ok": False, "error": str(exc)}).encode()
@@ -81,6 +94,13 @@ def main() -> None:
         assert event.get("id") == "evt-1", event
         assert RECEIVED[-1]["action"] == "createEvent"
         assert RECEIVED[-1]["payload"]["summary"] == "Call"
+
+        # La health firmata deve verificare il segreto e i due servizi Google.
+        health = bridge_client.health(config)
+        assert health.get("healthy") is True, health
+        assert health.get("services") == {"gmail": True, "calendar": True}, health
+        assert RECEIVED[-1]["action"] == "health"
+        assert RECEIVED[-1]["payload"] == {}
 
         # Apps Script può decodificare il POST come Latin-1: il corpo firmato deve
         # restare ASCII puro, altrimenti gli accenti rompono la firma HMAC.

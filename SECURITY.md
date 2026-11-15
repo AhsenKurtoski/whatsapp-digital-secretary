@@ -59,14 +59,14 @@ This project runs on a personal computer or a private VPS. It is designed to pro
 ### Out of scope
 
 - A compromised host, root access, or malware reading the user's files.
-- WhatsApp account bans caused by unofficial automation.
+- WhatsApp account bans caused by WhatsApp Web automation.
 - Abuse by the owner or by someone the owner gives the dashboard token to.
 - Denial of service against a third-party AI provider.
 - Google Apps Script platform vulnerabilities.
 
 ## Hardening checklist
 
-- [ ] Dashboard reachable only on `127.0.0.1` (or through an SSH tunnel).
+- [ ] Dashboard reachable only on `127.0.0.1` (or through an SSH tunnel over Tailscale; never a public bind).
 - [ ] `~/.openclaw/secretary` is `700`; secret files are `600`.
 - [ ] A dedicated WhatsApp number is used for the bot.
 - [ ] `OWNER_NUMBER` is the real admin number and is verified.
@@ -75,6 +75,7 @@ This project runs on a personal computer or a private VPS. It is designed to pro
 - [ ] Backups of `~/.openclaw` are encrypted.
 - [ ] Logs are reviewed for unexpected `login failed` or `csrf` entries.
 - [ ] `~/.openclaw/secretary/quotes` is `700` and quote PDFs are `600`.
+- [ ] Remote access uses Tailscale plus a loopback SSH tunnel; port `8787` and the gateway port are not exposed publicly.
 - [ ] Third-party dependencies are updated (`npm audit` for OpenClaw, `pip-audit` if
   extra Python packages are added).
 
@@ -96,8 +97,8 @@ This project runs on a personal computer or a private VPS. It is designed to pro
 
 ## Known limitations
 
-- The WhatsApp integration is unofficial and may break when WhatsApp changes its web
-  client.
+- The WhatsApp integration uses WhatsApp Web automation and may break when WhatsApp
+  changes its web client.
 - Free AI tiers are rate-limited; a burst of conversations may be queued.
 - An OAuth app left in Google "Testing" mode expires refresh tokens after about seven
   days. The Apps Script bridge avoids this; publishing the OAuth app requires a

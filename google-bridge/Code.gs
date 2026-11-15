@@ -1,15 +1,16 @@
 /**
  * Digital Secretary — Google Workspace bridge
  *
- * Web app Apps Script che esegue SOLO due azioni, dopo la firma HMAC:
+ * Web app Apps Script che esegue SOLO due azioni operative, dopo la firma HMAC:
  *  - sendEmail
  *  - createEvent
+ * La chiamata firmata health verifica anche l'accesso a Gmail e Calendar.
  *
  * Non è un proxy generico e non espone token o password.
  * Il segreto viene letto da Script Properties oppure da Config.gs.
  */
 
-const BRIDGE_VERSION = '1.1.0';
+const BRIDGE_VERSION = '1.2.0';
 const MAX_BODY_BYTES = 2000000;
 const MAX_SKEW_SECONDS = 300;
 const MAX_ATTACHMENTS = 3;
@@ -30,13 +31,34 @@ function jsonResponse(value) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function doGet(e) {
-  return jsonResponse({
+function googleServiceProbe() {
+  const services = { gmail: false, calendar: false };
+  try {
+    GmailApp.getInboxUnreadCount();
+    services.gmail = true;
+  } catch (err) {
+    // Il dettaglio resta nei log Apps Script, non nella risposta pubblica.
+  }
+  try {
+    if (!CalendarApp.getDefaultCalendar()) {
+      throw new Error('default calendar unavailable');
+    }
+    services.calendar = true;
+  } catch (err) {
+    // Vedi sopra: un permesso mancante non deve esporre dati dell'account.
+  }
+  return {
     ok: true,
+    healthy: services.gmail && services.calendar,
     service: 'digital-secretary-bridge',
     version: BRIDGE_VERSION,
-    configured: bridgeSecret().length >= 32
-  });
+    configured: bridgeSecret().length >= 32,
+    services: services
+  };
+}
+
+function doGet(e) {
+  return jsonResponse(googleServiceProbe());
 }
 
 function doPost(e) {
@@ -76,7 +98,8 @@ function doPost(e) {
     const payload = data.payload && typeof data.payload === 'object' ? data.payload : {};
 
     if (action === 'health') {
-      return jsonResponse({ ok: true, service: 'digital-secretary-bridge', version: BRIDGE_VERSION });
+      // Chiamata firmata: verifica davvero che l'account possa usare Gmail e Calendar.
+      return jsonResponse(googleServiceProbe());
     }
     if (action === 'sendEmail') {
       return jsonResponse({ ok: true, result: sendEmail(payload) });

@@ -1335,20 +1335,63 @@ class Handler(BaseHTTPRequestHandler):
                 val = auth[7:].strip()
         return bool(val) and hmac.compare_digest(val, DASH_TOKEN)
 
+    def _discard_body(self, max_bytes: int = 1_000_000) -> None:
+        """Consuma il body prima di una risposta anticipata.
+
+        Se il server risponde 401/403 senza leggere il body, su Windows il
+        client può ricevere un reset (WinError 10053) prima della risposta.
+        """
+        if getattr(self, "_body_consumed", False):
+            return
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+        except Exception:
+            self._body_consumed = True
+            self.close_connection = True
+            return
+        if n <= 0:
+            self._body_consumed = True
+            return
+        if n > max_bytes:
+            self._body_consumed = True
+            self.close_connection = True
+            return
+        try:
+            self.rfile.read(n)
+            self._body_consumed = True
+        except Exception:
+            self._body_consumed = True
+            self.close_connection = True
+
     def _require(self) -> bool:
         if self._authed():
             return True
+        self._discard_body()
         self._json({"ok": False, "error": "auth"}, 401)
         return False
 
     def _body(self, max_bytes: int = 1_000_000) -> bytes:
+        if getattr(self, "_body_consumed", False):
+            return getattr(self, "_raw_body", b"")
         try:
             n = int(self.headers.get("Content-Length") or 0)
         except Exception:
-            n = 0
-        if n <= 0 or n > max_bytes:
+            self.close_connection = True
+            self._body_consumed = True
+            self._raw_body = b""
             return b""
-        return self.rfile.read(n)
+        if n <= 0:
+            self._body_consumed = True
+            self._raw_body = b""
+            return b""
+        if n > max_bytes:
+            self._body_consumed = True
+            self._raw_body = b""
+            self.close_connection = True
+            return b""
+        self._raw_body = self.rfile.read(n)
+        self._body_consumed = True
+        return self._raw_body
 
     def _json_body(self) -> dict:
         try:
@@ -1531,6 +1574,16 @@ class Handler(BaseHTTPRequestHandler):
         self._json({"ok": False, "error": "not found"}, 404)
 
     def do_POST(self):
+        # Un handler che risponde senza leggere il body può causare un reset
+        # della connessione su Windows; consumalo sempre a fine richiesta.
+        self._body_consumed = False
+        self._raw_body = b""
+        try:
+            self._handle_post()
+        finally:
+            self._discard_body()
+
+    def _handle_post(self):
         path = urlparse(self.path).path
         if path == "/login":
             raw = self._body(4096).decode("utf-8", "replace")
@@ -1559,11 +1612,13 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"ok": False, "error": "Token non valido."}, 401)
             return
         if not path.startswith("/api/"):
+            self._discard_body()
             self._json({"ok": False, "error": "not found"}, 404)
             return
         if not self._require():
             return
         if not self._post_ok():
+            self._discard_body()
             self._json({"ok": False, "error": "csrf"}, 403)
             return
         if path in {"/api/contacts/summary", "/api/reminders/run", "/api/quotes/demo"}:
@@ -1635,7 +1690,9 @@ class Handler(BaseHTTPRequestHandler):
             if data.get("bridge", {}).get("configured"):
                 try:
                     health = bridge_client.health()
-                    data["bridge"]["healthy"] = bool(health.get("ok"))
+                    # I bridge >= 1.2.0 restituiscono healthy/services; un deployment
+                    # vecchio non deve sembrare sano solo perché risponde.
+                    data["bridge"]["healthy"] = health.get("healthy") is True
                     data["bridge"]["version"] = health.get("version")
                 except Exception as exc:
                     data["bridge"]["healthy"] = False

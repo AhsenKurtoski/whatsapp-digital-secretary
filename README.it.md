@@ -84,8 +84,15 @@ Meta o WhatsApp.
   social, su altre persone o compiti generici ricevono una sola riga neutra ("non sono
   abilitato a rispondere su questo") e la conversazione torna ai servizi.
 - **A prova di raffica** — il debounce e la coda `collect` di WhatsApp uniscono i
-  messaggi rapidi, e il plugin annulla una risposta identica ripetuta entro 45 secondi:
-  cinque "ciao" non possono bloccare il bot.
+  messaggi rapidi, poi il plugin scarta le copie identiche in ingresso mentre la prima
+  è in coda o in risposta (fino a 120 secondi, per coprire una coda lenta) e per 15
+  secondi dopo la risposta, **prima della chiamata al modello**, e annulla una risposta
+  identica entro 45 secondi. La prima copia riceve sempre risposta: sei messaggi "1"
+  costano una risposta e zero token extra. Se il primo turno fallisce, la chiave viene
+  rilasciata e il retry non viene scambiato per un duplicato. `before_dispatch` non richiede permessi extra;
+  il retry usa `agent_end`, che richiede
+  `plugins.entries.secretary-guard.hooks.allowConversationAccess=true` (impostato da
+  `scripts/install.sh`).
 - **Riconoscimento admin** — solo il numero verificato del titolare riceve riepiloghi
   operativi; un cliente non può diventare admin dichiarandosi tale.
 - **Guardia errori tecnici** — un plugin locale sostituisce errori del provider, rate
@@ -96,11 +103,11 @@ Meta o WhatsApp.
 - **Operatività** — servizi systemd utente, watchdog, riepilogo giornaliero, dashboard
   Docker opzionale e procedura di primo avvio guidata.
 - **Autodiagnosi** — `doctor.py` controlla file installati, schede Preventivi/Contatti,
-  motore PDF, regole di perimetro, policy anti-raffica, allowlist dei tool MCP, unità
-  systemd e API locali, e stampa il comando esatto che risolve ogni problema. Lo stesso
+  motore PDF, regole di perimetro, policy anti-raffica, versione minima e feature di
+  OpenClaw, allowlist dei tool MCP, unità systemd e API locali, e stampa il comando
+  esatto che risolve ogni problema. Lo stesso
   report è a un clic nella dashboard (Sistema → Diagnosi) e viene eseguito al termine di
-  `scripts/install.sh`. Con `--fix` applica le riparazioni sicure che trova (allowlist
-  MCP, policy anti-raffica, servizi inattivi) chiedendo conferma per ogni modifica;
+  `scripts/install.sh`. Con `--fix` applica le riparazioni sicure che trova (allowlist MCP, policy anti-raffica, permesso retry del plugin, servizi inattivi) chiedendo conferma per ogni modifica;
   `--yes` salta le domande per l'uso non interattivo.
 - **Health e avvisi token** — una scansione ogni 30 minuti controlla configurazione,
   segreti, gateway, WhatsApp, dashboard, timer, Google OAuth/bridge, MCP, chiavi AI,
@@ -116,7 +123,7 @@ WhatsApp (client Web)
 Gateway OpenClaw (Node.js, servizio systemd utente)
         ├── sessione + contesto per ogni cliente
         ├── pool modelli: prima Gemini, fallback Groq
-        ├── plugin secretary-guard (nasconde gli errori tecnici)
+        ├── plugin secretary-guard (anti-raffica + errori tecnici)
         └── tool MCP di approvazione (richiesta email / calendario / preventivo PDF)
                  │
                  ▼
@@ -134,7 +141,10 @@ Nessun dato dei clienti viene inviato a un servizio dashboard di terze parti.
 - Linux o WSL2 con systemd utente
 - Python **3.11+**, testato in CI su 3.11, 3.12, 3.13 e 3.14 (solo standard library; su
   Windows nativo installa `tzdata` per il database completo dei fusi orari IANA)
-- Node.js **22+** e [OpenClaw](https://openclaw.ai) installato globalmente
+- Node.js **22+** e [OpenClaw](https://openclaw.ai) **2026.4.22+** installato globalmente
+  (la guardia anti-raffica in ingresso usa `before_dispatch`; l'installer rifiuta le
+  versioni precedenti alla **2026.4.22**, rileva `--accept-capabilities` e
+  `allowConversationAccess` e avvisa invece di disattivare il retry in silenzio)
 - Un account WhatsApp per il bot (consigliato un numero dedicato)
 - Almeno una chiave AI (i tier gratuiti Gemini e/o Groq funzionano)
 - Opzionale: CLI `gog` + account Google per Gmail/Calendar, oppure il bridge Google
@@ -156,7 +166,7 @@ python3 setup.py
 install -m 600 secrets.env.example ~/.openclaw/secretary/secrets.env
 ${EDITOR:-nano} ~/.openclaw/secretary/secrets.env
 
-# 3. Installa dashboard, timer, plugin e drop-in del gateway
+# 3. Installa dashboard, timer, plugin, helper di accesso remoto e drop-in del gateway
 bash scripts/install.sh
 
 # 4. Apri la dashboard e copia il token locale quando richiesto
@@ -168,11 +178,37 @@ L'installer esegue `sync_fallbacks.py`, che sceglie Gemini come modello principa
 esiste una chiave Gemini e mantiene Groq come fallback. Riavvia il gateway; WhatsApp può
 impiegare un minuto a riconnettersi.
 
+> Stai usando un agente AI? [`AGENTS.md`](AGENTS.md) contiene la checklist esatta di
+> installazione e verifica, inclusi Google e WhatsApp.
+
 ### Connessione WhatsApp
 
 OpenClaw gestisce la sessione WhatsApp. Al primo avvio apri la control UI di OpenClaw
 oppure esegui il comando di login del canale e scansiona il QR con il telefono del bot.
 I file di sessione stanno in `~/.openclaw` e non vanno mai committati.
+
+### Gmail e Calendar
+
+Le approvazioni possono usare la CLI `gog` oppure il **bridge Apps Script** incluso.
+Il bridge è consigliato perché non scade dopo i 7 giorni dell'app OAuth in Testing.
+Esegui una volta lo script e autorizza Gmail + Calendar nel browser:
+
+```bash
+bash ~/.openclaw/secretary/google-bridge/installa-bridge.sh
+```
+
+Poi apri **Connettori → Verifica bridge** in dashboard. Il controllo verifica che il
+bridge sia raggiungibile e che la chiamata firmata `health` possa accedere sia a Gmail
+sia a Calendar. Con `gog` il comando equivalente è:
+
+```bash
+gog-secretary auth add tuo-account@gmail.com \
+  --services gmail,calendar --gmail-scope read-send --manual
+```
+
+Entrambe le strade mantengono email ed eventi dietro l'approvazione in dashboard. Un
+file configurato non prova la consegna: usa **Preventivo di prova** e un'approvazione
+Calendar reale per confermare l'account, poi controlla messaggio ed evento.
 
 ## Configurazione
 
@@ -266,8 +302,14 @@ vulnerabilità.
 
 ```bash
 python3 -m unittest discover -s tests -v
-python3 -m py_compile *.py google-bridge/*.py
+python3 -m unittest discover -s tests -p 'test_install.py' -v
+python3 -m unittest discover -s tests -p 'test_remote_access.py' -v
+python3 -m py_compile *.py google-bridge/*.py scripts/*.py
+python3 scripts/openclaw_compat.py --json
+bash scripts/install.sh --check-compat
+python3 scripts/smoke_guard.py
 node google-bridge/test_code_gs.js
+node plugins/secretary-guard/test_guard.js
 python3 google-bridge/test_bridge.py
 python3 monitor.py --self-test
 python3 watchdog.py --self-test
@@ -276,13 +318,16 @@ python3 contacts.py --self-test
 python3 reminders.py --self-test
 python3 gateway_policy.py --self-test
 python3 doctor.py --self-test
+python3 remote_access.py --self-test
 python3 doctor.py --offline
 ```
 
-La suite copre configurazione, rendering della persona, archivio approvazioni, preventivi
-PDF, storico contatti, promemoria, sicurezza del template email, autenticazione/CSRF
-della dashboard, stato del watchdog, punteggio Health/avvisi token e selezione
-automatica dei modelli. L'integrazione con un numero WhatsApp reale e un account Google
+La suite copre configurazione, rendering della persona e guardie anti-jailbreak/rifiuto,
+archivio approvazioni, preventivi PDF, storico contatti, promemoria, sicurezza del
+template email, autenticazione/CSRF della dashboard, stato del watchdog, punteggio
+Health/avvisi token, selezione automatica dei modelli, copia isolata dell'installer,
+compatibilità OpenClaw, validazione dell'accesso remoto privato e soppressione dei
+duplicati in ingresso e in uscita. L'integrazione con un numero WhatsApp reale e un account Google
 reale non è testabile in CI; vedi [docs/TESTING.md](docs/TESTING.md) per la checklist
 manuale.
 
@@ -301,24 +346,40 @@ sul loopback dell'host e raggiunge il gateway tramite il localhost forwarding di
 Linux/WSL2. Dentro il container la dashboard ascolta su `0.0.0.0`, ma non è mai
 esposta oltre `127.0.0.1` sull'host. L'immagine presuppone UID/GID 1000 (il primo
 utente Linux/WSL2). Non è un container WhatsApp completo: il client WhatsApp Web e la
-sua sessione restano intenzionalmente sull'host, e i widget basati su systemd (uptime
+sua sessione restano intenzionalmente sull'host, e i widget basati su systemd (uptime)
 gateway, timer) non sono disponibili nel container. La gestione chiavi e il pulsante di
 riavvio nel container non comandano il gateway dell'host: modifica
 `~/.openclaw/secretary/secrets.env` sull'host o usa la dashboard host.
 
-## Deploy su VPS
+## Accesso remoto privato (Tailscale + SSH)
 
-1. Installa Node.js, OpenClaw e Python 3.11+.
-2. Completa l'onboarding OpenClaw e il login WhatsApp.
-3. Esegui `python3 setup.py` e `bash scripts/install.sh`.
-4. Lascia la dashboard su localhost e accedila con un tunnel SSH:
-   `ssh -L 8787:127.0.0.1:8787 utente@vps`.
-5. Abilita il lingering (`sudo loginctl enable-linger $USER`) perché i servizi
-   sopravvivano al logout.
-6. Fai backup cifrati di `~/.openclaw` e `~/.config/digital-secretary`: contengono la
-   sessione WhatsApp e le chiavi private.
+La dashboard resta intenzionalmente solo su loopback. Per usarla da un altro
+dispositivo senza pubblicarla, metti host e client nella stessa rete privata
+**Tailscale** e inoltra la dashboard con un tunnel **SSH**:
 
-Non esporre la porta 8787 su Internet.
+```bash
+# sull'host: installa Tailscale e OpenSSH, poi
+tailscale up
+sudo systemctl enable --now ssh
+
+# sul client: verifica i prerequisiti e apri il tunnel
+python3 remote_access.py --check
+python3 remote_access.py --host host.tailnet.ts.net --user tu --connect
+```
+
+L'installer copia l'helper in `~/.openclaw/secretary/remote_access.py`; su un host
+installato usa quel percorso (i comandi sopra funzionano dal checkout). Poi apri
+`http://127.0.0.1:8787`. La dashboard non si lega mai a un'interfaccia pubblica; il
+tunnel SSH mantiene l'origin del browser su loopback, quindi login con token e controlli
+CSRF continuano a funzionare. Il piano personale Tailscale e OpenSSH sono gratuiti e
+non richiedono carta di credito. Non è hosting cloud: l'host deve restare acceso e
+connesso. Vedi [`docs/REMOTE_ACCESS.md`](docs/REMOTE_ACCESS.md)
+per firewall, porte e revoca dell'accesso.
+
+Su una VPS completa onboarding e `bash scripts/install.sh`, lascia la porta `8787`
+chiusa e abilita il lingering (`sudo loginctl enable-linger $USER`). Fai backup
+cifrati di `~/.openclaw` e `~/.config/digital-secretary`: contengono la sessione
+WhatsApp e le chiavi private. Non esporre mai la porta 8787 su Internet.
 
 ## Risoluzione problemi
 

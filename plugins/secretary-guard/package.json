@@ -1,9 +1,12 @@
 {
   "name": "secretary-guard",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
-  "description": "Nasconde errori tecnici e nomi dei provider nei messaggi della segreteria.",
+  "description": "Nasconde errori tecnici, ferma le risposte duplicate e scarta le raffiche inbound prima del modello.",
+  "scripts": {
+    "test": "node test_guard.js"
+  },
   "openclaw": {
     "extensions": [
       "./index.js"

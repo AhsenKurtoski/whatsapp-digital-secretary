@@ -129,23 +129,15 @@ def _post(config: dict, action: str, payload: dict) -> dict:
 
 
 def health(config: dict | None = None) -> dict:
+    """Chiamata firmata: verifica bridge, Gmail e Calendar nello stesso colpo.
+
+    I deployment precedenti alla 1.2.0 non restituiscono ``healthy``/``services``:
+    il chiamante deve trattarli come "da aggiornare", non come un falso successo.
+    """
     config = config or load_config()
     if not config:
         raise BridgeError("bridge non configurato")
-    url = config["url"] + ("&" if "?" in config["url"] else "?") + "action=health"
-    req = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "DigitalSecretaryBridge/1.0"})
-    try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as response:
-            raw = response.read(64_000)
-    except Exception as exc:
-        raise BridgeError(f"health bridge fallita: {exc}") from exc
-    try:
-        data = json.loads(raw.decode("utf-8"))
-    except Exception as exc:
-        raise BridgeError("health bridge non JSON") from exc
-    if not isinstance(data, dict) or data.get("ok") is not True:
-        raise BridgeError("health bridge non valida")
-    return data
+    return _post(config, "health", {})
 
 
 def send_email(payload: dict, config: dict | None = None) -> dict:
@@ -180,7 +172,15 @@ if __name__ == "__main__":
     path = args.config
     try:
         if args.command == "health":
-            print(json.dumps(health(load_config(path)), ensure_ascii=False, indent=2))
+            result = health(load_config(path))
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            if result.get("healthy") is not True:
+                print(
+                    "bridge: Gmail e Calendar non sono entrambi accessibili; "
+                    "autorizza il deployment e aggiorna Apps Script.",
+                    file=sys.stderr,
+                )
+                raise SystemExit(2)
         elif args.command == "setup":
             secret = args.secret or new_secret()
             print(write_config(args.url, secret, path))

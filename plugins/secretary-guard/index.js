@@ -1,8 +1,16 @@
-import { createHash } from "node:crypto";
 import { appendFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
+import {
+  fingerprint,
+  isFailedAgentRun,
+  markInboundAnswered,
+  releaseInboundForRecipient,
+  releaseInboundForScope,
+  shouldSuppressDuplicate,
+  shouldSuppressDuplicateInbound,
+} from "./guard.js";
 
 const FALLBACK_TEXT =
   "Ciao! Sto ricevendo molte richieste in questo momento. Ti rispondo appena possibile con tutti i dettagli. 🙏";
@@ -29,43 +37,16 @@ const TECHNICAL_PATTERNS = [
   /\bopenclaw\b/i,
 ];
 
-// Anti-raffica: se lo stesso testo esce verso lo stesso destinatario due volte
-// entro questa finestra, la seconda copia viene annullata. Le risposte vere
-// hanno quasi sempre testo diverso, mentre un loop di duplicati viene fermato.
-const DUPLICATE_WINDOW_MS = 45_000;
-const MAX_TRACKED = 200;
-const recentReplies = new Map();
-
-function normalize(text) {
-  return String(text || "").replace(/\s+/g, " ").trim().toLowerCase();
-}
-
-export function shouldSuppressDuplicate(to, text, now = Date.now()) {
-  const recipient = String(to || "").trim().toLowerCase();
-  const body = normalize(text);
-  if (!recipient || !body) return false;
-  const previous = recentReplies.get(recipient);
-  if (previous && previous.body === body && now - previous.at < DUPLICATE_WINDOW_MS) {
-    previous.hits += 1;
-    return true;
-  }
-  recentReplies.set(recipient, { body, at: now, hits: 0 });
-  if (recentReplies.size > MAX_TRACKED) {
-    const oldest = [...recentReplies.entries()].sort((a, b) => a[1].at - b[1].at)[0];
-    if (oldest) recentReplies.delete(oldest[0]);
-  }
-  return false;
-}
-
 // Nel log non finisce mai il testo del cliente: solo un'impronta e la lunghezza,
 // abbastanza per capire un loop senza conservare conversazioni private.
-function fingerprint(text) {
-  return createHash("sha256").update(String(text)).digest("hex").slice(0, 16);
-}
 
 function guardLog(line) {
   try {
-    const logPath = join(homedir(), ".openclaw", "secretary", "guard.log");
+    // OPENCLAW_STATE_DIR permette di verificare il plugin in un gateway di test
+    // isolato senza scrivere nel profilo reale dell'utente.
+    const stateDir = process.env.OPENCLAW_STATE_DIR;
+    const logDir = stateDir ? stateDir : join(homedir(), ".openclaw", "secretary");
+    const logPath = join(logDir, "guard.log");
     appendFileSync(logPath, `${new Date().toISOString()} ${line}\n`, { encoding: "utf8", mode: 0o600 });
   } catch {
     // un log non scrivibile non deve bloccare la risposta al cliente
@@ -83,16 +64,79 @@ export default definePluginEntry({
   id: "secretary-guard",
   name: "Secretary Guard",
   description:
-    "Nasconde errori tecnici e nomi dei provider nei messaggi in uscita e ferma le risposte duplicate.",
+    "Nasconde errori tecnici, ferma le risposte duplicate e scarta le raffiche di messaggi identici prima del modello.",
   register(api) {
+    // Inbound claim: OpenClaw chiama questo hook prima del dispatch al modello.
+    // Il primo messaggio passa; le copie identiche immediate vengono chiuse in
+    // silenzio con { handled: true }, quindi non consumano token e non generano
+    // una seconda risposta. Se la versione di OpenClaw non espone l'hook, il
+    // plugin continua a funzionare con la sola guardia outbound.
+    try {
+      api.on("before_dispatch", (event, ctx) => {
+        // Alcuni canali mettono l'identità nel contesto invece che nell'evento.
+        const inbound = {
+          ...event,
+          senderId: event?.senderId || ctx?.senderId,
+          sessionKey: event?.sessionKey || ctx?.sessionKey,
+        };
+        if (!shouldSuppressDuplicateInbound(inbound)) return;
+        const body = String(inbound.content ?? inbound.body ?? "");
+        guardLog(`duplicate_inbound_suppressed hash=${fingerprint(body)} len=${body.length}`);
+        return { handled: true };
+      });
+    } catch {
+      guardLog("before_dispatch_unavailable");
+    }
+
+    // Se il turno fallisce, il prossimo messaggio identico deve poter partire
+    // di nuovo: senza questo rilascio la prima copia verrebbe soppressa come
+    // se il bot avesse già risposto.
+    try {
+      api.on("agent_end", (event, ctx) => {
+        const scope = ctx?.sessionKey || event?.sessionKey;
+        const failed = isFailedAgentRun(event);
+        if (!scope) return;
+        if (failed) {
+          const released = releaseInboundForScope(scope);
+          if (released) guardLog(`inbound_released_after_agent_failure scope=${fingerprint(scope)} count=${released}`);
+        } else if (event?.success === true) {
+          markInboundAnswered(scope);
+        }
+      });
+    } catch {
+      guardLog("agent_end_unavailable");
+    }
+
     api.on("message_sending", (event) => {
       const content = event?.content;
       const cleaned = scrubMessage(content);
-      if (cleaned !== content) return { content: cleaned };
+      if (cleaned !== content) {
+        // Un errore tecnico è stato sostituito con il messaggio di cortesia:
+        // il turno non ha risposto davvero, quindi un retry deve passare.
+        releaseInboundForScope(event?.sessionKey);
+        releaseInboundForRecipient(event?.to);
+        return { content: cleaned };
+      }
       if (shouldSuppressDuplicate(event?.to, cleaned)) {
         guardLog(`duplicate_suppressed hash=${fingerprint(cleaned)} len=${String(cleaned).length}`);
         return { cancel: true, cancelReason: "duplicate_reply" };
       }
     });
+
+    // Osservazione finale della consegna: copre anche i canali che falliscono
+    // dopo aver prodotto una risposta ma prima di recapitarla.
+    try {
+      api.on("message_sent", (event, ctx) => {
+        const scope = ctx?.sessionKey || event?.sessionKey;
+        if (event?.success === false) {
+          releaseInboundForScope(scope);
+          releaseInboundForRecipient(event?.to);
+        }
+        // agent_end is the authoritative success signal: marking here too would
+        // advance a second pending message that is still waiting in the queue.
+      });
+    } catch {
+      guardLog("message_sent_unavailable");
+    }
   },
 });

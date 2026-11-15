@@ -115,11 +115,12 @@ def _num(value: float) -> bytes:
 class Canvas:
     """Writer PDF minimale: rettangoli, linee e testo con font base-14."""
 
-    def __init__(self) -> None:
+    def __init__(self, metadata: dict | None = None) -> None:
         self.pages: list[list[bytes]] = [[]]
         self.index = 0
         self.width = PAGE_W
         self.height = PAGE_H
+        self.metadata = dict(metadata or {})
 
     @property
     def ops(self) -> list[bytes]:
@@ -222,10 +223,20 @@ class Canvas:
                 + content
                 + b"\nendstream"
             )
-        objects[0] = b"<< /Type /Catalog /Pages 2 0 R >>"
+        objects[0] = b"<< /Type /Catalog /Pages 2 0 R /Lang (it-IT) >>"
         objects[1] = (
             f"<< /Type /Pages /Kids [{' '.join(kids)}] /Count {len(self.pages)} >>"
         ).encode("ascii")
+        info_no = 0
+        if self.metadata:
+            info_entries = []
+            for key in ("Title", "Author", "Subject", "Creator", "Producer", "Keywords"):
+                value = str(self.metadata.get(key) or "").strip()
+                if value:
+                    info_entries.append(b"/" + key.encode("ascii") + b" " + _literal(value))
+            if info_entries:
+                info_no = len(objects) + 1
+                objects.append(b"<< " + b" ".join(info_entries) + b" >>")
 
         out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
         offsets: list[int] = []
@@ -237,8 +248,9 @@ class Canvas:
         out += b"0000000000 65535 f \n"
         for offset in offsets:
             out += f"{offset:010d} 00000 n \n".encode("ascii")
+        info_ref = f" /Info {info_no} 0 R" if info_no else ""
         out += (
-            f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
+            f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R{info_ref} >>\n"
             f"startxref\n{xref_at}\n%%EOF\n"
         ).encode("ascii")
         return bytes(out)
@@ -436,6 +448,18 @@ def normalize_quote(data: dict, cfg: dict | None = None) -> dict:
     }
 
 
+def _fit_text(text: str, font: str, size: float, max_width: float) -> str:
+    """Accorcia una riga con ellissi senza superare la larghezza disponibile."""
+    value = str(text or "").strip()
+    if not value or text_width(value, font, size) <= max_width:
+        return value
+    suffix = "…"
+    cutoff = len(value)
+    while cutoff > 0 and text_width(value[:cutoff].rstrip() + suffix, font, size) > max_width:
+        cutoff -= 1
+    return value[:cutoff].rstrip() + suffix if cutoff else ""
+
+
 def _wrap(text: str, font: str, size: float, max_width: float) -> list[str]:
     lines: list[str] = []
     for block in str(text).split("\n"):
@@ -482,7 +506,14 @@ def render_quote_pdf(quote: dict) -> bytes:
 
     ink, muted, line, soft = _rgb(INK), _rgb(MUTED), _rgb(LINE), _rgb(SOFT)
     violet, cyan, white = _rgb(VIOLET), _rgb(CYAN), _rgb(WHITE)
-    c = Canvas()
+    c = Canvas({
+        "Title": f"Preventivo {number}".strip(),
+        "Author": brand,
+        "Subject": "Preventivo commerciale",
+        "Creator": "Digital Secretary",
+        "Producer": "Digital Secretary PDF",
+        "Keywords": ", ".join(part for part in (brand, "preventivo", number) if part),
+    })
 
     def header(minimal: bool = False) -> float:
         top = 0.0
@@ -495,7 +526,7 @@ def render_quote_pdf(quote: dict) -> bytes:
             c.rect(MARGIN, 54, 44, 44, fill=VIOLET, radius=12)
             initial = (brand[:1] or "A").upper()
             c.text(MARGIN + 22, 84, initial, "F2", 21, white, "center")
-            c.text(MARGIN + 58, 71, brand, "F2", 17, ink)
+            c.text(MARGIN + 58, 71, _fit_text(brand, "F2", 17, 280), "F2", 17, ink)
             c.text(MARGIN + 58, 87, "SEGRETERIA DIGITALE", "F1", 7.6, muted)
             c.text(PAGE_W - MARGIN, 72, "PREVENTIVO", "F2", 20, ink, "right")
             c.text(PAGE_W - MARGIN, 89, f"N. {number}" if number else "", "F1", 9, muted, "right")
@@ -503,34 +534,44 @@ def render_quote_pdf(quote: dict) -> bytes:
             return 130.0
         c.rect(MARGIN, 46, 26, 26, fill=VIOLET, radius=8)
         c.text(MARGIN + 13, 64, (brand[:1] or "A").upper(), "F2", 13, white, "center")
-        c.text(MARGIN + 36, 63, brand, "F2", 11, ink)
+        c.text(MARGIN + 36, 63, _fit_text(brand, "F2", 11, 300), "F2", 11, ink)
         c.text(PAGE_W - MARGIN, 63, f"Preventivo {number}".strip(), "F1", 9, muted, "right")
         c.line(MARGIN, 86, PAGE_W - MARGIN, 86, line, 0.8)
         return 100.0
 
     y = header()
 
-    # Riquadro cliente + dettagli
-    box_h = 88.0
+    # Riquadro cliente + dettagli. I dati di contatto restano visibili anche
+    # quando nome, azienda o indirizzo sono lunghi: l'indirizzo viene compattato
+    # su una riga e email/telefono hanno una riga dedicata.
+    box_h = 104.0
     c.rect(MARGIN, y, 248, box_h, fill=SOFT, radius=12)
     c.rect(PAGE_W - MARGIN - 243, y, 243, box_h, fill=SOFT, radius=12)
     c.text(MARGIN + 16, y + 20, "PREPARATO PER", "F2", 7.4, muted)
-    client_lines = [q.get("client_name") or "Cliente"]
+    address = " · ".join(
+        part.strip() for part in (q.get("client_address") or "").split("\n") if part.strip()
+    )
+    client_specs = [(q.get("client_name") or "Cliente", "F2", 10.6, True)]
     if q.get("client_company"):
-        client_lines.append(q["client_company"])
-    for part in (q.get("client_address") or "").split("\n"):
-        if part.strip():
-            client_lines.append(part.strip())
+        client_specs.append((q["client_company"], "F1", 8.7, True))
+    if address:
+        client_specs.append((address, "F1", 8.7, False))
     if q.get("client_email"):
-        client_lines.append(q["client_email"])
+        client_specs.append((q["client_email"], "F1", 8.7, False))
     if q.get("client_phone"):
-        client_lines.append(q["client_phone"])
-    line_y = y + 38
-    for index, value in enumerate(client_lines[:5]):
-        font = "F2" if index == 0 else "F1"
-        size = 10.6 if index == 0 else 8.7
+        client_specs.append((q["client_phone"], "F1", 8.7, False))
+    client_lines: list[tuple[str, str, float]] = []
+    for value, font, size, wrap in client_specs:
+        if wrap:
+            client_lines.extend((line, font, size) for line in _wrap(value, font, size, 216))
+        else:
+            client_lines.append((_fit_text(value, font, size, 216), font, size))
+    line_y = y + 36
+    for index, (value, font, size) in enumerate(client_lines[:7]):
+        if not value:
+            continue
         c.text(MARGIN + 16, line_y, value, font, size, ink if index == 0 else muted)
-        line_y += 13
+        line_y += 10.8
 
     meta_x = PAGE_W - MARGIN - 243 + 16
     c.text(meta_x, y + 20, "DETTAGLI", "F2", 7.4, muted)
@@ -642,7 +683,7 @@ def render_quote_pdf(quote: dict) -> bytes:
         c.text(PAGE_W - MARGIN, PAGE_H - 42, f"Pagina {index + 1} di {total_pages}",
                "F1", 7.6, muted, "right")
         if footer_left:
-            c.text(MARGIN, PAGE_H - 30, footer_left, "F1", 7.0, muted)
+            c.text(MARGIN, PAGE_H - 30, _fit_text(footer_left, "F1", 7.0, 360), "F1", 7.0, muted)
     return c.output()
 
 

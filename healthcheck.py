@@ -900,21 +900,43 @@ def check_google_bridge() -> dict:
             },
             meta={"configured": False},
         )
-    url = str(bridge.get("url") or "")
-    health_url = url + ("&" if "?" in url else "?") + "action=health"
     try:
-        data = _http_json(health_url, 10)
-        healthy = data.get("ok") is True
-        detail = "Bridge configurato e raggiungibile." if healthy else "Risposta health non valida."
+        data = bridge_client.health(bridge)
+        services = data.get("services") if isinstance(data.get("services"), dict) else {}
+        gmail_ok = services.get("gmail") is True
+        calendar_ok = services.get("calendar") is True
+        if gmail_ok and calendar_ok:
+            healthy = True
+            detail = "Bridge raggiungibile: Gmail e Calendar accessibili con la firma HMAC."
+            action = ""
+        elif services:
+            healthy = False
+            missing = []
+            if not gmail_ok:
+                missing.append("Gmail")
+            if not calendar_ok:
+                missing.append("Calendar")
+            detail = "Bridge raggiungibile, ma manca l'accesso a " + " e ".join(missing) + "."
+            action = "Riautorizza il deployment Apps Script per Gmail e Calendar, poi rilancia la verifica"
+        elif data.get("healthy") is False:
+            healthy = False
+            detail = "Il bridge risponde ma Gmail o Calendar non sono accessibili."
+            action = "Riautorizza il deployment Apps Script per Gmail e Calendar"
+        else:
+            # Deployment vecchio: la health firmata funziona, ma non prova i due servizi.
+            healthy = False
+            detail = "Bridge raggiungibile; aggiorna Apps Script per verificare davvero Gmail e Calendar."
+            action = "Aggiorna Apps Script: clasp push e nuovo deployment"
     except Exception as exc:
         healthy = False
-        detail = "Bridge non raggiungibile: " + str(exc)[:160]
+        detail = "Bridge non raggiungibile o firma non valida: " + str(exc)[:160]
+        action = "Verifica il deployment Apps Script, il segreto HMAC e l'autorizzazione Google"
     return _check(
         "google_bridge",
         "Bridge Google Apps Script",
         "ok" if healthy else "warn",
         detail,
-        "" if healthy else "Verifica il deployment Apps Script e l'autorizzazione Google",
+        action,
         expires="nessuna scadenza (HMAC)",
         token={
             "id": "google_bridge",
@@ -922,7 +944,7 @@ def check_google_bridge() -> dict:
             "status": "ok" if healthy else "warn",
             "expires": "nessuna scadenza (HMAC)",
             "detail": detail,
-            "action": "" if healthy else "Verifica Apps Script",
+            "action": action,
         },
         meta={"configured": True, "healthy": healthy},
     )

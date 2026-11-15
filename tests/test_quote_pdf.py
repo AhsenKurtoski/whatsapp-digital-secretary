@@ -83,6 +83,30 @@ class QuotePdfTests(unittest.TestCase):
         self.assertIn(b"TOTALE", data)
         self.assertIn(b"PREV-2026-001", data)
 
+    def test_pdf_has_professional_metadata_and_language(self):
+        data = quote_pdf.render_quote_pdf(self.sample())
+        self.assertIn(b"/Lang (it-IT)", data)
+        self.assertIn(b"/Info", data)
+        self.assertIn(b"/Title (Preventivo PREV-2026-001)", data)
+        self.assertIn(b"/Author (Attivit\xe0 Demo)", data)
+        self.assertIn(b"/Creator (Digital Secretary)", data)
+
+    def test_long_client_text_wraps_inside_the_pdf(self):
+        quote = quote_pdf.normalize_quote({
+            "client_name": "Studio Professionale Internazionale con un nome molto lungo",
+            "client_company": "Società con una ragione sociale ancora più lunga",
+            "client_address": "Via del Corso 123, scala B, interno 7, 20100 Milano Italia",
+            "client_email": "contatti.preventivi@example-company-long-name.it",
+            "client_phone": "+39 02 1234 5678",
+            "items": [{"description": "Consulenza", "unit_price": 100}],
+        })
+        data = quote_pdf.render_quote_pdf(quote)
+        self.assertTrue(data.startswith(b"%PDF-1.4"))
+        self.assertIn(b"PREPARATO PER", data)
+        self.assertIn(b"Pagina 1 di", data)
+        self.assertIn(b"contatti.preventivi@example-company-long-name.it", data)
+        self.assertIn(b"+39 02 1234 5678", data)
+
     def test_long_quotes_flow_on_multiple_pages(self):
         items = [
             {"description": f"Voce {index} con una descrizione abbastanza lunga da andare a capo", "qty": 1, "unit_price": 10}

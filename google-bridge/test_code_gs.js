@@ -37,6 +37,7 @@ const context = {
     }),
   },
   GmailApp: {
+    getInboxUnreadCount: () => 0,
     createDraft: (to, subject, body, options) => {
       sent.push({ to, subject, body, options });
       return {
@@ -159,6 +160,17 @@ if (expired.ok || expired.error !== "expired") throw new Error("expired request 
 
 const health = JSON.parse(bridge.doGet({}).getContent());
 if (!health.ok || health.service !== "digital-secretary-bridge") throw new Error("health failed");
+if (health.healthy !== true || health.services.gmail !== true || health.services.calendar !== true) {
+  throw new Error("health did not probe Gmail and Calendar");
+}
+const signedHealth = post(envelope({
+  ts: Math.floor(Date.now() / 1000),
+  action: "health",
+  payload: {},
+}));
+if (!signedHealth.ok || !signedHealth.healthy || !signedHealth.services.calendar) {
+  throw new Error("signed health failed");
+}
 
 console.log("Code.gs handlers: OK");
 console.log("sent:", sent.length, "events:", events.length);

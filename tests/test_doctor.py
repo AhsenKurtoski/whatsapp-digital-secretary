@@ -25,12 +25,26 @@ class DoctorTests(unittest.TestCase):
         )
         (self.base / "plugins" / "secretary-guard").mkdir(parents=True)
         (self.base / "plugins" / "secretary-guard" / "index.js").write_text(
-            "duplicate_suppressed\n", encoding="utf-8"
+            "duplicate_suppressed duplicate_inbound_suppressed releaseInboundForScope\n",
+            encoding="utf-8",
+        )
+        (self.base / "plugins" / "secretary-guard" / "guard.js").write_text(
+            "export const guard = true;\n", encoding="utf-8"
         )
         (self.base / "secrets.env").write_text("GEMINI_API_KEY=placeholder\n", encoding="utf-8")
         (self.workspace / "AGENTS.md").write_text(
             "Non sono abilitato · Messaggi ripetuti · request_quote\n", encoding="utf-8"
         )
+        self.openclaw_info = {
+            "present": True,
+            "version": "2026.10.7",
+            "version_ok": True,
+            "accept_capabilities": True,
+            "conversation_access": True,
+            "minimum": doctor.OPENCLAW_MINIMUM,
+            "error": "",
+            "probe_errors": [],
+        }
         self.config = self.tmp / "config.json"
         self.config.write_text(json.dumps({
             "business_name": "Officina Demo",
@@ -44,22 +58,43 @@ class DoctorTests(unittest.TestCase):
                 "inbound": {"byChannel": {"whatsapp": 1800}},
                 "queue": {"byChannel": {"whatsapp": "collect"}},
             },
+            "plugins": {"entries": {"secretary-guard": {"hooks": {
+                "allowConversationAccess": True,
+            }}}},
             "mcp": {"servers": {"secretary": {"toolFilter": {"include": [
                 "request_email", "request_calendar", "request_quote",
             ]}}}},
         }), encoding="utf-8")
 
     def run_checks(self):
-        return doctor.run_checks(
-            self.base, self.config, self.gateway, self.workspace,
-            services=False, http=False,
-        )
+        with patch.object(doctor, "_probe_openclaw", return_value=self.openclaw_info):
+            return doctor.run_checks(
+                self.base, self.config, self.gateway, self.workspace,
+                services=False, http=False,
+            )
 
     def test_complete_install_has_no_failures(self):
         report = doctor.summarize(self.run_checks())
         failures = [c for c in report["checks"] if c["status"] == "fail"]
         self.assertEqual(failures, [])
         self.assertTrue(report["overall"] in {"ok", "warn"})
+
+    def test_old_openclaw_version_is_critical(self):
+        self.openclaw_info.update(version="2026.4.21", version_ok=False)
+        checks = self.run_checks()
+        version = next(c for c in checks if c["id"] == "openclaw_version")
+        self.assertEqual(version["status"], "fail")
+        self.assertIn("2026.4.22", version["action"])
+
+    def test_missing_openclaw_features_are_reported_as_warnings(self):
+        self.openclaw_info.update(accept_capabilities=False, conversation_access=False)
+        checks = self.run_checks()
+        accept = next(c for c in checks if c["id"] == "openclaw_accept_capabilities")
+        hook = next(c for c in checks if c["id"] == "openclaw_conversation_access")
+        self.assertEqual(accept["status"], "warn")
+        self.assertIn("legacy", accept["detail"])
+        self.assertEqual(hook["status"], "warn")
+        self.assertIn("burst-only", hook["detail"])
 
     def test_old_dashboard_is_reported_with_remedy(self):
         (self.base / "dashboard.html").write_text("vecchia dashboard", encoding="utf-8")
@@ -86,6 +121,23 @@ class DoctorTests(unittest.TestCase):
         persona = next(c for c in checks if c["id"] == "persona")
         self.assertEqual(persona["status"], "fail")
 
+    def test_missing_plugin_retry_permission_is_reported_and_fixable(self):
+        data = json.loads(self.gateway.read_text(encoding="utf-8"))
+        del data["plugins"]["entries"]["secretary-guard"]["hooks"]["allowConversationAccess"]
+        self.gateway.write_text(json.dumps(data), encoding="utf-8")
+        checks = self.run_checks()
+        hook = next(c for c in checks if c["id"] == "plugin_hook")
+        self.assertEqual(hook["status"], "warn")
+        plan = doctor.plan_fixes(
+            self.base, checks, self.config, self.gateway, can_restart=False
+        )
+        self.assertEqual([item["key"] for item in plan], ["plugin_hook"])
+        self.assertEqual(
+            plan[0]["command"],
+            ["openclaw", "config", "set",
+             "plugins.entries.secretary-guard.hooks.allowConversationAccess", "true"],
+        )
+
     def test_every_check_has_label_and_detail(self):
         for check in self.run_checks():
             self.assertTrue(check["label"])
@@ -95,6 +147,9 @@ class DoctorTests(unittest.TestCase):
     def break_gateway(self):
         self.gateway.write_text(json.dumps({
             "messages": {"queue": {"mode": "steer"}},
+            "plugins": {"entries": {"secretary-guard": {"hooks": {
+                "allowConversationAccess": True,
+            }}}},
             "mcp": {"servers": {"secretary": {"toolFilter": {"include": [
                 "request_email", "request_calendar",
             ]}}}},

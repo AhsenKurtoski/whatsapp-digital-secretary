@@ -84,9 +84,16 @@ with Meta or WhatsApp.
 - **Business-only scope** — questions about the owner's private life, his social
   profiles, other people or unrelated tasks get one neutral line ("non sono abilitato
   a rispondere su questo") and the conversation returns to the business.
-- **Burst-safe** — WhatsApp inbound debounce and `collect` queueing coalesce rapid
-  messages, and the guard plugin cancels an identical reply repeated within 45 seconds,
-  so five "ciao" messages cannot freeze the bot.
+- **Burst-safe** — WhatsApp debounce and `collect` queueing coalesce rapid messages,
+  then the guard plugin drops identical inbound copies while the first is pending
+  (up to 120 seconds, covering a slow gateway queue) and for 15 seconds after it has
+  been answered, **before the model is called**, and cancels an identical reply within
+  45 seconds. The first copy is still answered: six "1" messages cost one answer and no
+  extra tokens. If the first turn fails, the pending key is released so a retry is not
+  dropped as a duplicate.
+  `before_dispatch` has no extra permission requirement; the retry uses `agent_end`,
+  which requires `plugins.entries.secretary-guard.hooks.allowConversationAccess=true`
+  (set by `scripts/install.sh`).
 - **Admin recognition** — only the owner's verified number gets operational
   summaries; a customer cannot become admin by claiming to be the owner.
 - **Technical-error guard** — a local plugin replaces provider errors, rate limits
@@ -97,11 +104,11 @@ with Meta or WhatsApp.
 - **Operations** — systemd user services, watchdog, daily digest, optional Docker
   dashboard, and a setup wizard.
 - **Self-diagnosis** — `doctor.py` checks the installed files, the Preventivi/Contatti
-  tabs, the PDF engine, the persona scope rules, the anti-burst policy, the MCP tool
-  allowlist, systemd units and the local APIs, then prints the exact command that fixes
-  each problem. The same report is one click away in the dashboard (Sistema → Diagnosi)
+  tabs, the PDF engine, the persona scope rules, the anti-burst policy, the OpenClaw
+  minimum version and compatibility features, the MCP tool allowlist, systemd units and
+  the local APIs, then prints the exact command that fixes each problem. The same report is one click away in the dashboard (Sistema → Diagnosi)
   and runs at the end of `scripts/install.sh`. `--fix` applies the safe repairs it finds
-  (MCP allowlist, anti-burst policy, inactive services) after a confirmation for every
+  (MCP allowlist, anti-burst policy, plugin retry permission, inactive services) after a confirmation for every
   change; `--yes` skips the questions for scripted runs.
 - **Health and token alerts** — a 30-minute scan checks configuration, secrets,
   gateway, WhatsApp, dashboard, timers, Google OAuth/bridge, MCP, AI keys, approvals,
@@ -117,7 +124,7 @@ WhatsApp (Web client)
 OpenClaw gateway (Node.js, systemd user service)
         ├── per-customer session + context
         ├── model pool: Gemini first, Groq fallback
-        ├── secretary-guard plugin (scrubs technical errors)
+        ├── secretary-guard plugin (burst dedupe + technical-error scrubber)
         └── approval MCP tools (request email / calendar / PDF quote)
                  │
                  ▼
@@ -135,7 +142,11 @@ customer data is sent to a third-party dashboard service.
 - Linux or WSL2 with systemd user services
 - Python **3.11+**, tested in CI on 3.11, 3.12, 3.13 and 3.14 (standard library only; on
   native Windows install `tzdata` for the full IANA timezone database)
-- Node.js **22+** and [OpenClaw](https://openclaw.ai) installed globally
+- Node.js **22+** and [OpenClaw](https://openclaw.ai) **2026.4.22+** installed globally
+  (the inbound burst guard uses `before_dispatch`; the installer rejects versions below
+  **2026.4.22**, detects the optional `--accept-capabilities` and
+  `allowConversationAccess` features, and warns instead of silently disabling the
+  retry on hosts that lack them)
 - A WhatsApp account for the bot (a separate number is recommended)
 - At least one AI provider key (Gemini and/or Groq free tiers work)
 - Optional: `gog` CLI + Google account for Gmail/Calendar, or the included
@@ -157,7 +168,7 @@ python3 setup.py
 install -m 600 secrets.env.example ~/.openclaw/secretary/secrets.env
 ${EDITOR:-nano} ~/.openclaw/secretary/secrets.env
 
-# 3. Install dashboard, timers, plugin and gateway drop-ins
+# 3. Install dashboard, timers, plugin, remote-access helper and gateway drop-ins
 bash scripts/install.sh
 
 # 4. Open the dashboard and copy the local token when asked
@@ -169,11 +180,37 @@ The installer runs `sync_fallbacks.py`, which selects Gemini as the main model w
 a Gemini key exists and keeps Groq as fallback. It restarts the gateway; WhatsApp may
 take a minute to reconnect.
 
+> Using an AI coding agent? [`AGENTS.md`](AGENTS.md) is the exact install and
+> verification checklist, including the Google and WhatsApp checks.
+
 ### WhatsApp connection
 
 OpenClaw manages the WhatsApp session. On first run, open the OpenClaw control UI or
 run its channel login command and scan the QR code with the bot's phone. Session files
 are stored under `~/.openclaw` and must never be committed.
+
+### Gmail and Calendar
+
+Approvals can use the `gog` CLI or the included **Apps Script bridge**. The bridge is
+recommended because it does not expire after the 7-day Testing limit of a Google OAuth
+app. Run it once and approve Gmail + Calendar in the browser:
+
+```bash
+bash ~/.openclaw/secretary/google-bridge/installa-bridge.sh
+```
+
+Then open **Connettori → Verifica bridge** in the dashboard. The health check verifies
+that the bridge is reachable and that the signed `health` call can access both Gmail
+and Calendar. With `gog`, the equivalent command is:
+
+```bash
+gog-secretary auth add your-account@gmail.com \
+  --services gmail,calendar --gmail-scope read-send --manual
+```
+
+Both paths keep email and event actions behind dashboard approval. A configured file
+is not proof of delivery: use **Preventivo di prova** and one real Calendar approval to
+confirm the account, then check the message and the event.
 
 ## Configuration
 
@@ -265,8 +302,14 @@ See [SECURITY.md](SECURITY.md) for the threat model and how to report a vulnerab
 
 ```bash
 python3 -m unittest discover -s tests -v
-python3 -m py_compile *.py google-bridge/*.py
+python3 -m unittest discover -s tests -p 'test_install.py' -v
+python3 -m unittest discover -s tests -p 'test_remote_access.py' -v
+python3 -m py_compile *.py google-bridge/*.py scripts/*.py
+python3 scripts/openclaw_compat.py --json
+bash scripts/install.sh --check-compat
+python3 scripts/smoke_guard.py
 node google-bridge/test_code_gs.js
+node plugins/secretary-guard/test_guard.js
 python3 google-bridge/test_bridge.py
 python3 monitor.py --self-test
 python3 watchdog.py --self-test
@@ -275,12 +318,15 @@ python3 contacts.py --self-test
 python3 reminders.py --self-test
 python3 gateway_policy.py --self-test
 python3 doctor.py --self-test
+python3 remote_access.py --self-test
 python3 doctor.py --offline
 ```
 
-The suite covers configuration, persona rendering, approval storage, email template
-safety, dashboard authentication/CSRF, watchdog status, health scoring/token alerts,
-and automatic model selection. Integration with a real WhatsApp number and a real Google account cannot
+The suite covers configuration, persona rendering and jailbreak/refusal guards,
+approval storage, email template safety, dashboard authentication/CSRF, watchdog
+status, health scoring/token alerts, automatic model selection, isolated installer
+copies, OpenClaw compatibility planning, private remote-access validation and
+inbound/outbound duplicate suppression. Integration with a real WhatsApp number and a real Google account cannot
 be tested in CI; see [docs/TESTING.md](docs/TESTING.md) for the manual checklist.
 
 ## Docker (dashboard only)
@@ -303,19 +349,34 @@ widgets (gateway uptime, timers) are unavailable inside the container. Key manag
 and the restart button in the container do not control the host gateway: edit
 `~/.openclaw/secretary/secrets.env` on the host or use the host dashboard.
 
-## Deployment on a VPS
+## Private remote access (Tailscale + SSH)
 
-1. Install Node.js, OpenClaw and Python 3.11+.
-2. Complete the OpenClaw onboarding and WhatsApp login.
-3. Run `python3 setup.py` and `bash scripts/install.sh`.
-4. Keep the dashboard on localhost and access it through an SSH tunnel:
-   `ssh -L 8787:127.0.0.1:8787 user@vps`.
-5. Enable user lingering (`sudo loginctl enable-linger $USER`) so services survive
-   logout.
-6. Back up `~/.openclaw` and `~/.config/digital-secretary` encrypted; they contain
-   the WhatsApp session and private keys.
+The dashboard is intentionally loopback-only. To use it from another device without
+publishing it, put the host and client on a private **Tailscale** network and forward
+the dashboard through **SSH**:
 
-Do not expose port 8787 to the public Internet.
+```bash
+# on the host: install Tailscale and OpenSSH, then
+tailscale up
+sudo systemctl enable --now ssh
+
+# on the client: check the prerequisites and open the private tunnel
+python3 remote_access.py --check
+python3 remote_access.py --host host.tailnet.ts.net --user you --connect
+```
+
+The installer copies the helper to `~/.openclaw/secretary/remote_access.py`; use that
+path on an installed host (the commands above work from a checkout). Then open
+`http://127.0.0.1:8787`. The dashboard never binds to a public interface; the SSH tunnel
+keeps the browser origin loopback, so token login and CSRF checks work unchanged. The
+Tailscale personal plan and OpenSSH are free and do not require a credit card. This is
+not cloud hosting: the host must stay powered and connected. See
+[`docs/REMOTE_ACCESS.md`](docs/REMOTE_ACCESS.md) for firewall, port and recovery notes.
+
+For a VPS, complete onboarding and `bash scripts/install.sh`, keep port `8787` closed,
+and enable user lingering (`sudo loginctl enable-linger $USER`). Back up `~/.openclaw`
+and `~/.config/digital-secretary` encrypted; they contain the WhatsApp session and
+private keys. Never expose port 8787 to the public Internet.
 
 ## Troubleshooting
 

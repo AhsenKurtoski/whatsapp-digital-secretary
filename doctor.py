@@ -26,6 +26,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -92,6 +93,68 @@ def _read_json(path: Path) -> dict:
         return data if isinstance(data, dict) else {}
     except Exception:
         return {}
+
+
+OPENCLAW_MINIMUM = "2026.4.22"
+
+
+def _openclaw_argv(command: str, args: list[str]) -> list[str]:
+    if os.name == "nt" and command.lower().endswith((".cmd", ".bat")):
+        return ["cmd", "/c", command, *args]
+    return [command, *args]
+
+
+def _probe_openclaw(command: str = "openclaw", timeout: float = 8.0) -> dict:
+    """Legge versione e feature senza modificare la configurazione."""
+    info = {
+        "present": False,
+        "version": "",
+        "version_ok": False,
+        "accept_capabilities": False,
+        "conversation_access": False,
+        "minimum": OPENCLAW_MINIMUM,
+        "error": "",
+        "probe_errors": [],
+    }
+    resolved = shutil.which(command) or command
+    try:
+        result = subprocess.run(
+            _openclaw_argv(resolved, ["--version"]), capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=timeout,
+        )
+    except FileNotFoundError:
+        info["error"] = "comando openclaw non trovato"
+        return info
+    except Exception as exc:
+        info["error"] = f"openclaw --version non eseguibile: {str(exc)[:120]}"
+        return info
+    info["present"] = True
+    version_text = (result.stdout or "") + "\n" + (result.stderr or "")
+    match = re.search(r"\b(\d{4})\.(\d{1,2})\.(\d{1,2})\b", version_text)
+    if match:
+        info["version"] = ".".join(match.groups())
+        info["version_ok"] = tuple(int(part) for part in match.groups()) >= (2026, 4, 22)
+    else:
+        info["error"] = "versione OpenClaw non riconosciuta"
+    if result.returncode != 0:
+        info["version_ok"] = False
+        info["error"] = f"openclaw --version ha restituito {result.returncode}"
+
+    probes = [
+        ("accept_capabilities", _openclaw_argv(resolved, ["plugins", "install", "--help"]), "--accept-capabilities"),
+        ("conversation_access", _openclaw_argv(resolved, ["config", "schema"]), "allowConversationAccess"),
+    ]
+    for key, argv, needle in probes:
+        try:
+            probe = subprocess.run(
+                argv, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", timeout=timeout,
+            )
+            output = (probe.stdout or "") + "\n" + (probe.stderr or "")
+            info[key] = needle in output
+        except Exception:
+            info["probe_errors"].append(key)
+    return info
 
 
 def _http(url: str, token: str = "", timeout: float = 4.0) -> tuple[int, bytes]:
@@ -330,15 +393,93 @@ def run_checks(
         ))
 
     plugin = base / "plugins" / "secretary-guard" / "index.js"
+    guard_module = base / "plugins" / "secretary-guard" / "guard.js"
     plugin_text = _read(plugin)
-    if "duplicate_suppressed" in plugin_text:
-        checks.append(_check("plugin", "Guardia anti-duplicati", "ok", "Plugin aggiornato installato."))
+    plugin_ok = (
+        "duplicate_suppressed" in plugin_text
+        and "duplicate_inbound_suppressed" in plugin_text
+        and guard_module.is_file()
+    )
+    if plugin_ok:
+        checks.append(_check(
+            "plugin", "Guardia anti-raffica", "ok",
+            "Plugin aggiornato installato (duplicati inbound prima del modello + outbound).",
+        ))
     else:
         checks.append(_check(
-            "plugin", "Guardia anti-duplicati", "warn",
-            "Il plugin installato non contiene l'anti-duplicati.",
+            "plugin", "Guardia anti-raffica", "warn",
+            "Il plugin installato non contiene la guardia anti-raffica completa.",
             "bash scripts/install.sh e riavvia il gateway.",
         ))
+
+    # Compatibilità OpenClaw: versione minima e feature usate dall'installer.
+    openclaw = _probe_openclaw()
+    if not openclaw["present"]:
+        checks.append(_check(
+            "openclaw_compat", "Compatibilità OpenClaw", "info",
+            openclaw["error"] or "OpenClaw non rilevato: controlli compatibilità saltati.",
+            "Installa OpenClaw >= " + OPENCLAW_MINIMUM + (
+                " e rilancia bash scripts/install.sh" if os.name != "nt" else ""
+            ),
+        ))
+    else:
+        if openclaw["version_ok"]:
+            checks.append(_check(
+                "openclaw_version", "Versione OpenClaw", "ok",
+                f"OpenClaw {openclaw['version']} >= {OPENCLAW_MINIMUM}.",
+            ))
+        else:
+            checks.append(_check(
+                "openclaw_version", "Versione OpenClaw", "fail",
+                openclaw["error"] or (
+                    f"OpenClaw {openclaw['version'] or 'sconosciuto'} < {OPENCLAW_MINIMUM}."
+                ),
+                f"Aggiorna OpenClaw a >= {OPENCLAW_MINIMUM}, poi rilancia bash scripts/install.sh.",
+            ))
+        if openclaw["accept_capabilities"]:
+            checks.append(_check(
+                "openclaw_accept_capabilities", "Feature --accept-capabilities", "ok",
+                "Supportata: l'installer può accettare le capability del plugin.",
+            ))
+        else:
+            checks.append(_check(
+                "openclaw_accept_capabilities", "Feature --accept-capabilities", "warn",
+                "Non rilevata: l'installer userà il percorso legacy e potrebbe rifiutare "
+                "il plugin se richiede consenso.",
+                f"Aggiorna OpenClaw a >= {OPENCLAW_MINIMUM} se l'installazione richiede consenso.",
+            ))
+        if openclaw["conversation_access"]:
+            checks.append(_check(
+                "openclaw_conversation_access", "Feature allowConversationAccess", "ok",
+                "Supportata: agent_end può rilasciare il retry dopo un errore.",
+            ))
+        else:
+            checks.append(_check(
+                "openclaw_conversation_access", "Feature allowConversationAccess", "warn",
+                "Non rilevata: la guardia resta in modalità burst-only, senza retry dopo un errore.",
+                f"Aggiorna OpenClaw a >= {OPENCLAW_MINIMUM} per abilitare il retry.",
+            ))
+
+    # Il retry dopo un errore usa agent_end, che per i plugin non bundled richiede
+    # un permesso esplicito. before_dispatch non lo richiede.
+    if plugin_ok and "releaseInboundForScope" in plugin_text:
+        plugins = gateway.get("plugins") if isinstance(gateway.get("plugins"), dict) else {}
+        entries = plugins.get("entries") if isinstance(plugins.get("entries"), dict) else {}
+        guard_entry = entries.get("secretary-guard") if isinstance(entries.get("secretary-guard"), dict) else {}
+        hooks = guard_entry.get("hooks") if isinstance(guard_entry.get("hooks"), dict) else {}
+        if hooks.get("allowConversationAccess") is True:
+            checks.append(_check(
+                "plugin_hook", "Retry dopo un errore", "ok",
+                "agent_end autorizzato: un messaggio fallito non resta soppresso.",
+            ))
+        else:
+            checks.append(_check(
+                "plugin_hook", "Retry dopo un errore", "warn",
+                "Manca allowConversationAccess: agent_end è bloccato e il retry può "
+                "restare soppresso mentre è in coda (fino a 120 secondi).",
+                "bash scripts/install.sh, oppure: openclaw config set "
+                "'plugins.entries.secretary-guard.hooks.allowConversationAccess' true",
+            ))
 
     # 9. Chiavi AI presenti (senza mai leggerne il valore)
     secrets = _read(base / "secrets.env")
@@ -455,6 +596,7 @@ def _fix_env(base: Path, config_path: Path, openclaw_config: Path) -> dict[str, 
     env["SECRETARY_BASE"] = str(base)
     env["SECRETARY_CONFIG"] = str(config_path)
     env["OPENCLAW_CONFIG"] = str(openclaw_config)
+    env["OPENCLAW_CONFIG_PATH"] = str(openclaw_config)
     return env
 
 
@@ -525,6 +667,22 @@ def plan_fixes(
                 done="Approvazioni aggiornate (backup creato).",
             )
             config_changed = True
+
+    hook = by_id.get("plugin_hook")
+    if hook and hook.get("status") == "warn":
+        add(
+            "plugin_hook", "plugin_hook",
+            "Abilita il retry del plugin",
+            "Imposta allowConversationAccess per agent_end: senza questo permesso "
+            "un messaggio fallito può restare soppresso mentre è in coda (fino a 120 secondi).",
+            command=[
+                "openclaw", "config", "set",
+                "plugins.entries.secretary-guard.hooks.allowConversationAccess",
+                "true",
+            ],
+            env=_fix_env(base, config_path, openclaw_config),
+            done="Permesso retry del plugin aggiornato.",
+        )
 
     policy = by_id.get("policy")
     if policy and policy.get("status") == "warn":
@@ -704,6 +862,14 @@ def self_test() -> None:
     for name in REQUIRED_FILES:
         (base / name).write_text("# fixture\n", encoding="utf-8")
     (base / "dashboard.html").write_text('data-tab="quotes" id="quotesBody" data-tab="contacts"', encoding="utf-8")
+    plugin_dir = base / "plugins" / "secretary-guard"
+    plugin_dir.mkdir(parents=True)
+    (plugin_dir / "index.js").write_text(
+        "duplicate_suppressed duplicate_inbound_suppressed releaseInboundForScope\n",
+        encoding="utf-8",
+    )
+    (plugin_dir / "guard.js").write_text("export const guard = true;\n", encoding="utf-8")
+    (base / "secrets.env").write_text("GEMINI_API_KEY=placeholder\n", encoding="utf-8")
     (workspace / "AGENTS.md").write_text(
         "Non sono abilitato · Messaggi ripetuti · request_quote", encoding="utf-8"
     )
@@ -715,6 +881,7 @@ def self_test() -> None:
     gateway_path = tmp / "openclaw.json"
     gateway_path.write_text(json.dumps({
         "messages": {"inbound": {"byChannel": {"whatsapp": 1800}}, "queue": {"byChannel": {"whatsapp": "collect"}}},
+        "plugins": {"entries": {"secretary-guard": {"hooks": {"allowConversationAccess": True}}}},
         "mcp": {"servers": {"secretary": {"toolFilter": {"include": ["request_email", "request_calendar", "request_quote"]}}}},
     }), encoding="utf-8")
 
@@ -733,6 +900,7 @@ def self_test() -> None:
     broken_gateway = tmp / "openclaw-broken.json"
     broken_gateway.write_text(json.dumps({
         "messages": {"queue": {"mode": "steer"}},
+        "plugins": {"entries": {"secretary-guard": {"hooks": {"allowConversationAccess": True}}}},
         "mcp": {"servers": {"secretary": {"toolFilter": {"include": [
             "request_email", "request_calendar",
         ]}}}},

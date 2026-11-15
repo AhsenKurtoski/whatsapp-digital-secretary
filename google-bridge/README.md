@@ -49,9 +49,16 @@ Apri l'URL `/exec` mostrato dallo script, premi **Consenti**, poi rilancia lo sc
 oppure premi **Verifica bridge** nella dashboard.
 
 L'installer riavvia da solo la dashboard. Nella dashboard,
-**Connettori → Permanente senza dominio** deve mostrare `configurato`;
-**Verifica bridge** deve rispondere `ok`. Da quel momento Gmail e Calendar passano
-dal bridge, non più dal token OAuth in Testing.
+**Connettori → Permanente senza dominio** deve mostrare `configurato` e
+**Verifica bridge** deve riportare `healthy: true` con `services.gmail` e
+`services.calendar` entrambi `true`: la chiamata `health` è firmata e prova davvero
+l'accesso ai due servizi. Da quel momento Gmail e Calendar passano dal bridge, non più
+dal token OAuth in Testing.
+
+Se hai appena aggiornato `Code.gs`, pubblica un **nuovo deployment** (non basta
+salvare): `clasp push` seguito da un nuovo deployment. Un deployment vecchio resta
+raggiungibile ma viene segnalato come da aggiornare, perché non può provare i permessi
+Gmail/Calendar.
 
 ## Se qualcosa non va
 

@@ -6,8 +6,15 @@ Run these before every release:
 
 ```bash
 python3 -m unittest discover -s tests -v
-python3 -m py_compile *.py google-bridge/*.py
+python3 -m unittest discover -s tests -p 'test_install.py' -v
+python3 -m unittest discover -s tests -p 'test_remote_access.py' -v
+python3 -m unittest discover -s tests -p 'test_openclaw_compat.py' -v
+python3 -m py_compile *.py google-bridge/*.py scripts/*.py
+python3 scripts/openclaw_compat.py --json
+bash scripts/install.sh --check-compat
+python3 scripts/smoke_guard.py
 node google-bridge/test_code_gs.js
+node plugins/secretary-guard/test_guard.js
 python3 google-bridge/test_bridge.py
 python3 monitor.py --self-test
 python3 watchdog.py --self-test
@@ -16,19 +23,22 @@ python3 contacts.py --self-test
 python3 reminders.py --self-test
 python3 gateway_policy.py --self-test
 python3 doctor.py --self-test
+python3 remote_access.py --self-test
 ```
 
-Expected result: the whole suite passes (121 tests at the time of writing), the compile
-check is silent, Code.gs prints `Code.gs handlers: OK`, and every self-test prints
-`SELF-TEST OK` with exit code 0. CI runs the same commands on Python 3.11, 3.12, 3.13
-and 3.14.
+Expected result: the whole suite passes (144 tests at the time of writing), including
+the isolated installer, remote-access and OpenClaw compatibility tests; the compile
+check is silent, Code.gs prints
+`Code.gs handlers: OK`, the guard test prints `secretary guard: OK`, and every
+self-test prints `SELF-TEST OK` with exit code 0. CI runs the same commands on
+Python 3.11, 3.12, 3.13 and 3.14.
 
 ## Installazione reale
 
 Dopo `bash scripts/install.sh`, esegui `python3 ~/.openclaw/secretary/doctor.py`: il
 report PASS/WARN/FAIL controlla i file installati, le schede Preventivi/Contatti, il
-motore PDF, le regole della persona, la policy anti-raffica, l'allowlist MCP, le unità
-systemd e le API locali. Ogni criticità stampa il comando che la risolve. Lo stesso
+motore PDF, le regole della persona, la policy anti-raffica, la versione minima e le
+feature di OpenClaw, l'allowlist MCP, le unità systemd e le API locali. Ogni criticità stampa il comando che la risolve. Lo stesso
 report è in dashboard (Sistema → Diagnosi) e `install.sh` lo esegue automaticamente.
 
 Per verificare colori e allegato su Gmail reale apri **Approvazioni → Preventivo di
@@ -41,6 +51,13 @@ Se un controllo è critico, `python3 ~/.openclaw/secretary/doctor.py --fix` prop
 riparazioni locali sicure (allowlist MCP, policy anti-raffica, servizi inattivi) e chiede
 conferma per ognuna; `--yes` salta le domande per l'uso non interattivo. Le correzioni
 che richiedono file nuovi restano manuali: `git pull && bash scripts/install.sh`.
+
+`tests/test_openclaw_compat.py` runs the installer's `--check-compat` path with a
+fake `openclaw` command: it asserts refusal below the minimum version, legacy install
+when `--accept-capabilities` is absent, and burst-only fallback when
+`allowConversationAccess` is absent. On a real host, `--check-compat` needs a working
+`openclaw`; without it the plan reports a refusal/skip and exits nonzero. The fake command only prints probe output; it never
+modifies configuration or starts a gateway.
 
 The suite is hermetic: it uses a temporary home, a demo configuration and no network.
 If a test needs a tool that is missing (for example `gog`), it asserts the graceful
@@ -56,11 +73,13 @@ WhatsApp number.
    `~/.openclaw/workspace/AGENTS.md` contains the rendered persona.
 3. Put a test key in `~/.openclaw/secretary/secrets.env` (mode `600`).
 4. Run `bash scripts/install.sh`.
-5. Open `http://127.0.0.1:8787`; the login page must be visible.
-6. Request `/api/status` without a token: expect HTTP 401.
-7. Log in with the token from `~/.openclaw/secretary/dashboard_token`: expect the
+5. Verify that `~/.openclaw/secretary/remote_access.py` exists and that
+   `python3 ~/.openclaw/secretary/remote_access.py --self-test` prints `SELF-TEST OK`.
+6. Open `http://127.0.0.1:8787`; the login page must be visible.
+7. Request `/api/status` without a token: expect HTTP 401.
+8. Log in with the token from `~/.openclaw/secretary/dashboard_token`: expect the
    overview, not the login form.
-8. Verify `/logout` clears the cookie and the login page returns.
+9. Verify `/logout` clears the cookie and the login page returns.
 
 ## WhatsApp conversation checklist
 
@@ -136,7 +155,9 @@ Also verify:
 ## What CI cannot verify
 
 - A real WhatsApp session and QR login.
-- Real Gmail/Calendar delivery (requires the owner's Google account).
+- Real Gmail/Calendar delivery (requires the owner's Google account). The signed
+  bridge health probes both services, but actual delivery still needs the owner's live
+  authorization and a manual test.
 - Provider quotas and latency.
 - Windows auto-start and WSL behaviour.
 

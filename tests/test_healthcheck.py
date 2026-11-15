@@ -1,6 +1,8 @@
 import json
 import sys
+import types
 import unittest
+from unittest import mock
 
 import support  # noqa: F401
 import healthcheck
@@ -58,6 +60,30 @@ class HealthcheckTests(unittest.TestCase):
         self.assertEqual(check["token"]["expires_iso"], "")
         self.assertEqual(check["token"]["status"], "info")
         self.assertEqual(healthcheck.build_alerts([check]), [])
+
+    def test_bridge_health_requires_gmail_and_calendar(self):
+        fake = types.SimpleNamespace(
+            load_config=lambda _path: {"url": "https://example.test/exec", "secret": "x" * 48},
+            health=lambda _config: {
+                "ok": True,
+                "healthy": False,
+                "services": {"gmail": True, "calendar": False},
+            },
+        )
+        with mock.patch.dict(sys.modules, {"bridge_client": fake}):
+            check = healthcheck.check_google_bridge()
+        self.assertEqual(check["status"], "warn")
+        self.assertIn("Calendar", check["detail"])
+
+    def test_old_bridge_health_is_not_reported_as_healthy(self):
+        fake = types.SimpleNamespace(
+            load_config=lambda _path: {"url": "https://example.test/exec", "secret": "x" * 48},
+            health=lambda _config: {"ok": True, "version": "1.1.0"},
+        )
+        with mock.patch.dict(sys.modules, {"bridge_client": fake}):
+            check = healthcheck.check_google_bridge()
+        self.assertEqual(check["status"], "warn")
+        self.assertIn("Aggiorna Apps Script", check["action"])
 
     def test_message_is_bounded_and_has_a_title(self):
         message = healthcheck.render_message(

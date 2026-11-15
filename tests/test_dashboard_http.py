@@ -42,6 +42,14 @@ class DashboardTests(unittest.TestCase):
         req = urllib.request.Request(self.base + path, headers=headers)
         return urllib.request.urlopen(req, timeout=10)
 
+    def expect_http_error(self, code, action):
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            action()
+        error = ctx.exception
+        self.addCleanup(error.close)
+        self.assertEqual(error.code, code)
+        return error
+
     def test_index_renders_business_name(self):
         with self.get("/") as response:
             body = response.read().decode("utf-8")
@@ -50,9 +58,7 @@ class DashboardTests(unittest.TestCase):
         self.assertNotIn("{{BUSINESS_NAME}}", body)
 
     def test_api_requires_token(self):
-        with self.assertRaises(urllib.error.HTTPError) as ctx:
-            self.get("/api/leads")
-        self.assertEqual(ctx.exception.code, 401)
+        self.expect_http_error(401, lambda: self.get("/api/leads"))
 
     def test_api_accepts_bearer(self):
         with self.get("/api/leads", dashboard.DASH_TOKEN) as response:
@@ -60,9 +66,7 @@ class DashboardTests(unittest.TestCase):
             self.assertTrue(json.loads(response.read())["ok"])
 
     def test_health_endpoint_requires_token(self):
-        with self.assertRaises(urllib.error.HTTPError) as ctx:
-            self.get("/api/health")
-        self.assertEqual(ctx.exception.code, 401)
+        self.expect_http_error(401, lambda: self.get("/api/health"))
 
     def test_health_endpoint_returns_cached_state(self):
         with self.get("/api/health", dashboard.DASH_TOKEN) as response:
@@ -78,10 +82,8 @@ class DashboardTests(unittest.TestCase):
             method="POST",
             headers={"Authorization": "Bearer " + dashboard.DASH_TOKEN, "Content-Type": "application/json"},
         )
-        with self.assertRaises(urllib.error.HTTPError) as ctx:
-            urllib.request.urlopen(req, timeout=10)
-        self.assertEqual(ctx.exception.code, 403)
-        self.assertIn("csrf", ctx.exception.read().decode())
+        error = self.expect_http_error(403, lambda: urllib.request.urlopen(req, timeout=10))
+        self.assertIn("csrf", error.read().decode())
 
     def test_next_elapse_reads_json_timers(self):
         original = dashboard.run
@@ -113,10 +115,12 @@ class DashboardTests(unittest.TestCase):
             dashboard.run = original
         self.assertIn("22:21", value)
 
-    def post_json(self, path, payload, token=None):
+    def post_json(self, path, payload, token=None, origin=None):
         headers = {"X-Requested-With": "dashboard", "Content-Type": "application/json"}
         if token:
             headers["Authorization"] = "Bearer " + token
+        if origin:
+            headers["Origin"] = origin
         req = urllib.request.Request(
             self.base + path,
             data=json.dumps(payload).encode(),
@@ -124,6 +128,31 @@ class DashboardTests(unittest.TestCase):
             headers=headers,
         )
         return urllib.request.urlopen(req, timeout=10)
+
+    def test_loopback_tunnel_origin_passes_csrf(self):
+        # Il tunnel SSH conserva l'URL loopback: il browser invia
+        # Origin http://127.0.0.1:<porta>, che deve essere accettato.
+        with self.post_json(
+            "/api/approvals/approve",
+            {"id": "richiesta-inesistente"},
+            dashboard.DASH_TOKEN,
+            origin=self.base,
+        ) as response:
+            payload = json.loads(response.read())
+        self.assertFalse(payload["ok"])
+        self.assertIn("non trovata", payload["error"])
+
+    def test_foreign_origin_is_rejected_even_with_csrf_header(self):
+        error = self.expect_http_error(
+            403,
+            lambda: self.post_json(
+                "/api/approvals/approve",
+                {"id": "richiesta-inesistente"},
+                dashboard.DASH_TOKEN,
+                origin="https://evil.example",
+            ),
+        )
+        self.assertIn("csrf", error.read().decode())
 
     def test_index_has_demo_quote_email_button(self):
         with self.get("/") as response:
@@ -145,9 +174,7 @@ class DashboardTests(unittest.TestCase):
         self.assertTrue(payload["pdf"])
 
     def test_google_renew_requires_token(self):
-        with self.assertRaises(urllib.error.HTTPError) as ctx:
-            self.post_json("/api/google/renew/start", {})
-        self.assertEqual(ctx.exception.code, 401)
+        self.expect_http_error(401, lambda: self.post_json("/api/google/renew/start", {}))
 
     def test_google_renew_rejects_foreign_redirect(self):
         with self.post_json(
@@ -252,24 +279,16 @@ class DashboardTests(unittest.TestCase):
             self.assertEqual(value, "02/11 13:31", stamp)
 
     def test_quotes_endpoint_requires_token(self):
-        with self.assertRaises(urllib.error.HTTPError) as ctx:
-            self.get("/api/quotes")
-        self.assertEqual(ctx.exception.code, 401)
+        self.expect_http_error(401, lambda: self.get("/api/quotes"))
 
     def test_contacts_endpoint_requires_token(self):
-        with self.assertRaises(urllib.error.HTTPError) as ctx:
-            self.get("/api/contacts")
-        self.assertEqual(ctx.exception.code, 401)
+        self.expect_http_error(401, lambda: self.get("/api/contacts"))
 
     def test_quote_pdf_download_requires_token(self):
-        with self.assertRaises(urllib.error.HTTPError) as ctx:
-            self.get("/api/quotes/apr-20260101-000000-abcd.pdf")
-        self.assertEqual(ctx.exception.code, 401)
+        self.expect_http_error(401, lambda: self.get("/api/quotes/apr-20260101-000000-abcd.pdf"))
 
     def test_demo_quote_preview_requires_token(self):
-        with self.assertRaises(urllib.error.HTTPError) as ctx:
-            self.get("/api/quotes/demo/preview")
-        self.assertEqual(ctx.exception.code, 401)
+        self.expect_http_error(401, lambda: self.get("/api/quotes/demo/preview"))
 
     def test_demo_quote_preview_is_local_and_returns_a_pdf(self):
         before = len(approval_store.list_requests(200).get("recent") or [])
@@ -345,15 +364,22 @@ class DashboardTests(unittest.TestCase):
         opener = urllib.request.build_opener(NoRedirect)
         body = urllib.parse.urlencode({"token": dashboard.DASH_TOKEN}).encode()
         req = urllib.request.Request(self.base + "/login", data=body, method="POST")
-        with self.assertRaises(urllib.error.HTTPError) as ctx:
-            opener.open(req, timeout=10)
-        self.assertEqual(ctx.exception.code, 302)
-        self.assertIn("ocdash=", ctx.exception.headers.get("Set-Cookie", ""))
+        error = self.expect_http_error(302, lambda: opener.open(req, timeout=10))
+        cookie = error.headers.get("Set-Cookie", "")
+        self.assertIn("ocdash=", cookie)
+        # Il cookie deve restare privato anche quando il browser arriva dal
+        # tunnel SSH: niente lettura da JavaScript e nessun invio cross-site.
+        self.assertIn("HttpOnly", cookie)
+        self.assertIn("SameSite=Strict", cookie)
 
         bad = urllib.parse.urlencode({"token": "wrong"}).encode()
-        with self.assertRaises(urllib.error.HTTPError) as ctx:
-            opener.open(urllib.request.Request(self.base + "/login", data=bad, method="POST"), timeout=10)
-        self.assertEqual(ctx.exception.code, 401)
+        self.expect_http_error(
+            401,
+            lambda: opener.open(
+                urllib.request.Request(self.base + "/login", data=bad, method="POST"),
+                timeout=10,
+            ),
+        )
 
 
 if __name__ == "__main__":

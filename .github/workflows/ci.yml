@@ -27,10 +27,13 @@ jobs:
           python-version: ${{ matrix.python }}
 
       - name: Compile Python sources
-        run: python -m py_compile *.py google-bridge/*.py
+        run: python -m py_compile *.py google-bridge/*.py scripts/*.py
 
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
+
+      - name: Test isolated installer
+        run: python -m unittest discover -s tests -p 'test_install.py' -v
 
       - name: Run every self-test
         run: |
@@ -41,6 +44,7 @@ jobs:
           python reminders.py --self-test
           python gateway_policy.py --self-test
           python doctor.py --self-test
+          python remote_access.py --self-test
 
       - name: Test signed bridge client
         run: python google-bridge/test_bridge.py
@@ -62,6 +66,9 @@ jobs:
 
       - name: Test Code.gs handlers
         run: node google-bridge/test_code_gs.js
+
+      - name: Test inbound and outbound guard
+        run: node plugins/secretary-guard/test_guard.js
 
   shell:
     name: Shell syntax
