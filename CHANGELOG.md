@@ -35,6 +35,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
   sending; it copies the dashboard into a temporary directory and prints the token.
 - **Secretary name**: the default `bot_name` is now **Gina**; it appears in the dashboard
   title, avatar, login, footer and on the PDF header.
+- **`linger` check in `doctor.py`**: without `loginctl enable-linger`, user services stop
+  at logout and do not start after a reboot until someone logs in. The check reports it
+  with the exact `sudo` command, so a 24/7 setup can be verified instead of assumed.
+- **`docs/ALWAYS_ON.md`**: verified free 24/7 options (own device, Oracle Always Free),
+  what the watchdog already repairs, and the limits none of them removes (sleep, QR
+  re-scan, idle reclamation, free AI quotas).
 - **PDF acceptance block**: quotes end with a client acceptance area (date and signature)
   and the header uses the configured secretary name.
 

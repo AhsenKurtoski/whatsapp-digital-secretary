@@ -385,6 +385,26 @@ gateway, timer) non sono disponibili nel container. La gestione chiavi e il puls
 riavvio nel container non comandano il gateway dell'host: modifica
 `~/.openclaw/secretary/secrets.env` sull'host o usa la dashboard host.
 
+## Restare online 24/7 gratis
+
+Non esiste un hosting gratuito che tenga vivo un processo senza una macchina accesa.
+Le due strade che costano davvero 0 € (dettagli e limiti in
+[`docs/ALWAYS_ON.md`](docs/ALWAYS_ON.md)):
+
+- **Un tuo dispositivo** (mini-PC, Raspberry Pi o PC sempre acceso) — nessuna carta,
+  nessun abbonamento; disabilita la sospensione ed esegui
+  `sudo loginctl enable-linger $USER` per far partire i servizi al boot senza login.
+- **Oracle Cloud Always Free** — 2 OCPU + 12 GB Arm, 200 GB di disco, senza scadenza;
+  la carta serve solo per la verifica dell'identità. Oracle può recuperare le istanze
+  inattive, quindi controlla la regola prima di contarci.
+
+I PaaS gratuiti (Render, Koyeb) vanno in sleep dopo 15–60 minuti e non tengono una
+sessione WhatsApp. L'e2-micro gratuito di Google fattura comunque l'IPv4 esterno. Il
+progetto già riavvia la dashboard da solo (`Restart=always`), riavvia il gateway dal
+watchdog dopo due controlli falliti, riavvia WhatsApp solo dopo 30 minuti di stato non
+sano e avvisa il titolare su WhatsApp. `doctor.py` riporta ora lo stato `linger`, perché
+senza di esso i servizi non partono dopo un riavvio.
+
 ## Accesso remoto privato (Tailscale + SSH)
 
 La dashboard resta intenzionalmente solo su loopback. Per usarla da un altro

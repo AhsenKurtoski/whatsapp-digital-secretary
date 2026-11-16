@@ -145,6 +145,18 @@ class DoctorTests(unittest.TestCase):
              "plugins.entries.secretary-guard.hooks.allowConversationAccess", "true"],
         )
 
+    def test_linger_state_detects_disabled_boot_start(self):
+        with patch.object(doctor.shutil, "which", return_value="/usr/bin/loginctl"), \
+                patch.dict(doctor.os.environ, {"USER": "tester"}):
+            with patch.object(doctor.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "no\n", "")):
+                self.assertFalse(doctor._linger_state())
+            with patch.object(doctor.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "yes\n", "")):
+                self.assertTrue(doctor._linger_state())
+
+    def test_linger_state_is_unknown_without_loginctl(self):
+        with patch.object(doctor.shutil, "which", return_value=None):
+            self.assertIsNone(doctor._linger_state())
+
     def test_every_check_has_label_and_detail(self):
         for check in self.run_checks():
             self.assertTrue(check["label"])

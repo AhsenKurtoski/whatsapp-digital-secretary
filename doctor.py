@@ -98,6 +98,30 @@ def _read_json(path: Path) -> dict:
 OPENCLAW_MINIMUM = "2026.4.22"
 
 
+def _linger_state() -> bool | None:
+    """Lingering utente: senza di esso i servizi non partono al boot.
+
+    Restituisce True/False quando `loginctl` è utilizzabile, None quando lo
+    stato non è verificabile (Windows, Docker, sessione senza systemd).
+    """
+    loginctl = shutil.which("loginctl")
+    if not loginctl:
+        return None
+    user = os.environ.get("USER") or os.environ.get("LOGNAME") or ""
+    if not user:
+        return None
+    try:
+        result = subprocess.run(
+            [loginctl, "show-user", user, "-p", "Linger", "--value"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode != 0:
+            return None
+        return (result.stdout or "").strip().lower() == "yes"
+    except Exception:
+        return None
+
+
 def _openclaw_argv(command: str, args: list[str]) -> list[str]:
     if os.name == "nt" and command.lower().endswith((".cmd", ".bat")):
         return ["cmd", "/c", command, *args]
@@ -569,6 +593,26 @@ def run_checks(
             str(reminders_unit) if reminders_unit.exists() else "Unità del timer non trovata.",
             "" if reminders_unit.exists() else "bash scripts/install.sh",
         ))
+
+        # 24/7: senza lingering i servizi utente si fermano al logout e non
+        # ripartono dopo un riavvio finché qualcuno non accede.
+        linger = _linger_state()
+        if linger is None:
+            checks.append(_check(
+                "linger", "Avvio automatico al boot", "info",
+                "Stato lingering non verificabile in questo ambiente.",
+            ))
+        elif linger:
+            checks.append(_check(
+                "linger", "Avvio automatico al boot", "ok",
+                "Lingering attivo: i servizi ripartono anche senza login.",
+            ))
+        else:
+            checks.append(_check(
+                "linger", "Avvio automatico al boot", "warn",
+                "Lingering disattivo: dopo un riavvio i servizi partono solo al login.",
+                "sudo loginctl enable-linger $USER",
+            ))
 
     # 11. API locali: dashboard, stato, preventivi
     if http:
