@@ -71,6 +71,10 @@ class PersonaTests(unittest.TestCase):
         self.assertIn("richiesta di email", text)
         self.assertIn("appuntamento", text)
         self.assertIn("approvazione del titolare", text)
+        # Nome esatto del tool e nessuna via di fuga: è ciò che impediva al bot
+        # di creare il PDF dichiarando di non avere il tool.
+        self.assertIn("secretary__request_quote", text)
+        self.assertNotIn("Se il tool non è disponibile", text)
 
     def test_non_interactive_update_preserves_existing_settings(self):
         with tempfile.TemporaryDirectory() as raw:

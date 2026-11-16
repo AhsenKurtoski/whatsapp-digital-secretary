@@ -5,6 +5,7 @@
 Run these before every release:
 
 ```bash
+bash scripts/verify.sh          # tutta la matrice in un comando
 python3 -m unittest discover -s tests -v
 python3 -m unittest discover -s tests -p 'test_install.py' -v
 python3 -m unittest discover -s tests -p 'test_remote_access.py' -v
@@ -26,7 +27,8 @@ python3 doctor.py --self-test
 python3 remote_access.py --self-test
 ```
 
-Expected result: the whole suite passes (144 tests at the time of writing), including
+Expected result: `scripts/verify.sh` prints `VERIFICA OK`, the whole suite passes
+(158 tests at the time of writing), including
 the isolated installer, remote-access and OpenClaw compatibility tests; the compile
 check is silent, Code.gs prints
 `Code.gs handlers: OK`, the guard test prints `secretary guard: OK`, and every
@@ -40,6 +42,13 @@ report PASS/WARN/FAIL controlla i file installati, le schede Preventivi/Contatti
 motore PDF, le regole della persona, la policy anti-raffica, la versione minima e le
 feature di OpenClaw, l'allowlist MCP, le unità systemd e le API locali. Ogni criticità stampa il comando che la risolve. Lo stesso
 report è in dashboard (Sistema → Diagnosi) e `install.sh` lo esegue automaticamente.
+
+Verifica anche il percorso manuale: **Preventivi → Nuovo preventivo**, compila una voce
+e premi *Crea PDF e metti in approvazione*. Il PDF deve comparire subito nella tabella,
+la scadenza deve essere calcolata e *Anteprima* deve mostrare l'email senza inviarla.
+Se compare il banner "Il bot non vede i tool di approvazione", esegui
+`python3 ~/.openclaw/secretary/doctor.py --short`: il controllo `mcp_runtime` indica il
+comando di riparazione. Il banner non deve mai apparire in un'installazione sana.
 
 Per verificare colori e allegato su Gmail reale apri **Approvazioni → Preventivo di
 prova**: arriva un'email con hero viola, card indaco, riepilogo del preventivo e PDF

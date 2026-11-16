@@ -221,6 +221,36 @@ def _handle_tool(name: str, arguments: dict) -> dict:
     raise ValueError(f"tool sconosciuto: {name}")
 
 
+def self_test() -> int:
+    """Verifica i tool e il motore PDF senza scrivere nella coda reale.
+
+    Viene eseguito dall'installer sulla copia installata: se questo controllo
+    fallisce, il bot non potrebbe preparare preventivi. Meglio fermarsi qui.
+    """
+    names = [str(tool.get("name") or "") for tool in TOOLS]
+    expected = {"request_email", "request_calendar", "request_quote"}
+    if set(names) != expected or len(names) != len(expected):
+        print(f"MCP SELF-TEST FAIL: tool inattesi {names}", file=sys.stderr)
+        return 1
+    for tool in TOOLS:
+        schema = tool.get("inputSchema") or {}
+        if schema.get("type") != "object" or not tool.get("description"):
+            print(f"MCP SELF-TEST FAIL: schema non valido per {tool.get('name')}", file=sys.stderr)
+            return 1
+    try:
+        import quote_pdf
+
+        pdf = quote_pdf.render_quote_pdf(quote_pdf.demo_quote())
+    except Exception as exc:
+        print(f"MCP SELF-TEST FAIL: PDF non generabile: {str(exc)[:200]}", file=sys.stderr)
+        return 1
+    if not pdf.startswith(b"%PDF-1.4") or len(pdf) < 1500:
+        print("MCP SELF-TEST FAIL: PDF non valido", file=sys.stderr)
+        return 1
+    print(f"MCP SELF-TEST OK ({len(names)} tool, PDF {len(pdf)} byte)")
+    return 0
+
+
 def main() -> None:
     for line in sys.stdin:
         line = line.strip()
@@ -274,4 +304,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    if "--selftest" in sys.argv[1:]:
+        raise SystemExit(self_test())
     main()

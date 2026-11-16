@@ -279,6 +279,7 @@ def append_request(
     client_name: str = "",
     client_phone: str = "",
     reason: str = "",
+    dedupe: bool = True,
 ) -> dict:
     kind = str(kind or "").strip().lower()
     if kind not in {"email", "calendar", "quote"}:
@@ -303,9 +304,13 @@ def append_request(
     with _locked():
         rows = _read_unlocked()
         pending = [row for row in rows if row.get("status") == "pending"]
-        for row in pending:
-            if row.get("fingerprint") == fingerprint:
-                return row
+        if dedupe:
+            # Il bot può ritentare la stessa chiamata: in quel caso la richiesta
+            # esistente viene riusata. La dashboard crea invece un nuovo numero
+            # quando il titolare duplica un preventivo.
+            for row in pending:
+                if row.get("fingerprint") == fingerprint:
+                    return row
         if len(pending) >= MAX_PENDING:
             raise ValueError("troppe richieste in attesa; attendi l'approvazione del titolare")
         request_id = "apr-" + datetime.now(ROME).strftime("%Y%m%d-%H%M%S") + "-" + secrets.token_hex(2)

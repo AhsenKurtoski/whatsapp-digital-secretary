@@ -19,10 +19,15 @@ BASE = config.BASE
 CONFIG = config.OPENCLAW_CONFIG
 OWNER = str(CFG.get("owner_number") or "").strip()
 OWNER_NAME = str(CFG.get("owner_name") or "il titolare").strip()
+TOOL_BASE_NAMES = ["request_email", "request_calendar", "request_quote"]
+# OpenClaw espone i tool MCP con namespace diversi a seconda della versione.
+# L'allowlist deve coprirli entrambi, altrimenti il bot non vede request_quote
+# e risponde al cliente che il tool non esiste.
+TOOL_NAMESPACES = ("secretary__", "mcp__secretary__")
 TOOL_NAMES = [
-    "secretary__request_email",
-    "secretary__request_calendar",
-    "secretary__request_quote",
+    f"{namespace}{name}"
+    for namespace in TOOL_NAMESPACES
+    for name in TOOL_BASE_NAMES
 ]
 OWNER_PROMPT = (
     f"Modalità ADMIN. Il richiedente è {OWNER_NAME}, proprietario e unico admin, "
@@ -110,6 +115,20 @@ def main() -> int:
         direct[OWNER] = entry
 
     CONFIG.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    # Rileggi il file scritto: se il filtro non contiene i tre tool, il bot non
+    # può preparare preventivi. Meglio un errore chiaro che un'installazione
+    # apparentemente riuscita.
+    saved = json.loads(CONFIG.read_text(encoding="utf-8"))
+    saved_server = (((saved.get("mcp") or {}).get("servers") or {}).get("secretary") or {})
+    saved_include = (((saved_server.get("toolFilter") or {}).get("include")) or [])
+    missing = [name for name in TOOL_BASE_NAMES if name not in saved_include]
+    if missing:
+        print(
+            "errore: tool non registrati in openclaw.json: " + ", ".join(missing),
+            file=sys.stderr,
+        )
+        return 2
     print(f"backup: {backup}")
     print("tools: " + ", ".join(TOOL_NAMES))
     print("owner: " + (OWNER or "(non configurato)"))

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{BUSINESS_NAME}} — Dashboard</title>
+<title>{{BOT_NAME}} · {{BUSINESS_NAME}} — Dashboard</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%237dd3fc'/%3E%3Cstop offset='1' stop-color='%235eead4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='18' fill='url(%23g)'/%3E%3Ctext x='32' y='45' font-family='Arial' font-size='38' font-weight='bold' text-anchor='middle' fill='%23061018'%3EA%3C/text%3E%3C/svg%3E">
 <style>
 :root{
@@ -205,7 +205,7 @@ select option{background:#081420}
 
 <div id="login" class="login-overlay" hidden>
   <form id="loginForm" class="login-card" autocomplete="off">
-    <div class="logo">A</div>
+    <div class="logo">{{BOT_INITIAL}}</div>
     <h2>Dashboard privata</h2>
     <p>Accesso riservato a {{OWNER_NAME}}. Il token è nel file <span class="mono">~/.openclaw/secretary/dashboard_token</span> sul PC.</p>
     <label class="label" for="token">Token di accesso</label>
@@ -219,10 +219,10 @@ select option{background:#081420}
 <div id="app" class="app" style="display:none">
   <div class="header">
     <div class="brand">
-      <div class="logo">A</div>
+      <div class="logo">{{BOT_INITIAL}}</div>
       <div>
         <h1>{{BUSINESS_NAME}}</h1>
-        <p>WhatsApp · assistente digitale · dashboard privata</p>
+        <p>{{BOT_NAME}} · assistente digitale · dashboard privata</p>
       </div>
     </div>
     <div class="header-right">
@@ -256,6 +256,16 @@ select option{background:#081420}
       <div class="row">
         <button class="btn primary" id="tokenAlertRenew" type="button">Riautorizza Google</button>
         <button class="btn ghost" id="tokenAlertDetails" type="button">Dettagli</button>
+      </div>
+    </div>
+
+    <div id="capabilitiesBanner" class="health-banner critical tab-alert" hidden>
+      <div>
+        <h2>Il bot non vede i tool di approvazione</h2>
+        <p id="capabilitiesText">Preventivi ed email restano bloccati finché non riallinei l'installazione.</p>
+      </div>
+      <div class="row">
+        <button class="btn ghost" id="capabilitiesDoctor" type="button">Apri diagnosi</button>
       </div>
     </div>
 
@@ -466,14 +476,52 @@ select option{background:#081420}
               <h2 style="margin:0 0 4px">Preventivi in PDF</h2>
               <div class="sub">Il PDF viene generato in locale con il layout dell'attività e allegato all'email solo dopo la tua approvazione. Con <b>Preventivo di prova</b> ricevi subito un esempio completo, PDF incluso.</div>
             </div>
-            <div class="row" style="gap:8px">
-              <button class="btn primary" id="previewDemoBtn" type="button">👁 Anteprima demo</button>
-              <button class="btn" id="demoQuoteBtn" type="button">＋ Preventivo demo</button>
+            <div class="row" style="gap:8px;flex-wrap:wrap">
+              <button class="btn primary" id="newQuoteBtn" type="button">＋ Nuovo preventivo</button>
+              <a class="btn ghost" href="/api/quotes.csv" download="preventivi.csv">⤓ CSV</a>
+              <button class="btn" id="previewDemoBtn" type="button">👁 Anteprima demo</button>
+              <button class="btn" id="demoQuoteBtn" type="button">Preventivo demo</button>
               <button class="btn" id="refreshQuotesBtn" type="button">↻ Aggiorna</button>
             </div>
           </div>
           <div class="chips" id="quoteCounts" style="margin-bottom:12px"></div>
-          <div class="table-wrap"><table><thead><tr><th>Creato</th><th>Numero</th><th>Cliente</th><th>Totale</th><th>Stato</th><th>PDF</th></tr></thead><tbody id="quotesBody"></tbody></table></div>
+          <div class="row" style="margin-bottom:10px">
+            <input class="input" id="quoteSearch" type="search" placeholder="Cerca per numero, cliente o email…" style="max-width:360px" autocomplete="off">
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Creato</th><th>Numero</th><th>Cliente</th><th>Totale</th><th>Scadenza</th><th>Stato</th><th>Azioni</th></tr></thead><tbody id="quotesBody"></tbody></table></div>
+        </div>
+        <div class="card span12" id="quoteBuilderCard" hidden>
+          <div class="row" style="justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+            <div>
+              <h2 style="margin:0 0 4px">Nuovo preventivo</h2>
+              <div class="sub">Compila i campi: il PDF viene generato subito e resta in attesa della tua approvazione. Nessun invio automatico.</div>
+            </div>
+            <button class="btn ghost" id="closeQuoteBuilder" type="button">Chiudi</button>
+          </div>
+          <div class="grid">
+            <div class="field span6"><label class="label" for="qClientName">Cliente *</label><input class="input" id="qClientName" autocomplete="off"></div>
+            <div class="field span6"><label class="label" for="qClientEmail">Email cliente *</label><input class="input" id="qClientEmail" type="email" autocomplete="off"></div>
+            <div class="field span6"><label class="label" for="qClientCompany">Azienda</label><input class="input" id="qClientCompany" autocomplete="off"></div>
+            <div class="field span6"><label class="label" for="qClientPhone">Telefono</label><input class="input" id="qClientPhone" autocomplete="off"></div>
+            <div class="field span12"><label class="label" for="qClientAddress">Indirizzo</label><input class="input" id="qClientAddress" autocomplete="off"></div>
+          </div>
+          <div class="divider"></div>
+          <div class="row" style="justify-content:space-between;margin-bottom:8px">
+            <h2 style="margin:0">Voci</h2>
+            <button class="btn" id="addQuoteItem" type="button">＋ Aggiungi voce</button>
+          </div>
+          <div id="qItems"></div>
+          <div class="grid" style="margin-top:10px">
+            <div class="field span3"><label class="label" for="qDiscount">Sconto %</label><input class="input" id="qDiscount" type="number" min="0" max="100" step="0.5" value="0"></div>
+            <div class="field span3"><label class="label" for="qVat">IVA %</label><input class="input" id="qVat" type="number" min="0" max="100" step="0.5" placeholder="predefinita"></div>
+            <div class="field span3"><label class="label" for="qValidDays">Validità (giorni)</label><input class="input" id="qValidDays" type="number" min="1" max="365" step="1" placeholder="predefinita"></div>
+            <div class="field span3"><label class="label" for="qSubject">Oggetto email</label><input class="input" id="qSubject" placeholder="Preventivo per …" autocomplete="off"></div>
+            <div class="field span12"><label class="label" for="qNotes">Note o esclusioni</label><textarea id="qNotes" rows="3" placeholder="Cosa è incluso, cosa è escluso, tempi…"></textarea></div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn primary" id="createQuoteBtn" type="button">Crea PDF e metti in approvazione</button>
+            <span class="sub" id="quoteBuilderState"></span>
+          </div>
         </div>
         <div class="card span12" id="demoPreviewCard" hidden>
           <div class="row" style="justify-content:space-between;align-items:flex-start;margin-bottom:8px">
@@ -726,7 +774,7 @@ select option{background:#081420}
   </main>
 
   <div class="footer">
-    <span>Segreteria digitale di {{OWNER_NAME}} · solo localhost · <span id="footerDate">—</span></span>
+    <span>{{BOT_NAME}} di {{OWNER_NAME}} · solo localhost · <span id="footerDate">—</span></span>
     <span class="mono" id="footerDash">—</span>
   </div>
 </div>
@@ -1061,21 +1109,59 @@ $('approvalsList').addEventListener('click', async (e)=>{
   }catch(err){ toast('Errore: '+err.message,true); }
   finally{ (a||r).disabled=false; }
 });
+function quoteStatusChip(x){
+  if(x.status==='approved') return '<span class="chip ok">inviato</span>';
+  if(x.status==='failed') return '<span class="chip bad">fallito</span>';
+  if(x.status==='rejected') return '<span class="chip gold">rifiutato</span>';
+  if(x.expired) return '<span class="chip bad">scaduto</span>';
+  return '<span class="chip gold">da approvare</span>';
+}
+function quoteExpiry(x){
+  if(!x.valid_until) return '<span class="muted">—</span>';
+  const d=Number(x.days_left);
+  if(Number.isNaN(d)) return esc(x.valid_until);
+  if(d<0) return `<span class="danger">${esc(x.valid_until)}</span>`;
+  if(d<=5) return `<span class="gold">${esc(x.valid_until)} · ${d}g</span>`;
+  return `${esc(x.valid_until)} · ${d}g`;
+}
 function renderQuotes(d){
-  const rows=(d&&d.quotes)||state.quotes||[]; state.quotes=rows;
-  const c=(d&&d.counts)||{};
-  if($('quoteCounts')) $('quoteCounts').innerHTML = `<span class="chip gold">${c.quotes_pending??0} in attesa</span><span class="chip ok">${c.approved??0} inviate</span><span class="chip">${rows.length} preventivi</span>`;
+  const rows0=Array.isArray(d)?d:((d&&d.quotes)||state.quotes||[]);
+  if(!Array.isArray(d)) state.quotes=rows0;
+  const c=(d&&!Array.isArray(d)&&d.counts)||{};
+  const pending=rows0.filter(x=>x.status==='pending').length;
+  const sent=rows0.filter(x=>x.status==='approved').length;
+  const expired=rows0.filter(x=>x.expired&&x.status==='pending').length;
+  if($('quoteCounts')) $('quoteCounts').innerHTML = `<span class="chip gold">${pending} in attesa</span><span class="chip ok">${sent} inviati</span>`+(expired?`<span class="chip bad">${expired} scaduti</span>`:'')+`<span class="chip">${rows0.length} preventivi</span>`+(c.quotes?'' : '');
   if(!$('quotesBody')) return;
+  const q=($('quoteSearch')?.value||'').toLowerCase();
+  const rows=q?rows0.filter(x=>[x.number,x.client,x.email].some(v=>String(v||'').toLowerCase().includes(q))):rows0;
   $('quotesBody').innerHTML = rows.length ? rows.map(x=>{
-    const status = x.status==='approved'?'<span class="chip ok">inviato</span>':(x.status==='failed'?'<span class="chip bad">fallito</span>':(x.status==='rejected'?'<span class="chip gold">rifiutato</span>':'<span class="chip gold">da approvare</span>'));
-    return `<tr><td class="muted">${fmtDate(x.created_at)}</td><td class="mono">${esc(x.number||'—')}</td><td>${esc(x.client||'—')}<div class="muted" style="font-size:11px">${esc(x.email||'')}</div></td><td>${esc(moneyText(x.total,x.currency))}</td><td>${status}</td><td>${x.has_pdf?`<a class="btn" href="/api/quotes/${encodeURIComponent(x.id)}.pdf" target="_blank" rel="noopener">PDF</a>`:'<span class="muted">—</span>'}</td></tr>`;
-  }).join('') : '<tr><td colspan="6" class="empty">Nessun preventivo. Creane uno demo per vedere il layout.</td></tr>';
+    const pdf=x.has_pdf?`<a class="btn" href="/api/quotes/${encodeURIComponent(x.id)}.pdf" target="_blank" rel="noopener">PDF</a>`:'';
+    const email=x.has_pdf?`<button class="btn ghost" type="button" data-quote-action="email" data-quote-id="${esc(x.id)}" title="Anteprima email">Anteprima</button>`:'';
+    const dup=`<button class="btn ghost" type="button" data-quote-action="duplicate" data-quote-id="${esc(x.id)}" title="Duplica questo preventivo">Duplica</button>`;
+    return `<tr><td class="muted">${fmtDate(x.created_at)}</td><td class="mono">${esc(x.number||'—')}</td><td>${esc(x.client||'—')}<div class="muted" style="font-size:11px">${esc(x.email||'')}</div></td><td>${esc(moneyText(x.total,x.currency))}</td><td>${quoteExpiry(x)}</td><td>${quoteStatusChip(x)}</td><td><div class="row" style="gap:6px;flex-wrap:wrap">${pdf}${email}${dup}</div></td></tr>`;
+  }).join('') : `<tr><td colspan="7" class="empty">${q?'Nessun preventivo corrisponde alla ricerca.':'Nessun preventivo. Creane uno demo per vedere il layout.'}</td></tr>`;
 }
 async function loadQuotes(){
   try{ const r=await api('/api/quotes'); renderQuotes(r.data||{}); }
   catch(e){ if(e.message!=='auth') toast('Preventivi: '+e.message,true); }
 }
 $('refreshQuotesBtn').addEventListener('click',loadQuotes);
+$('newQuoteBtn').addEventListener('click',()=>openQuoteBuilder());
+$('closeQuoteBuilder').addEventListener('click',()=>{ $('quoteBuilderCard').hidden=true; });
+$('addQuoteItem').addEventListener('click',()=>addQuoteItem());
+$('createQuoteBtn').addEventListener('click',submitQuote);
+$('quoteSearch').addEventListener('input',()=>renderQuotes(state.quotes));
+$('quotesBody').addEventListener('click',(e)=>{
+  const b=e.target.closest('button[data-quote-action]');
+  if(!b) return;
+  const id=b.getAttribute('data-quote-id');
+  const action=b.getAttribute('data-quote-action');
+  const row=(state.quotes||[]).find(x=>x.id===id);
+  if(action==='email') previewQuoteEmail(id);
+  if(action==='duplicate' && row) openQuoteBuilder({client:row.client,email:row.email,items:row.items,notes:''});
+});
+$('capabilitiesDoctor').addEventListener('click',()=>{ switchTab('system'); runDoctor(); });
 $('demoQuoteBtn').addEventListener('click', async ()=>{
   const b=$('demoQuoteBtn'); b.disabled=true; const old=b.textContent; b.textContent='Genero…';
   try{
@@ -1085,6 +1171,98 @@ $('demoQuoteBtn').addEventListener('click', async ()=>{
   }catch(e){ toast('Preventivo: '+e.message,true); }
   finally{ b.disabled=false; b.textContent=old; }
 });
+function quoteItemRow(item){
+  item=item||{};
+  const row=document.createElement('div');
+  row.className='quote-item';
+  row.style.cssText='display:grid;grid-template-columns:minmax(0,2.4fr) .7fr .8fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center';
+  row.innerHTML=`<input class="input qi-desc" placeholder="Descrizione voce" value="${esc(item.description||'')}">
+    <input class="input qi-qty" type="number" step="0.01" min="0.01" value="${esc(item.qty??1)}" title="Quantità">
+    <input class="input qi-unit" placeholder="unità" value="${esc(item.unit||'')}">
+    <input class="input qi-price" type="number" step="0.01" min="0" placeholder="prezzo €" value="${esc(item.unit_price??'')}">
+    <button class="btn ghost qi-del" type="button" title="Rimuovi voce">✕</button>`;
+  row.querySelector('.qi-del').addEventListener('click',()=>{ row.remove(); if(!$('qItems').children.length) addQuoteItem(); });
+  return row;
+}
+function addQuoteItem(item){ $('qItems').appendChild(quoteItemRow(item)); }
+function resetQuoteBuilder(){
+  ['qClientName','qClientEmail','qClientCompany','qClientPhone','qClientAddress','qNotes','qSubject'].forEach(id=>{ const el=$(id); if(el) el.value=''; });
+  if($('qDiscount')) $('qDiscount').value='0';
+  if($('qVat')) $('qVat').value='';
+  if($('qValidDays')) $('qValidDays').value='';
+  $('qItems').innerHTML=''; addQuoteItem();
+  $('quoteBuilderState').textContent='';
+}
+function openQuoteBuilder(prefill){
+  resetQuoteBuilder();
+  if(prefill){
+    if($('qClientName')) $('qClientName').value=prefill.client||'';
+    if($('qClientEmail')) $('qClientEmail').value=prefill.email||'';
+    if($('qClientCompany')) $('qClientCompany').value=prefill.company||'';
+    const items=prefill.items||[];
+    if(items.length){ $('qItems').innerHTML=''; items.forEach(it=>addQuoteItem(it)); }
+    if($('qNotes')) $('qNotes').value=prefill.notes||'';
+  }
+  $('quoteBuilderCard').hidden=false;
+  $('quoteBuilderCard').scrollIntoView({behavior:'smooth',block:'start'});
+}
+async function submitQuote(){
+  const items=[...$('qItems').querySelectorAll('.quote-item')].map(row=>({
+    description: row.querySelector('.qi-desc').value.trim(),
+    qty: row.querySelector('.qi-qty').value,
+    unit: row.querySelector('.qi-unit').value.trim(),
+    unit_price: row.querySelector('.qi-price').value,
+  })).filter(x=>x.description || x.unit_price);
+  const payload={
+    client_name: $('qClientName').value.trim(),
+    client_email: $('qClientEmail').value.trim(),
+    client_company: $('qClientCompany').value.trim(),
+    client_phone: $('qClientPhone').value.trim(),
+    client_address: $('qClientAddress').value.trim(),
+    items,
+    discount_pct: $('qDiscount').value || 0,
+    vat_pct: $('qVat').value,
+    valid_days: $('qValidDays').value,
+    notes: $('qNotes').value.trim(),
+    subject: $('qSubject').value.trim(),
+  };
+  if(!payload.client_name){ toast('Inserisci il nome del cliente.',true); return; }
+  if(!payload.client_email){ toast("Inserisci l'email del cliente: serve per inviare il preventivo.",true); return; }
+  if(!items.length){ toast('Aggiungi almeno una voce con descrizione e prezzo.',true); return; }
+  const b=$('createQuoteBtn'); b.disabled=true; const old=b.textContent; b.textContent='Genero il PDF…';
+  try{
+    const r=await api('/api/quotes',{method:'POST',body:JSON.stringify(payload)});
+    if(!r.ok) throw new Error(r.error||'creazione non riuscita');
+    toast('Preventivo '+(r.number||'')+' pronto: PDF creato e in attesa di approvazione.');
+    $('quoteBuilderCard').hidden=true;
+    await loadQuotes(); await loadApprovals(); load();
+  }catch(e){ toast('Preventivo: '+e.message,true); }
+  finally{ b.disabled=false; b.textContent=old; }
+}
+async function previewQuoteEmail(id){
+  try{
+    const r=await api('/api/quotes/'+encodeURIComponent(id)+'/email');
+    if(!r.ok) throw new Error(r.error||'anteprima non disponibile');
+    $('demoPreviewCard').hidden=false;
+    $('demoPreviewFrame').srcdoc=r.html||'';
+    $('demoPreviewMeta').innerHTML=`<span class="chip ok">Nessun invio</span><span class="chip mono">${esc(r.number||'')}</span><span class="chip">${esc(r.to||'')}</span>`;
+    $('demoPreviewPdf').href='/api/quotes/'+encodeURIComponent(id)+'.pdf';
+    $('demoPreviewCard').scrollIntoView({behavior:'smooth',block:'start'});
+    toast('Anteprima email pronta: nessun invio.');
+  }catch(e){ toast('Anteprima: '+e.message,true); }
+}
+async function loadCapabilities(){
+  try{
+    const r=await api('/api/capabilities');
+    const c=r.data||{};
+    const box=$('capabilitiesBanner');
+    if(!box) return;
+    if(c.ok===false){
+      box.hidden=false;
+      $('capabilitiesText').textContent=(c.detail||'Tool non disponibili')+' — preventivi ed email restano bloccati.';
+    } else box.hidden=true;
+  }catch(e){}
+}
 function closeDemoPreview(){
   $('demoPreviewCard').hidden=true;
   $('demoPreviewFrame').srcdoc='';
@@ -1155,6 +1333,7 @@ async function load(){
     const st=await api('/api/status');
     const [l,a]=await Promise.all([api('/api/leads?limit=300'),api('/api/alerts?limit=300')]);
     hideLogin(); renderStatus(st.data,l.data,a.data);
+    loadCapabilities();
     if(state.tab==='security') loadSecurity();
     if(state.tab==='health') loadHealth();
   }catch(e){ if(e.message!=='auth') toast('Errore: '+e.message,true); }

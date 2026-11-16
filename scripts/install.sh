@@ -143,7 +143,17 @@ systemctl --user daemon-reload
 # Anti-raffica WhatsApp: unisce debounce e queue senza sovrascrivere le scelte
 # già presenti nel file openclaw.json.
 "$PYTHON" "$BASE/gateway_policy.py" || true
-"$PYTHON" "$BASE/approval_setup.py" || true
+# La registrazione dei tool è obbligatoria: senza di essa il bot non può
+# preparare preventivi o email. Un errore qui non va ignorato.
+if ! "$PYTHON" "$BASE/approval_setup.py"; then
+  echo "errore: registrazione dei tool di approvazione non riuscita. Il bot non potrebbe creare preventivi." >&2
+  exit 1
+fi
+# Verifica il runtime MCP della copia installata: tools/list e motore PDF.
+if ! "$PYTHON" "$BASE/approval_mcp.py" --selftest; then
+  echo "errore: il server MCP installato non espone i tool. Rilancia: bash scripts/install.sh" >&2
+  exit 1
+fi
 
 systemctl --user enable --now openclaw-dashboard.service
 systemctl --user enable --now openclaw-watchdog.timer

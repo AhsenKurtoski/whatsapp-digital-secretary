@@ -527,7 +527,7 @@ def render_quote_pdf(quote: dict) -> bytes:
             initial = (brand[:1] or "A").upper()
             c.text(MARGIN + 22, 84, initial, "F2", 21, white, "center")
             c.text(MARGIN + 58, 71, _fit_text(brand, "F2", 17, 280), "F2", 17, ink)
-            c.text(MARGIN + 58, 87, "SEGRETERIA DIGITALE", "F1", 7.6, muted)
+            c.text(MARGIN + 58, 87, _clean(cfg.get("bot_name") or "Gina", 40).upper(), "F1", 7.6, muted)
             c.text(PAGE_W - MARGIN, 72, "PREVENTIVO", "F2", 20, ink, "right")
             c.text(PAGE_W - MARGIN, 89, f"N. {number}" if number else "", "F1", 9, muted, "right")
             c.line(MARGIN, 112, PAGE_W - MARGIN, 112, line, 0.9)
@@ -662,6 +662,17 @@ def render_quote_pdf(quote: dict) -> bytes:
             c.text(MARGIN, note_y, text_line, "F1", 8.8, muted)
             note_y += 12
         note_y += 12
+
+    # Blocco di accettazione: il cliente può firmare il documento stampato.
+    accept_top = max(note_y + 6, y + 18 + box_h + 16)
+    if accept_top > PAGE_H - 150:
+        c.new_page()
+        accept_top = header(minimal=True) + 6
+    c.rect(MARGIN, accept_top, CONTENT_W, 58, stroke=line, radius=10)
+    c.text(MARGIN + 16, accept_top + 18, "ACCETTAZIONE CLIENTE", "F2", 7.4, muted)
+    c.text(MARGIN + 16, accept_top + 32, "Data e firma per accettazione del preventivo", "F1", 8.2, muted)
+    c.line(MARGIN + 16, accept_top + 47, MARGIN + 240, accept_top + 47, line, 0.6)
+    c.line(PAGE_W - MARGIN - 200, accept_top + 47, PAGE_W - MARGIN - 16, accept_top + 47, line, 0.6)
 
     # Footer su ogni pagina
     total_pages = len(c.pages)

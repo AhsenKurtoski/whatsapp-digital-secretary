@@ -27,6 +27,9 @@ class ApprovalSetupTests(unittest.TestCase):
         server = data["mcp"]["servers"]["secretary"]
         self.assertIn("request_quote", server["toolFilter"]["include"])
         self.assertIn("secretary__request_quote", data["tools"]["alsoAllow"])
+        # Le versioni di OpenClaw usano namespace diversi: entrambi devono
+        # essere consentiti, altrimenti il tool risulta assente al modello.
+        self.assertIn("mcp__secretary__request_quote", data["tools"]["alsoAllow"])
         self.assertIn("request_email", server["toolFilter"]["include"])
 
     def test_tool_names_cover_every_approval(self):

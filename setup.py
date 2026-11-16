@@ -70,7 +70,7 @@ def render_persona(data: dict) -> str:
     services = "; ".join(data.get("services") or []) or "informazioni e richieste"
     replacements = {
         "BUSINESS_NAME": str(data.get("business_name") or "Nome Attività"),
-        "BOT_NAME": str(data.get("bot_name") or "Segreteria Digitale"),
+        "BOT_NAME": str(data.get("bot_name") or "Gina"),
         "OWNER_NAME": str(data.get("owner_name") or "Titolare"),
         "OWNER_CONTACT": owner_contact,
         "LANGUAGE": str(data.get("language") or "italiano"),
@@ -116,7 +116,7 @@ def main() -> int:
         data = {
             "business_name": args.business_name or str(existing.get("business_name") or "Nome Attività"),
             "owner_name": args.owner_name or str(existing.get("owner_name") or "Titolare"),
-            "bot_name": args.bot_name or str(existing.get("bot_name") or "Segreteria Digitale"),
+            "bot_name": args.bot_name or str(existing.get("bot_name") or "Gina"),
             "owner_number": validate_phone(args.owner_number or str(existing.get("owner_number") or "")),
             "google_account": args.google_account or str(existing.get("google_account") or ""),
             "language": args.language or str(existing.get("language") or "italiano"),
@@ -136,7 +136,7 @@ def main() -> int:
         data = {
             "business_name": ask("Nome attività", str(existing.get("business_name") or ""), required=True),
             "owner_name": ask("Nome del titolare", str(existing.get("owner_name") or ""), required=True),
-            "bot_name": ask("Nome del bot", str(existing.get("bot_name") or "Segreteria Digitale")),
+            "bot_name": ask("Nome del bot", str(existing.get("bot_name") or "Gina")),
             "owner_number": validate_phone(ask("Numero WhatsApp del titolare (formato internazionale)", str(existing.get("owner_number") or ""))),
             "google_account": ask("Account Gmail per le email (opzionale)", str(existing.get("google_account") or "")),
             "language": ask("Lingua principale", str(existing.get("language") or "italiano")),

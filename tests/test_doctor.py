@@ -23,6 +23,13 @@ class DoctorTests(unittest.TestCase):
         (self.base / "dashboard.html").write_text(
             'data-tab="quotes" id="quotesBody" data-tab="contacts"', encoding="utf-8"
         )
+        # Il controllo runtime esegue davvero il server MCP installato: servono
+        # le copie reali dei moduli che il server importa all'avvio.
+        source_root = Path(doctor.__file__).parent
+        for name in ("approval_mcp.py", "approval_store.py", "quote_pdf.py", "email_template.py", "config.py"):
+            (self.base / name).write_text(
+                (source_root / name).read_text(encoding="utf-8"), encoding="utf-8"
+            )
         (self.base / "plugins" / "secretary-guard").mkdir(parents=True)
         (self.base / "plugins" / "secretary-guard" / "index.js").write_text(
             "duplicate_suppressed duplicate_inbound_suppressed releaseInboundForScope\n",

@@ -341,6 +341,46 @@ def run_checks(
             "request_email · request_calendar · request_quote",
         ))
 
+    # 6b. Runtime MCP: la copia installata risponde e genera un PDF.
+    # La sola presenza del file non basta: qui eseguiamo davvero il server
+    # installato, così un file vecchio o rotto non passa inosservato.
+    runtime_script = base / "approval_mcp.py"
+    if not runtime_script.is_file():
+        checks.append(_check(
+            "mcp_runtime", "Runtime approvazioni", "fail",
+            "approval_mcp.py non è installato nella cartella della segreteria.",
+            "git pull && bash scripts/install.sh",
+        ))
+    else:
+        child_env = dict(os.environ)
+        child_env.update({
+            "SECRETARY_BASE": str(base),
+            "SECRETARY_CONFIG": str(config_path),
+            "OPENCLAW_CONFIG": str(openclaw_config),
+            "PYTHONPATH": str(base),
+        })
+        try:
+            result = subprocess.run(
+                [sys.executable, str(runtime_script), "--selftest"],
+                capture_output=True, text=True, timeout=60, env=child_env, check=False,
+            )
+            output = (result.stdout or "").strip()
+            if result.returncode == 0 and "MCP SELF-TEST OK" in output:
+                checks.append(_check("mcp_runtime", "Runtime approvazioni", "ok", output[-200:]))
+            else:
+                detail = ((result.stderr or "") or output or "nessun output").strip()[-200:]
+                checks.append(_check(
+                    "mcp_runtime", "Runtime approvazioni", "fail",
+                    f"Il server MCP installato non risponde: {detail}",
+                    "git pull && bash scripts/install.sh, poi riavvia il gateway.",
+                ))
+        except Exception as exc:
+            checks.append(_check(
+                "mcp_runtime", "Runtime approvazioni", "fail",
+                f"Self-test MCP non eseguibile: {str(exc)[:160]}",
+                "git pull && bash scripts/install.sh",
+            ))
+
     # 7. Motore PDF: genera davvero un documento
     try:
         import quote_pdf
@@ -861,6 +901,13 @@ def self_test() -> None:
     workspace.mkdir(parents=True)
     for name in REQUIRED_FILES:
         (base / name).write_text("# fixture\n", encoding="utf-8")
+    # Il controllo runtime esegue davvero il server MCP: la fixture usa le
+    # copie reali dei moduli, altrimenti fallirebbe per costruzione.
+    import approval_mcp as _approval_mcp
+
+    source_root = Path(_approval_mcp.__file__).parent
+    for name in ("approval_mcp.py", "approval_store.py", "quote_pdf.py", "email_template.py", "config.py"):
+        (base / name).write_text((source_root / name).read_text(encoding="utf-8"), encoding="utf-8")
     (base / "dashboard.html").write_text('data-tab="quotes" id="quotesBody" data-tab="contacts"', encoding="utf-8")
     plugin_dir = base / "plugins" / "secretary-guard"
     plugin_dir.mkdir(parents=True)

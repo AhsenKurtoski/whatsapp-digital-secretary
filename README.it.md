@@ -60,6 +60,13 @@ Meta o WhatsApp.
   completamente colorato e responsive (viola/ciano su indaco profondo, riepilogo,
   pulsanti e footer). Puoi vederne l'anteprima in dashboard prima di approvare; non usa
   immagini remote, font esterni o pixel di tracciamento.
+- **Preventivi manuali dalla dashboard** — *Nuovo preventivo* permette al titolare di
+  creare il PDF senza bot, provider AI o WhatsApp: voci, sconto, IVA, validità e note,
+  con i totali ricalcolati dal sistema e il solito passaggio di approvazione. Con
+  *Duplica* aggiorni un preventivo in un clic quando il cliente chiede una variante.
+- **Ciclo di vita del preventivo** — scadenza con badge “scaduto”, ricerca, anteprima
+  email per ogni preventivo, reinvio tramite duplicazione ed export CSV per Excel o
+  commercialista.
 - **Preventivi PDF** — genera un preventivo A4 con l'identità dell'attività (voci,
   quantità, prezzo, sconto, IVA e totale ricalcolati dal sistema), lo tiene scaricabile
   dalla dashboard e lo allega all'email solo dopo l'approvazione. L'email mostra anche
@@ -102,6 +109,10 @@ Meta o WhatsApp.
   approvazione e anteprima email.
 - **Operatività** — servizi systemd utente, watchdog, riepilogo giornaliero, dashboard
   Docker opzionale e procedura di primo avvio guidata.
+- **Verifica dei tool del bot** — la dashboard controlla che il bot veda davvero i tre
+  tool di approvazione e mostra un banner al titolare se non li vede, invece di lasciare
+  che sia il cliente a sentirsi dire “non ho il tool”. `doctor.py` esegue il server MCP
+  installato (`tools/list` + PDF reale) con il controllo `mcp_runtime`.
 - **Autodiagnosi** — `doctor.py` controlla file installati, schede Preventivi/Contatti,
   motore PDF, regole di perimetro, policy anti-raffica, versione minima e feature di
   OpenClaw, allowlist dei tool MCP, unità systemd e API locali, e stampa il comando
@@ -152,6 +163,20 @@ Nessun dato dei clienti viene inviato a un servizio dashboard di terze parti.
 
 > L'automazione di WhatsApp Web può portare al ban del numero. Usa un numero dedicato,
 > rispetta i termini di WhatsApp e leggi le [note di sicurezza](SECURITY.md).
+
+## Prova in 60 secondi
+
+Senza chiavi API, senza WhatsApp e senza account Google:
+
+```bash
+git clone https://github.com/AhsenKurtoski/whatsapp-digital-secretary.git
+cd whatsapp-digital-secretary
+python3 demo.py
+```
+
+Si apre una dashboard locale su `http://127.0.0.1:8799` con lead demo, un preventivo in
+PDF già generato e un'email in attesa. Il token è stampato nel terminale. Non viene
+inviato nulla e la tua installazione reale non viene toccata.
 
 ## Avvio rapido
 
@@ -299,6 +324,15 @@ Vedi [SECURITY.md](SECURITY.md) per il modello di minaccia e come segnalare una
 vulnerabilità.
 
 ## Test
+
+Un solo comando esegue tutta la matrice (compilazione, test unitari, tutti i self-test,
+bridge Apps Script, plugin di guardia e generazione di un PDF reale):
+
+```bash
+bash scripts/verify.sh
+```
+
+I singoli comandi:
 
 ```bash
 python3 -m unittest discover -s tests -v

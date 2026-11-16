@@ -8,6 +8,36 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Manual quote builder** (`dashboard.py`, `dashboard.html`): *Nuovo preventivo* creates
+  a quote and its PDF from the dashboard without the model, the AI provider or WhatsApp.
+  Items, discount, VAT, validity and notes are validated server-side, totals are always
+  recalculated by `quote_pdf`, and the request lands in the normal approval queue.
+  *Duplica* reuses a previous quote with a new number.
+- **Quote lifecycle in the dashboard**: expiry date with a “scaduto” badge, search by
+  number/client/email, per-quote HTML email preview, and a CSV export (formula-injection
+  safe) for Excel and accountants. `quotes_data()` now exposes `valid_until`,
+  `days_left`, `expired` and the item list.
+- **Runtime MCP self-test** (`approval_mcp.py --selftest`, run by `scripts/install.sh`):
+  validates the three tools, their JSON schemas and a real PDF render on the installed
+  copy, so a stale or broken install fails the installer instead of silently disabling
+  quotes.
+- **`mcp_runtime` check in `doctor.py`**: executes the installed MCP server and lists its
+  tools; a missing `request_quote` is now a FAIL with the exact repair command.
+- **Bot capability banner**: `GET /api/capabilities` inspects the installed module and
+  the dashboard tells the owner when the bot cannot see the approval tools.
+- **`tests/test_mcp_protocol.py`**: end-to-end JSON-RPC over stdio (initialize,
+  tools/list, tools/call, invalid input, unknown tool, CLI self-test) against a real PDF.
+- **`tests/test_quote_builder.py`**: manual quote creation, duplication, validation,
+  expiry, CSV escaping, email preview and capability detection.
+- **`scripts/verify.sh`**: one command for the whole verification matrix, also suitable
+  for CI and coding agents.
+- **`demo.py`**: a 60-second local demo with fake data, no keys, no WhatsApp and no
+  sending; it copies the dashboard into a temporary directory and prints the token.
+- **Secretary name**: the default `bot_name` is now **Gina**; it appears in the dashboard
+  title, avatar, login, footer and on the PDF header.
+- **PDF acceptance block**: quotes end with a client acceptance area (date and signature)
+  and the header uses the configured secretary name.
+
 - **Full-colour transactional email** (`email_template.py`): a self-contained
   violet/cyan/indigo design with a coloured hero, body card, quote summary (number,
   total, validity, PDF badge), call to action and footer. Every block carries an explicit
@@ -101,6 +131,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The bot refused to create PDF quotes** (“non ho il tool”): the persona referenced
+  `request_quote` while OpenClaw exposes `secretary__request_quote`, and it contained an
+  explicit escape hatch (“Se il tool non è disponibile…”). The persona now uses the exact
+  tool names, forbids that answer, and `approval_setup.py` allowlists both
+  `secretary__*` and `mcp__secretary__*` namespaces, then re-reads the written JSON and
+  fails loudly if a tool is missing.
+- **The installer swallowed approval-registration errors**: `approval_setup.py` is no
+  longer run with `|| true`, and `install.sh` now runs the MCP self-test before finishing.
 - **Deterministic dashboard HTTP tests on Windows**: the test harness now uses one
   sequential loopback server per test class instead of a shared threaded server, so a
   slow or lingering handler cannot leak into the next test and cause transient 10 s

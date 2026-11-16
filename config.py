@@ -25,7 +25,7 @@ OPENCLAW_CONFIG = Path(os.environ.get("OPENCLAW_CONFIG", str(Path.home() / ".ope
 DEFAULTS: dict[str, object] = {
     "business_name": "Nome Attività",
     "owner_name": "Titolare",
-    "bot_name": "Segreteria Digitale",
+    "bot_name": "Gina",
     "owner_number": "",
     "google_account": "",
     "language": "it",

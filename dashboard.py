@@ -6,7 +6,10 @@ Gira solo su 127.0.0.1. Richiede un token locale e un cookie HttpOnly.
 from __future__ import annotations
 
 import base64
+import csv
 import hmac
+import importlib.util
+import io
 import json
 import os
 import re
@@ -55,6 +58,10 @@ try:
     import bridge_client
 except Exception:
     bridge_client = None
+try:
+    import approval_mcp
+except Exception:
+    approval_mcp = None
 try:
     import quote_pdf
 except Exception:
@@ -621,8 +628,9 @@ def status() -> dict:
             "primary": model.get("primary") or "-",
             "fallbacks": model.get("fallbacks") or [],
             "thinking": "off",
-            "tools": "approvazioni email/calendario",
+            "tools": "email · calendario · preventivi PDF",
         },
+        "capabilities": bot_capabilities(),
         "timers": {
             "monitor": {"active": is_active("openclaw-secretary-monitor.timer"), "next": next_elapse("openclaw-secretary-monitor.timer")},
             "digest": {"active": is_active("openclaw-secretary-digest.timer"), "next": next_elapse("openclaw-secretary-digest.timer")},
@@ -847,28 +855,78 @@ def approvals_data(limit: int = 100) -> dict:
     return approval_store.list_requests(limit)
 
 
+def bot_capabilities() -> dict:
+    """Verifica i tool che il bot ha davvero a disposizione.
+
+    Non basta che il file esista: carica la copia installata e legge il suo
+    elenco tool. Se `request_quote` non c'è, la dashboard lo dice subito al
+    titolare invece di lasciare che sia il cliente a scoprirlo.
+    """
+    expected = {"request_email", "request_calendar", "request_quote"}
+    tools: set[str] = set()
+    error = ""
+    script = os.path.join(BASE, "approval_mcp.py")
+    try:
+        spec = importlib.util.spec_from_file_location("secretary_installed_mcp", script)
+        module = importlib.util.module_from_spec(spec) if spec and spec.loader else None
+        if module is None:
+            raise RuntimeError("modulo non caricabile")
+        spec.loader.exec_module(module)
+        tools = {str(tool.get("name") or "") for tool in getattr(module, "TOOLS", [])}
+    except Exception as exc:
+        error = str(exc)[:160]
+    if not tools and approval_mcp is not None:
+        tools = {str(tool.get("name") or "") for tool in approval_mcp.TOOLS}
+        error = ""
+    missing = sorted(expected - tools)
+    ok = not missing and bool(tools)
+    detail = (
+        "Tool attivi: " + ", ".join(sorted(tools))
+        if ok else
+        (
+            "Mancano: " + ", ".join(missing)
+            if missing else
+            f"Server MCP non leggibile: {error or 'file assente'}"
+        )
+    )
+    return {"ok": ok, "tools": sorted(tools), "missing": missing, "detail": detail}
+
+
 def quotes_data(limit: int = 60) -> dict:
-    """Elenco dei preventivi con lo stato del PDF e dell'invio."""
+    """Elenco dei preventivi con stato, scadenza, PDF e azioni."""
     if approval_store is None:
         return {"quotes": [], "counts": {}, "error": "coda non disponibile"}
     limit = max(1, min(int(limit or 60), 200))
     data = approval_store.list_requests(max(limit, 120))
     rows = [row for row in (data.get("recent") or []) if row.get("type") == "quote"]
+    today = datetime.now().date()
     quotes: list[dict] = []
     for row in rows[:limit]:
         payload = row.get("payload") or {}
+        valid_until = str(payload.get("valid_until") or "")
+        days_left = None
+        try:
+            days_left = (datetime.strptime(valid_until, "%Y-%m-%d").date() - today).days
+        except Exception:
+            days_left = None
         quotes.append({
             "id": row.get("id"),
             "number": payload.get("number") or "",
             "client": payload.get("client_name") or row.get("client_name") or "",
             "email": payload.get("to") or "",
+            "subject": payload.get("subject") or "",
             "total": (payload.get("totals") or {}).get("total"),
             "currency": payload.get("currency") or "EUR",
             "status": row.get("status") or "",
             "created_at": row.get("created_at"),
+            "updated_at": row.get("updated_at"),
+            "valid_until": valid_until,
+            "days_left": days_left,
+            "expired": bool(days_left is not None and days_left < 0),
             "result": row.get("result") or "",
             "error": row.get("error") or "",
             "has_pdf": approval_store.quote_path(row) is not None,
+            "items": payload.get("items") or [],
         })
     return {"quotes": quotes, "counts": data.get("counts") or {}}
 
@@ -895,6 +953,123 @@ def create_demo_quote() -> dict:
         "number": payload.get("number"),
         "data": quotes_data(),
     }
+
+
+def create_manual_quote(data: dict) -> dict:
+    """Crea un preventivo dalla dashboard, senza passare dal modello.
+
+    Serve quando il bot non è raggiungibile, quando il cliente è al telefono o
+    quando il titolare vuole correggere i dati a mano. I totali vengono sempre
+    ricalcolati da quote_pdf: la dashboard non può inventare cifre.
+    """
+    if approval_store is None or quote_pdf is None:
+        return {"ok": False, "error": "modulo preventivi non disponibile"}
+    data = data if isinstance(data, dict) else {}
+    raw_items = data.get("items") if isinstance(data.get("items"), list) else []
+    items: list[dict] = []
+    for row in raw_items:
+        if not isinstance(row, dict):
+            continue
+        description = str(row.get("description") or "").strip()
+        price = row.get("unit_price")
+        if price is None:
+            price = row.get("price")
+        price_text = str(price if price is not None else "").strip().replace(",", ".")
+        if not description and not price_text:
+            continue
+        items.append({
+            "description": description,
+            "qty": row.get("qty") or 1,
+            "unit": str(row.get("unit") or "").strip(),
+            "unit_price": price_text or "0",
+        })
+    email = str(data.get("client_email") or data.get("to") or "").strip()
+    payload = {
+        "to": email,
+        "client_name": str(data.get("client_name") or "").strip(),
+        "client_email": email,
+        "client_company": str(data.get("client_company") or "").strip(),
+        "client_address": str(data.get("client_address") or "").strip(),
+        "client_phone": str(data.get("client_phone") or "").strip(),
+        "items": items,
+        "discount_pct": data.get("discount_pct") or 0,
+        "notes": str(data.get("notes") or "").strip(),
+        "subject": str(data.get("subject") or "").strip(),
+        "body": str(data.get("body") or "").strip(),
+    }
+    for key in ("vat_pct", "valid_days"):
+        value = data.get(key)
+        if value not in (None, ""):
+            payload[key] = value
+    try:
+        request = approval_store.append_request(
+            "quote",
+            payload,
+            client_name=payload["client_name"],
+            client_phone=payload["client_phone"],
+            reason="Preventivo creato dalla dashboard.",
+            dedupe=False,
+        )
+    except (ValueError, TypeError) as exc:
+        return {"ok": False, "error": str(exc)[:400]}
+    except Exception as exc:
+        log(f"manual quote failed: {str(exc)[:180]}")
+        return {"ok": False, "error": "impossibile creare il preventivo"}
+    saved = request.get("payload") or {}
+    log(f"manual quote created {request.get('id')}")
+    return {
+        "ok": True,
+        "id": request.get("id"),
+        "number": saved.get("number"),
+        "data": quotes_data(),
+    }
+
+
+def quote_email_preview(request_id: str) -> dict:
+    """HTML dell'email di un preventivo reale, generato in locale."""
+    if approval_store is None:
+        return {"ok": False, "error": "coda non disponibile"}
+    request = approval_store.get_request(str(request_id or ""))
+    if not request or request.get("type") != "quote":
+        return {"ok": False, "error": "preventivo non trovato"}
+    payload = request.get("payload") or {}
+    html = str(payload.get("html") or "")
+    if not html:
+        return {"ok": False, "error": "anteprima non disponibile: rigenera il preventivo"}
+    return {
+        "ok": True,
+        "html": html,
+        "subject": payload.get("subject") or "",
+        "to": payload.get("to") or "",
+        "number": payload.get("number") or "",
+    }
+
+
+def quotes_csv(limit: int = 200) -> str:
+    """Esporta i preventivi in CSV per Excel e per il commercialista."""
+    data = quotes_data(limit)
+    out = io.StringIO()
+    writer = csv.writer(out, delimiter=";", lineterminator="\r\n")
+    writer.writerow([
+        "numero", "creato", "cliente", "email", "totale", "valuta",
+        "stato", "scadenza", "pdf", "esito",
+    ])
+
+    def cell(value) -> str:
+        text = str(value if value is not None else "")
+        # Evita l'esecuzione di formule quando il CSV si apre in Excel.
+        if text[:1] in {"=", "+", "-", "@"}:
+            text = "'" + text
+        return text
+
+    for row in data.get("quotes") or []:
+        writer.writerow([
+            cell(row.get("number")), cell(row.get("created_at")), cell(row.get("client")),
+            cell(row.get("email")), cell(row.get("total")), cell(row.get("currency")),
+            cell(row.get("status")), cell(row.get("valid_until")),
+            "sì" if row.get("has_pdf") else "no", cell(row.get("result")),
+        ])
+    return out.getvalue()
 
 
 def _pending_by_phone() -> dict[str, int]:
@@ -1315,6 +1490,15 @@ class Handler(BaseHTTPRequestHandler):
         ])
         self.wfile.write(data)
 
+    def _csv(self, text: str, filename: str):
+        safe_name = re.sub(r"[^A-Za-z0-9._-]+", "-", str(filename or ""))[:120] or "export.csv"
+        data = text.encode("utf-8-sig")
+        self._headers(200, "text/csv; charset=utf-8", [
+            ("Content-Length", str(len(data))),
+            ("Content-Disposition", f'attachment; filename="{safe_name}"'),
+        ])
+        self.wfile.write(data)
+
     def _cookie_token(self) -> str:
         raw = self.headers.get("Cookie", "")
         if not raw:
@@ -1422,7 +1606,8 @@ class Handler(BaseHTTPRequestHandler):
                     page = f.read()
                 page = (page.replace("{{BUSINESS_NAME}}", str(CFG.get("business_name") or "Nome Attività"))
                             .replace("{{OWNER_NAME}}", str(CFG.get("owner_name") or "Titolare"))
-                            .replace("{{BOT_NAME}}", str(CFG.get("bot_name") or "Segreteria Digitale"))
+                            .replace("{{BOT_NAME}}", str(CFG.get("bot_name") or "Gina"))
+                            .replace("{{BOT_INITIAL}}", (str(CFG.get("bot_name") or "Gina").strip()[:1] or "G").upper())
                             .replace("{{GOOGLE_ACCOUNT}}", GOOGLE_ACCOUNT)
                             .replace("{{OWNER_NUMBER}}", OWNER))
                 self._html(page)
@@ -1510,6 +1695,21 @@ class Handler(BaseHTTPRequestHandler):
             _, out, _ = run(["journalctl", "--user", "-u", "openclaw-gateway", "-n", str(lines), "--no-pager", "-o", "cat"], timeout=20)
             self._json({"ok": True, "lines": out.splitlines()})
             return
+        if path == "/api/capabilities":
+            if not self._require():
+                return
+            self._json({"ok": True, "data": bot_capabilities()})
+            return
+        if path == "/api/quotes.csv":
+            if not self._require():
+                return
+            q = parse_qs(urlparse(self.path).query)
+            try:
+                limit = int((q.get("limit") or ["200"])[0])
+            except Exception:
+                limit = 200
+            self._csv(quotes_csv(limit), "preventivi.csv")
+            return
         if path == "/api/quotes":
             if not self._require():
                 return
@@ -1519,6 +1719,12 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 limit = 60
             self._json({"ok": True, "data": quotes_data(limit)})
+            return
+        quote_email_match = re.match(r"^/api/quotes/([A-Za-z0-9-]{6,80})/email$", path)
+        if quote_email_match:
+            if not self._require():
+                return
+            self._json(quote_email_preview(quote_email_match.group(1)))
             return
         if path == "/api/quotes/demo/preview":
             if not self._require():
@@ -1705,6 +1911,10 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/api/quotes/demo":
             self._json(create_demo_quote())
+            return
+        if path == "/api/quotes":
+            data = self._json_body()
+            self._json(create_manual_quote(data))
             return
         if path == "/api/contacts/summary":
             data = self._json_body()
