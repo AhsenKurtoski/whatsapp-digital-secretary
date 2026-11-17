@@ -34,7 +34,7 @@ exclude = ["tests/", "google-bridge/", "demo.py"]
 branch = true
 source = [
   "lead_intel", "memory", "cache", "identity", "quotas", "router", "webhooks",
-  "stats", "conversations", "gdpr", "backup", "setup_wizard",
+  "stats", "conversations", "gdpr", "backup", "live", "setup_wizard",
   "approval_store", "gateway_policy", "quote_pdf", "config", "remote_access",
 ]
 omit = ["*/tests/*"]
@@ -42,7 +42,7 @@ omit = ["*/tests/*"]
 [tool.coverage.report]
 show_missing = true
 skip_covered = false
-fail_under = 80
+fail_under = 86
 exclude_lines = [
   "pragma: no cover",
   "if __name__ == .__main__.:",

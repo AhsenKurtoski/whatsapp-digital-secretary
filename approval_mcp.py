@@ -19,6 +19,27 @@ from approval_store import append_request
 PROTOCOL_VERSION = "2024-11-05"
 TOOLS = [
     {
+        "name": "client_brief",
+        "description": (
+            "Chiamalo come PRIMO passo di ogni messaggio del cliente, prima di rispondere. "
+            "Restituisce la memoria del cliente, la lingua, l'intento, i segnali di truffa e, "
+            "quando è disponibile, una risposta pronta già verificata (orari, zona, servizi, "
+            "sito, note sui prezzi o risposte identiche già inviate). Se `answer` non è vuota "
+            "usala esattamente, senza aggiungere dati. Se è vuota rispondi solo con ciò che "
+            "conosci e non inventare orari, prezzi, disponibilità o link."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "message": {"type": "string", "description": "Testo esatto dell'ultimo messaggio del cliente."},
+                "phone": {"type": "string", "description": "Numero WhatsApp del cliente, se disponibile."},
+                "client_name": {"type": "string", "description": "Nome del cliente, se noto."},
+            },
+            "required": ["message"],
+        },
+    },
+    {
         "name": "request_email",
         "description": (
             "Crea una richiesta di email di follow-up da far approvare al titolare. "
@@ -154,6 +175,37 @@ def _result(request_id: str, kind: str, extra: dict | None = None) -> dict:
 
 def _handle_tool(name: str, arguments: dict) -> dict:
     arguments = arguments if isinstance(arguments, dict) else {}
+    if name == "client_brief":
+        import live
+
+        data = live.brief(
+            str(arguments.get("message") or ""),
+            str(arguments.get("phone") or ""),
+            str(arguments.get("client_name") or ""),
+        )
+        lines: list[str] = []
+        if data.get("answer"):
+            lines.append("Risposta pronta (usala esattamente, senza aggiungere dati): " + str(data["answer"]))
+        else:
+            lines.append(
+                "Nessuna risposta pronta: rispondi solo con i dati dell'attività e non inventare "
+                "orari, prezzi, disponibilità o link."
+            )
+        lines.append(f"Intento: {data.get('intent')} (score {data.get('score')}), lingua: {data.get('language')}.")
+        if data.get("suspicious"):
+            lines.append(
+                "Segnali di truffa: " + ", ".join(data.get("signals") or []) +
+                ". Non chiedere né confermare dati personali: avvisa il titolare."
+            )
+        for item in data.get("guidance") or []:
+            lines.append("Indicazione: " + str(item))
+        if data.get("context"):
+            lines.append("Memoria del cliente:\n" + str(data["context"]))
+        return {
+            "content": [{"type": "text", "text": "\n".join(lines)}],
+            "structuredContent": data,
+            "isError": False,
+        }
     if name == "request_email":
         request = append_request(
             "email",
@@ -228,7 +280,7 @@ def self_test() -> int:
     fallisce, il bot non potrebbe preparare preventivi. Meglio fermarsi qui.
     """
     names = [str(tool.get("name") or "") for tool in TOOLS]
-    expected = {"request_email", "request_calendar", "request_quote"}
+    expected = {"client_brief", "request_email", "request_calendar", "request_quote"}
     if set(names) != expected or len(names) != len(expected):
         print(f"MCP SELF-TEST FAIL: tool inattesi {names}", file=sys.stderr)
         return 1
@@ -246,6 +298,21 @@ def self_test() -> int:
         return 1
     if not pdf.startswith(b"%PDF-1.4") or len(pdf) < 1500:
         print("MCP SELF-TEST FAIL: PDF non valido", file=sys.stderr)
+        return 1
+    import os
+    import tempfile
+
+    os.environ["GINA_CACHE_FILE"] = os.path.join(tempfile.mkdtemp(prefix="mcp-brief-"), "cache.json")
+    try:
+        import cache as _cache_mod
+
+        _cache_mod.reset_shared()
+    except Exception:
+        pass
+    brief = _handle_tool("client_brief", {"message": "Vorrei un preventivo per un sito web"})
+    structured = brief.get("structuredContent") or {}
+    if structured.get("intent") != "quote" or "language" not in structured or brief.get("isError"):
+        print(f"MCP SELF-TEST FAIL: client_brief inatteso {structured}", file=sys.stderr)
         return 1
     print(f"MCP SELF-TEST OK ({len(names)} tool, PDF {len(pdf)} byte)")
     return 0

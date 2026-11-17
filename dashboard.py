@@ -95,6 +95,10 @@ try:
 except Exception:
     gdpr_tools = None
 try:
+    import live as live_view
+except Exception:
+    live_view = None
+try:
     import router as router_view
 except Exception:
     router_view = None
@@ -1673,7 +1677,13 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 with open(HTML_FILE, encoding="utf-8") as f:
                     page = f.read()
-                page = (page.replace("{{BUSINESS_NAME}}", str(CFG.get("business_name") or "Nome Attività"))
+                try:
+                    with open(os.path.join(os.path.dirname(HTML_FILE), "i18n.json"), encoding="utf-8") as f:
+                        i18n_text = f.read().strip() or "{}"
+                except OSError:
+                    i18n_text = "{}"
+                page = (page.replace("{{I18N_TEXT}}", i18n_text)
+                            .replace("{{BUSINESS_NAME}}", str(CFG.get("business_name") or "Nome Attività"))
                             .replace("{{OWNER_NAME}}", str(CFG.get("owner_name") or "Titolare"))
                             .replace("{{BOT_NAME}}", str(CFG.get("bot_name") or "Gina"))
                             .replace("{{BOT_INITIAL}}", (str(CFG.get("bot_name") or "Gina").strip()[:1] or "G").upper())
@@ -1929,6 +1939,12 @@ class Handler(BaseHTTPRequestHandler):
             data = gdpr_tools.inventory() if gdpr_tools is not None else {}
             self._json({"ok": True, "data": data})
             return
+        if path == "/api/live/summary":
+            if not self._require("admin"):
+                return
+            data = live_view.stats() if live_view is not None else {}
+            self._json({"ok": True, "data": data})
+            return
         self._json({"ok": False, "error": "not found"}, 404)
 
     def do_POST(self):
@@ -1940,6 +1956,36 @@ class Handler(BaseHTTPRequestHandler):
             self._handle_post()
         finally:
             self._discard_body()
+
+    def _handle_live(self, path: str) -> None:
+        """Ingest server-to-server del plugin: token dedicato, solo loopback."""
+        data = self._json_body()
+        if live_view is None:
+            self._json({"ok": False, "error": "live non disponibile"}, 503)
+            return
+        if self.client_address[0] not in {"127.0.0.1", "::1"}:
+            self._json({"ok": False, "error": "solo loopback"}, 403)
+            return
+        if not live_view.check_token(self.headers.get("X-Gina-Live", "")):
+            self._json({"ok": False, "error": "unauthorized"}, 401)
+            return
+        phone = str(data.get("phone") or "").strip()
+        text = str(data.get("text") or "")[:1200]
+        if not phone or not text:
+            self._json({"ok": False, "error": "phone e text obbligatori"}, 400)
+            return
+        try:
+            if path == "/api/live/inbound":
+                result = live_view.record_inbound(phone, text, str(data.get("name") or ""))
+            elif path == "/api/live/outbound":
+                result = live_view.record_outbound(phone, text, str(data.get("question") or ""))
+            else:
+                self._json({"ok": False, "error": "not found"}, 404)
+                return
+        except Exception as exc:
+            self._json({"ok": False, "error": str(exc)[:160]}, 400)
+            return
+        self._json({"ok": True, "data": result})
 
     def _handle_post(self):
         path = urlparse(self.path).path
@@ -1981,6 +2027,9 @@ class Handler(BaseHTTPRequestHandler):
         if not path.startswith("/api/"):
             self._discard_body()
             self._json({"ok": False, "error": "not found"}, 404)
+            return
+        if path.startswith("/api/live/"):
+            self._handle_live(path)
             return
         if not self._require("operator"):
             return

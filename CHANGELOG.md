@@ -8,6 +8,22 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Live reply pipeline** (`live.py`): the same function the `client_brief` MCP tool
+  calls on every message now joins classification, per-customer memory and a shared
+  answer cache. Gina receives a ready, verified answer for factual questions
+  (hours, city, services, site, pricing note), memory context so it never asks again
+  for known data, intent and guidance (quote, appointment, support, scam).
+  Answers that contain emails, phone numbers, IBANs, quotes or appointments never
+  enter the shared cache; the plugin `secretary-guard` posts every real inbound and
+  outbound message to authenticated loopback endpoints (`/api/live/inbound`,
+  `/api/live/outbound`) with a dedicated `live_token` (mode 600), fire-and-forget so
+  replies are never delayed. Prove end to end by `scripts/smoke_guard.py`, which now
+  checks the gateway- plugin- Python path (inbound/outbound/signed token).
+- **Complete dashboard translation** (IT/EN): `i18n.json` holds an English version
+  for every static string of all legacy tabs (300 strings, checked by
+  `tests/test_dashboard_i18n.py`), and a DOM translator with `MutationObserver`
+  covers dynamically rendered text and attributes (`placeholder`, `title`,
+  `aria-label`) while leaving transcripts and user data untouched.
 - **Platform modules for Gina** (each with self-test and unit tests):
   `lead_intel.py` (IT/EN intent, 0-100 score, scam signals, PII redaction, audit
   trail), `memory.py` (per-customer language, facts, intents, redacted transcript,
@@ -35,7 +51,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
   a real test email through the same path used by approvals, and writes validated
   keys only to `secrets.env` (mode 600) after confirmation.
 - **Quality gates**: `requirements-dev.txt`, `pyproject.toml` (ruff, mypy, bandit,
-  coverage threshold 80%), `scripts/coverage.sh`, a `quality` CI job and a
+  coverage threshold 86%, currently 87% over 256 tests plus every module self-test),
+  `scripts/coverage.sh`, a `quality` CI job and a
   `release` workflow that validates SemVer tags and publishes release notes from
   this changelog; Dependabot for pip, npm and GitHub Actions.
 - **Operations documentation**: `docs/E2E.md` (dedicated WhatsApp number and
@@ -47,7 +64,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- `scripts/verify.sh` also runs the self-test of every new module.
+- `scripts/verify.sh` also runs the self-test of every new module, including
+  `live.py`, and the guard smoke test now fails if the live pipeline is not fed.
+- The installer copies every platform module, `i18n.json` and the plugin that emits
+  live events, so an installed dashboard is never missing an import.
+- Backup skips transient `.lock` and `.pid` files: an archive created while a lock
+  changes can no longer fail its own SHA-256 verification.
 - The dashboard's legacy token still works as the `admin` owner, so upgrades do not
   lock the owner out; additional users get their own token and role.
 

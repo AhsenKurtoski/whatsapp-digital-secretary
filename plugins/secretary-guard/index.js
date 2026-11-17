@@ -1,4 +1,4 @@
-import { appendFileSync } from "node:fs";
+import { appendFileSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
@@ -40,6 +40,74 @@ const TECHNICAL_PATTERNS = [
 // Nel log non finisce mai il testo del cliente: solo un'impronta e la lunghezza,
 // abbastanza per capire un loop senza conservare conversazioni private.
 
+const LIVE_TIMEOUT_MS = 800;
+let liveTokenCache = null;
+let liveFailureLoggedAt = 0;
+
+function liveBase() {
+  return (process.env.GINA_LIVE_URL || "http://127.0.0.1:8787").replace(/\/+$/, "");
+}
+
+function liveTokenPath() {
+  if (process.env.GINA_LIVE_TOKEN_FILE) return process.env.GINA_LIVE_TOKEN_FILE;
+  const stateDir = process.env.OPENCLAW_STATE_DIR;
+  return stateDir
+    ? join(stateDir, "live_token")
+    : join(homedir(), ".openclaw", "secretary", "live_token");
+}
+
+function liveToken() {
+  if (liveTokenCache) return liveTokenCache;
+  try {
+    liveTokenCache = readFileSync(liveTokenPath(), "utf8").trim();
+  } catch {
+    liveTokenCache = "";
+  }
+  return liveTokenCache;
+}
+
+/** Ogni messaggio reale passa dai moduli Python locali, senza bloccare la risposta. */
+function notifyLive(kind, payload) {
+  if (process.env.GINA_LIVE_DISABLED === "1") return;
+  const token = liveToken();
+  if (!token) return;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LIVE_TIMEOUT_MS);
+  if (typeof timer.unref === "function") timer.unref();
+  fetch(`${liveBase()}/api/live/${kind}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Gina-Live": token },
+    body: JSON.stringify(payload),
+    signal: controller.signal,
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error(`status ${response.status}`);
+    })
+    .catch(() => {
+      const now = Date.now();
+      if (now - liveFailureLoggedAt > 300000) {
+        liveFailureLoggedAt = now;
+        guardLog(`live_ingest_unavailable kind=${kind}`);
+      }
+    })
+    .finally(() => clearTimeout(timer));
+}
+
+function senderKey(event) {
+  const raw = String(event?.senderId || event?.from || event?.to || event?.sessionKey || "");
+  const match = raw.match(/\+?\d{8,15}/);
+  if (match) return match[0];
+  if (!raw) return "";
+  // Canali senza numero (CLI, web): identificatore locale pseudonimo, stabile
+  // per la stessa sessione, così la memoria resta coerente senza inventare un
+  // numero di telefono.
+  let hash = 0;
+  for (let index = 0; index < raw.length; index += 1) {
+    hash = (hash * 31 + raw.charCodeAt(index)) >>> 0;
+  }
+  return `local${hash}`;
+}
+
 function guardLog(line) {
   try {
     // OPENCLAW_STATE_DIR permette di verificare il plugin in un gateway di test
@@ -79,8 +147,22 @@ export default definePluginEntry({
           senderId: event?.senderId || ctx?.senderId,
           sessionKey: event?.sessionKey || ctx?.sessionKey,
         };
-        if (!shouldSuppressDuplicateInbound(inbound)) return;
+        // Il primo esemplare di ogni messaggio reale alimenta intento, memoria e
+        // cache: il plugin risponde subito al gateway e l'invio è fire-and-forget.
+        if (typeof fetch === "function") {
+          const phone = senderKey(inbound);
+          const text = String(inbound.content ?? inbound.body ?? "");
+          if (phone && text.trim()) {
+            notifyLive("inbound", {
+              phone,
+              text,
+              name: String(inbound.senderName || inbound.name || ""),
+              session_key: String(inbound.sessionKey || ""),
+            });
+          }
+        }
         const body = String(inbound.content ?? inbound.body ?? "");
+        if (!shouldSuppressDuplicateInbound(inbound)) return;
         guardLog(`duplicate_inbound_suppressed hash=${fingerprint(body)} len=${body.length}`);
         return { handled: true };
       });
@@ -120,6 +202,18 @@ export default definePluginEntry({
       if (shouldSuppressDuplicate(event?.to, cleaned)) {
         guardLog(`duplicate_suppressed hash=${fingerprint(cleaned)} len=${String(cleaned).length}`);
         return { cancel: true, cancelReason: "duplicate_reply" };
+      }
+      // Risposta realmente consegnata: alimenta la memoria e la cache condivisa
+      // (solo se generica; il filtro privacy vive in live.py).
+      if (typeof fetch === "function" && typeof cleaned === "string" && cleaned.trim()) {
+        const phone = senderKey(event);
+        if (phone) {
+          notifyLive("outbound", {
+            phone,
+            text: cleaned,
+            session_key: String(event?.sessionKey || ""),
+          });
+        }
       }
     });
 

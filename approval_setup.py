@@ -18,7 +18,7 @@ BASE = config.BASE
 CONFIG = config.OPENCLAW_CONFIG
 OWNER = str(CFG.get("owner_number") or "").strip()
 OWNER_NAME = str(CFG.get("owner_name") or "il titolare").strip()
-TOOL_BASE_NAMES = ["request_email", "request_calendar", "request_quote"]
+TOOL_BASE_NAMES = ["client_brief", "request_email", "request_calendar", "request_quote"]
 # OpenClaw espone i tool MCP con namespace diversi a seconda della versione.
 # L'allowlist deve coprirli entrambi, altrimenti il bot non vede request_quote
 # e risponde al cliente che il tool non esiste.
@@ -59,7 +59,7 @@ def main() -> int:
         "enabled": True,
         "connectionTimeoutMs": 20000,
         "requestTimeoutMs": 30000,
-        "toolFilter": {"include": ["request_email", "request_calendar", "request_quote"]},
+        "toolFilter": {"include": ["client_brief", "request_email", "request_calendar", "request_quote"]},
     }
 
     tools = data.setdefault("tools", {})

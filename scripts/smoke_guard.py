@@ -155,6 +155,58 @@ def start_model(port: int, state: ModelState) -> ThreadingHTTPServer:
     return server
 
 
+class LiveSink:
+    """Riceve gli eventi che il plugin invia alla pipeline live locale."""
+
+    def __init__(self) -> None:
+        self.events: list[dict] = []
+        self.lock = threading.Lock()
+        self.server: ThreadingHTTPServer | None = None
+
+    def start(self) -> int:
+        sink = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self):  # noqa: N802 - API di BaseHTTPRequestHandler
+                length = int(self.headers.get("Content-Length") or 0)
+                body = self.rfile.read(length).decode("utf-8", "replace")
+                with sink.lock:
+                    sink.events.append({
+                        "path": self.path,
+                        "token": self.headers.get("X-Gina-Live", ""),
+                        "body": body,
+                    })
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"ok":true}')
+
+            def log_message(self, *args):
+                return
+
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server.daemon_threads = True
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        return int(self.server.server_port)
+
+    def stop(self) -> None:
+        if self.server is None:
+            return
+        try:
+            self.server.shutdown()
+            self.server.server_close()
+        except Exception:
+            pass
+
+    def count(self, kind: str) -> int:
+        with self.lock:
+            return sum(1 for event in self.events if event["path"] == f"/api/live/{kind}")
+
+    def tokens(self) -> set[str]:
+        with self.lock:
+            return {event["token"] for event in self.events}
+
+
 def wait_http(url: str, timeout: float = 120.0) -> bool:
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -382,6 +434,7 @@ def main() -> int:
     model = None
     gateway = None
     log_handle = None
+    sink = LiveSink()
     ok = False
     try:
         model_port = free_port()
@@ -398,11 +451,16 @@ def main() -> int:
             json.dumps(build_config(workspace, model_port, gateway_port), indent=2) + "\n",
             encoding="utf-8",
         )
+        live_port = sink.start()
+        live_token = "smoke-live-token"
+        (tmp / "live_token").write_text(live_token + "\n", encoding="utf-8")
         env = os.environ.copy()
         env.update({
             "OPENCLAW_HOME": str(tmp / "home"),
             "OPENCLAW_STATE_DIR": str(tmp / "state"),
             "OPENCLAW_CONFIG_PATH": str(config_path),
+            "GINA_LIVE_URL": f"http://127.0.0.1:{live_port}",
+            "GINA_LIVE_TOKEN_FILE": str(tmp / "live_token"),
         })
         (tmp / "home").mkdir()
         (tmp / "state").mkdir()
@@ -497,9 +555,23 @@ def main() -> int:
                 f"retry errato: model_calls={retry_calls}, suppressions={final_suppressed}"
             )
 
+        # Il plugin deve aver alimentato la pipeline live (intento, memoria,
+        # cache) per i messaggi reali che ha visto passare, senza bloccare il turno.
+        if not wait_for(
+            lambda: sink.count("inbound") >= 1 and sink.count("outbound") >= 1,
+            args.timeout,
+        ):
+            raise RuntimeError(
+                f"pipeline live non alimentata: inbound={sink.count('inbound')}, "
+                f"outbound={sink.count('outbound')}"
+            )
+        if sink.tokens() != {live_token}:
+            raise RuntimeError(f"token live errato: {sorted(sink.tokens())}")
+
         print("SMOKE OK")
         print(f"burst: 6 messaggi -> {burst_calls} chiamata, {burst_suppressed} soppressioni")
         print(f"retry: primo turno 400 -> {retry_calls} chiamate (1 fallita + 1 riuscita)")
+        print(f"live: {sink.count('inbound')} inbound, {sink.count('outbound')} outbound firmati")
         ok = True
         return 0
     except Exception as exc:
@@ -525,6 +597,7 @@ def main() -> int:
         if model is not None:
             model.shutdown()
             model.server_close()
+        sink.stop()
         if ok and not args.keep:
             try:
                 shutil.rmtree(tmp)

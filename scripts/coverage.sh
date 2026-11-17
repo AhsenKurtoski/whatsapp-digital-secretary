@@ -25,7 +25,7 @@ $COVERAGE run -m unittest discover -s tests
 # I self-test coprono i percorsi CLI e le validazioni: misurarli è parte della
 # copertura reale, non un artificio (ogni self-test fa asserzioni vere).
 for module in lead_intel memory cache identity quotas router webhooks stats \
-              conversations gdpr backup setup_wizard gateway_policy approval_store \
+              conversations gdpr backup live setup_wizard gateway_policy approval_store \
               quote_pdf remote_access config; do
   if [ -f "$module.py" ]; then
     # shellcheck disable=SC2086

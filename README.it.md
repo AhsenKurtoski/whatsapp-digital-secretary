@@ -396,6 +396,7 @@ implementata in codice testato, non è un annuncio:
 | Memoria per cliente | lingua, fatti, intenti, transcript redatto, handoff | `python3 memory.py --profile +39...` |
 | Latenza | cache TTL delle risposte frequenti con hit rate | `python3 cache.py --stats` |
 | Modello dinamico | scelta per carico, latenza e 429; applicazione esplicita | `python3 router.py --load 4` |
+| Risposte live | intento, memoria per cliente e cache verificata dietro il tool `client_brief`; il plugin alimenta ogni messaggio reale | `python3 live.py --brief "A che ora aprite?" --json` |
 | Quote AI | richieste, token, 429, soglie e alert | `python3 quotas.py --json` |
 | Utenti e ruoli | admin / operatore / solo lettura, token hash, audit per utente | `python3 identity.py --add "Anna" --role operator` |
 | Webhook | eventi firmati HMAC verso Zapier/Make/HubSpot | `python3 webhooks.py --list` |
@@ -406,7 +407,7 @@ implementata in codice testato, non è un annuncio:
 | Ban WhatsApp | piano operativo e comunicazione ai clienti | [`docs/WHATSAPP_BAN.md`](docs/WHATSAPP_BAN.md) |
 | Plugin | API, hook ed esempio eseguibile | [`docs/PLUGINS.md`](docs/PLUGINS.md) · `examples/hello-plugin` |
 | Docker | compose full-stack con OpenClaw | [`docs/DOCKER.md`](docs/DOCKER.md) |
-| Qualità | ruff, mypy, bandit, pip-audit, coverage 80% | `bash scripts/coverage.sh` |
+| Qualità | ruff, mypy, bandit, pip-audit, coverage 87% (soglia 86%) | `bash scripts/coverage.sh` |
 | E2E e video | account di test, checklist, storyboard 60 s | [`docs/E2E.md`](docs/E2E.md) · [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) |
 
 Setup guidato con prove reali (chiave AI, gateway WhatsApp, email di prova):

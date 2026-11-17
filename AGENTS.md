@@ -45,7 +45,8 @@ healthy, not able to send without the owner's approval.
 ```bash
 bash scripts/verify.sh
 python3 -m unittest discover -s tests -v
-bash scripts/coverage.sh          # soglia 80% (suite + self-test)
+bash scripts/coverage.sh          # soglia 86% (suite + self-test, oggi 87%)
+python3 live.py --self-test
 python3 backup.py --self-test
 python3 gdpr.py --self-test
 python3 -m unittest discover -s tests -p 'test_install.py' -v
@@ -65,7 +66,7 @@ python3 ~/.openclaw/secretary/doctor.py --offline
 python3 ~/.openclaw/secretary/healthcheck.py --json
 ```
 
-Expected: `scripts/verify.sh` prints `VERIFICA OK`; 202 unit tests pass, including
+Expected: `scripts/verify.sh` prints `VERIFICA OK`; 256 unit tests pass, including
 the isolated installer, remote-access, OpenClaw compatibility and MCP protocol tests; every self-test prints `SELF-TEST OK`; the guard test
 prints `secretary guard: OK`; on a host with supported OpenClaw, `--check-compat`
 reports `allowed` with the expected fallback flags; the smoke test prints `SMOKE OK` (one model call for six identical
@@ -119,6 +120,7 @@ quote/email from the dashboard, plus one Calendar request. Record the date and r
 | --- | --- |
 | `setup.py` | Business configuration and persona rendering |
 | `scripts/install.sh` | Install/update everything on the machine, including `remote_access.py` |
+| `live.py` | Live pipeline: intent, memory and verified cache behind the `client_brief` MCP tool, plus the plugin ingest endpoints |
 | `gateway_policy.py` | WhatsApp debounce and `collect` queue |
 | `plugins/secretary-guard/` | Inbound burst guard, outbound dedupe and error scrubber |
 | `scripts/openclaw_compat.py` | OpenClaw version and feature probe for the installer |

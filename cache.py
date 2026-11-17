@@ -143,13 +143,30 @@ _CACHE: TTLCache | None = None
 _CACHE_LOCK = threading.Lock()
 
 
+def _default_path() -> Path:
+    """Percorso condiviso tra dashboard e MCP: la cache deve vivere in BASE."""
+    override = os.environ.get("GINA_CACHE_FILE")
+    if override:
+        return Path(override)
+    import config
+
+    return Path(config.BASE) / "cache.json"
+
+
 def shared(path: str | Path | None = None) -> TTLCache:
-    """Cache condivisa dal processo della dashboard."""
+    """Cache condivisa dai processi della segreteria (dashboard e MCP)."""
     global _CACHE
     with _CACHE_LOCK:
         if _CACHE is None:
-            _CACHE = TTLCache(path or (Path(tempfile.gettempdir()) / "gina-cache.json"))
+            _CACHE = TTLCache(path or _default_path())
         return _CACHE
+
+
+def reset_shared() -> None:
+    """Azzera il singleton: serve ai test che cambiano BASE."""
+    global _CACHE
+    with _CACHE_LOCK:
+        _CACHE = None
 
 
 def self_test() -> None:

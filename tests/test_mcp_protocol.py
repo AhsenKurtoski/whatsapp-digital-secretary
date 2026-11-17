@@ -77,17 +77,37 @@ class McpProtocolTests(unittest.TestCase):
         self.assertEqual(reply["result"]["serverInfo"]["name"], "secretary-approvals")
         self.assertIn("tools", reply["result"]["capabilities"])
 
-    def test_tools_list_exposes_all_three_approvals(self):
+    def test_tools_list_exposes_brief_and_the_three_approvals(self):
         self.initialize()
         reply = self.request({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
         tools = reply["result"]["tools"]
         self.assertEqual(
             {tool["name"] for tool in tools},
-            {"request_email", "request_calendar", "request_quote"},
+            {"client_brief", "request_email", "request_calendar", "request_quote"},
         )
+        brief = next(tool for tool in tools if tool["name"] == "client_brief")
+        self.assertEqual(brief["inputSchema"]["required"], ["message"])
         quote = next(tool for tool in tools if tool["name"] == "request_quote")
         required = set(quote["inputSchema"]["required"])
         self.assertEqual(required, {"client_name", "client_email", "items"})
+
+    def test_client_brief_returns_memory_and_intent_over_the_protocol(self):
+        self.initialize()
+        reply = self.request({
+            "jsonrpc": "2.0", "id": 21, "method": "tools/call",
+            "params": {
+                "name": "client_brief",
+                "arguments": {"message": "Vorrei un preventivo per un sito", "phone": "+393331119999"},
+            },
+        })
+        result = reply["result"]
+        self.assertFalse(result["isError"])
+        structured = result["structuredContent"]
+        self.assertEqual(structured["intent"], "quote")
+        self.assertIn(structured["language"], {"it", "en"})
+        self.assertIn("hit", structured)
+        text = result["content"][0]["text"]
+        self.assertIn("Risposta pronta" if structured["hit"] else "Intento", text)
 
     def test_request_quote_writes_a_real_pdf_and_queue_row(self):
         self.initialize()

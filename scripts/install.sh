@@ -90,6 +90,7 @@ chmod 700 "$BASE"
 install -m 700 "$HERE/config.py" "$BASE/config.py"
 install -m 700 "$HERE/dashboard.py" "$BASE/dashboard.py"
 install -m 644 "$HERE/dashboard.html" "$BASE/dashboard.html"
+install -m 644 "$HERE/i18n.json" "$BASE/i18n.json"
 install -m 700 "$HERE/sync_fallbacks.py" "$BASE/sync_fallbacks.py"
 install -m 700 "$HERE/watchdog.py" "$BASE/watchdog.py"
 install -m 700 "$HERE/healthcheck.py" "$BASE/healthcheck.py"
@@ -105,6 +106,12 @@ install -m 700 "$HERE/approval_mcp.py" "$BASE/approval_mcp.py"
 install -m 700 "$HERE/approval_setup.py" "$BASE/approval_setup.py"
 install -m 700 "$HERE/doctor.py" "$BASE/doctor.py"
 install -m 700 "$HERE/remote_access.py" "$BASE/remote_access.py"
+# Moduli della piattaforma: dashboard, MCP e plugin li importano dalla copia
+# installata, quindi devono essere presenti con i permessi privati.
+for module in lead_intel memory cache identity quotas router webhooks stats \
+              conversations gdpr backup live; do
+  install -m 700 "$HERE/$module.py" "$BASE/$module.py"
+done
 mkdir -p "$BASE/plugins"
 chmod 700 "$BASE/plugins"
 rm -rf "$BASE/plugins/secretary-guard"

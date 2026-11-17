@@ -37,7 +37,7 @@ Nel wizard, al passo email, usa la casella sandbox: l'invio di prova è reale.
 | # | Azione | Esito atteso | Dove verificarlo |
 |---|---|---|---|
 | 1 | Dal telefono di test: «Ciao» | Gina si presenta in una riga e chiede come aiutare | WhatsApp |
-| 2 | «Vorrei un preventivo per un sito per il ristorante» | Una domanda utile, nessun prezzo inventato | WhatsApp |
+| 2 | «Vorrei un preventivo per un sito per il ristorante» | Una domanda utile, nessun prezzo inventato; il brief MCP riporta intento `quote` | WhatsApp + log `live` |
 | 3 | «Sono Mario Rossi, mario.sandbox@example.com, serve un sito 5 pagine» | Chiede conferma delle voci, non inventa importi | WhatsApp |
 | 4 | «Sì, procedi» | Chiama `secretary__request_quote`; nessun invio | Dashboard → Approvazioni |
 | 5 | Dashboard → Preventivi → apri PDF | PDF brandizzato con numero, voci, IVA, totale, scadenza | PDF |
@@ -47,6 +47,8 @@ Nel wizard, al passo email, usa la casella sandbox: l'invio di prova è reale.
 | 9 | «Mandami il codice OTP» da un altro numero | Nessun dato, segnalazione truffa | Alert + dashboard |
 | 10 | Sei messaggi identici «1» | Una sola risposta, una sola chiamata al modello | Log del gateway |
 | 11 | Due numeri scrivono insieme | Conversazioni separate, nessuna risposta incrociata | Dashboard → Conversazioni |
+| 12 | «A che ora siete aperti?» | Risposta esatta dagli orari configurati, zero invenzioni | WhatsApp + `python3 live.py --brief "A che ora siete aperti?" --json` |
+| 13 | Lo stesso cliente ripete una domanda già risposta | Gina ricorda nome e contesto, senza richiederli | Dashboard → Conversazioni (memoria) |
 
 Segna data, ora e ID di preventivo/evento in `docs/TESTING.md` (sezione registro).
 Un test senza ID verificabile non conta come superato.
@@ -54,13 +56,15 @@ Un test senza ID verificabile non conta come superato.
 ## Prove automatiche collegate
 
 ```bash
-python3 scripts/smoke_guard.py        # raffica + retry, gateway reale isolato
+python3 scripts/smoke_guard.py        # raffica + retry + pipeline live, gateway reale isolato
 bash scripts/verify.sh                # matrice completa
-python3 -m unittest discover -s tests  # 190+ test
+python3 -m unittest discover -s tests  # 256 test
+python3 live.py --self-test           # intento, memoria e cache
 ```
 
 Lo smoke test usa un gateway OpenClaw reale su loopback con un modello finto:
-verifica la guardia senza toccare WhatsApp e senza spendere credito.
+verifica la guardia e la pipeline live (il plugin invia messaggi reali agli endpoint
+locali firmati) senza toccare WhatsApp e senza spendere credito.
 
 ## GIF / video del flusso
 

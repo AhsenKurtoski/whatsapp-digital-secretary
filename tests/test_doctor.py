@@ -26,7 +26,10 @@ class DoctorTests(unittest.TestCase):
         # Il controllo runtime esegue davvero il server MCP installato: servono
         # le copie reali dei moduli che il server importa all'avvio.
         source_root = Path(doctor.__file__).parent
-        for name in ("approval_mcp.py", "approval_store.py", "quote_pdf.py", "email_template.py", "config.py"):
+        for name in (
+            "approval_mcp.py", "approval_store.py", "quote_pdf.py", "email_template.py",
+            "config.py", "live.py", "lead_intel.py", "memory.py", "cache.py",
+        ):
             (self.base / name).write_text(
                 (source_root / name).read_text(encoding="utf-8"), encoding="utf-8"
             )
@@ -69,7 +72,7 @@ class DoctorTests(unittest.TestCase):
                 "allowConversationAccess": True,
             }}}},
             "mcp": {"servers": {"secretary": {"toolFilter": {"include": [
-                "request_email", "request_calendar", "request_quote",
+                "client_brief", "request_email", "request_calendar", "request_quote",
             ]}}}},
         }), encoding="utf-8")
 

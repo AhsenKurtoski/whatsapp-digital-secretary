@@ -392,6 +392,7 @@ Everything below is implemented and tested, not a roadmap:
 | Per-customer memory | language, facts, intents, redacted transcript, handoff | `python3 memory.py --profile +39...` |
 | Latency | TTL cache for frequent answers with hit rate | `python3 cache.py --stats` |
 | Dynamic model | chooses by load, latency and 429s; explicit apply | `python3 router.py --load 4` |
+| Live replies | intent, per-customer memory and verified cache behind the `client_brief` tool; the guard plugin feeds every real message | `python3 live.py --brief "A che ora aprite?" --json` |
 | AI quotas | requests, tokens, 429s, thresholds and alerts | `python3 quotas.py --json` |
 | Users and roles | admin / operator / viewer, hashed tokens, per-user audit | `python3 identity.py --add "Anna" --role operator` |
 | Webhooks | HMAC-signed events to Zapier/Make/HubSpot | `python3 webhooks.py --list` |
@@ -402,7 +403,7 @@ Everything below is implemented and tested, not a roadmap:
 | WhatsApp ban | operational plan and customer communication | [`docs/WHATSAPP_BAN.md`](docs/WHATSAPP_BAN.md) |
 | Plugins | API, hooks and a runnable example | [`docs/PLUGINS.md`](docs/PLUGINS.md) · `examples/hello-plugin` |
 | Docker | full-stack compose with OpenClaw | [`docs/DOCKER.md`](docs/DOCKER.md) |
-| Quality | ruff, mypy, bandit, pip-audit, 80% coverage | `bash scripts/coverage.sh` |
+| Quality | ruff, mypy, bandit, pip-audit, 87% coverage (gate 86%) | `bash scripts/coverage.sh` |
 | E2E and video | test accounts, checklist, 60 s storyboard | [`docs/E2E.md`](docs/E2E.md) · [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) |
 
 Guided setup with real checks (AI key, WhatsApp gateway, test email):

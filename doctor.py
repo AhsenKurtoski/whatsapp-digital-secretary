@@ -55,6 +55,20 @@ REQUIRED_FILES = [
     "digest.py",
     "healthcheck.py",
     "doctor.py",
+    # Piattaforma Gina: dashboard, MCP e plugin li importano dalla copia installata.
+    "lead_intel.py",
+    "memory.py",
+    "cache.py",
+    "identity.py",
+    "quotas.py",
+    "router.py",
+    "webhooks.py",
+    "stats.py",
+    "conversations.py",
+    "gdpr.py",
+    "backup.py",
+    "live.py",
+    "i18n.json",
 ]
 DASHBOARD_MARKERS = ['data-tab="quotes"', 'id="quotesBody"', 'data-tab="contacts"']
 PERSONA_MARKERS = ["Non sono abilitato", "Messaggi ripetuti", "request_quote"]
@@ -950,7 +964,10 @@ def self_test() -> None:
     import approval_mcp as _approval_mcp
 
     source_root = Path(_approval_mcp.__file__).parent
-    for name in ("approval_mcp.py", "approval_store.py", "quote_pdf.py", "email_template.py", "config.py"):
+    for name in (
+        "approval_mcp.py", "approval_store.py", "quote_pdf.py", "email_template.py", "config.py",
+        "live.py", "lead_intel.py", "memory.py", "cache.py",
+    ):
         (base / name).write_text((source_root / name).read_text(encoding="utf-8"), encoding="utf-8")
     (base / "dashboard.html").write_text('data-tab="quotes" id="quotesBody" data-tab="contacts"', encoding="utf-8")
     plugin_dir = base / "plugins" / "secretary-guard"

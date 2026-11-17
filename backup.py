@@ -131,7 +131,9 @@ def _collect(paths: list[Path]) -> tuple[list[tuple[Path, str]], list[dict]]:
             continue
         candidates = [root] if root.is_file() else sorted(p for p in root.rglob("*") if p.is_file())
         for path in candidates:
-            if path.name in {"backup.key"} or path.name.startswith(".tmp"):
+            # I lock file sono transitori e possono cambiare mentre l'archivio
+            # viene creato: escluderli evita un backup non verificabile.
+            if path.name in {"backup.key"} or path.name.startswith(".tmp") or path.name.endswith((".lock", ".pid")):
                 continue
             try:
                 if path.is_symlink() or not path.is_file():
@@ -189,6 +191,12 @@ def create(base: Path | None = None, paths: list[Path] | None = None,
         pass
     stamp = datetime.now(config.resolve_timezone()).strftime("%Y%m%d-%H%M%S")
     path = destination / f"gina-{stamp}.ginabk"
+    # Due backup nello stesso secondo non devono sovrascriversi: la rotazione
+    # (e il ripristino) contano sul fatto che ogni archivio resti distinto.
+    attempt = 1
+    while path.exists():
+        path = destination / f"gina-{stamp}-{attempt}.ginabk"
+        attempt += 1
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_bytes(archive_bytes)
     os.chmod(tmp, 0o600)

@@ -12,6 +12,8 @@ import support  # noqa: F401
 
 import approval_store
 import dashboard
+import live
+import memory
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -58,12 +60,58 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(error.code, code)
         return error
 
+    def post_live(self, path, payload, token=""):
+        headers = {"Content-Type": "application/json"}
+        if token:
+            headers["X-Gina-Live"] = token
+        req = urllib.request.Request(
+            self.base + path, data=json.dumps(payload).encode("utf-8"), headers=headers,
+        )
+        return urllib.request.urlopen(req, timeout=10)
+
+    def test_live_ingest_requires_the_plugin_token(self):
+        self.expect_http_error(
+            401,
+            lambda: self.post_live("/api/live/inbound", {"phone": "+393331237777", "text": "ciao"}),
+        )
+
+    def test_live_ingest_updates_memory_and_cache(self):
+        token = live.token()
+        phone = "+393331237777"
+        with self.post_live(
+            "/api/live/inbound", {"phone": phone, "text": "Avete una garanzia?", "name": "Sara"}, token,
+        ) as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual(json.loads(response.read())["data"]["intent"], "info")
+        with self.post_live(
+            "/api/live/outbound",
+            {"phone": phone, "text": "La garanzia copre due anni.", "question": "Avete una garanzia?"},
+            token,
+        ) as response:
+            self.assertTrue(json.loads(response.read())["data"]["cached"])
+        profile = memory.load(phone)
+        self.assertEqual(profile["messages_out"], 1)
+        self.assertIn("Sara", profile["name"])
+        self.assertEqual(live.brief("Avete una garanzia?")["source"], "cache")
+
+    def test_live_ingest_rejects_an_empty_payload(self):
+        self.expect_http_error(
+            400, lambda: self.post_live("/api/live/inbound", {"phone": "", "text": ""}, live.token()),
+        )
+
+    def test_live_summary_is_admin_only(self):
+        with self.get("/api/live/summary", dashboard.DASH_TOKEN) as response:
+            data = json.loads(response.read())["data"]
+        self.assertIn("cache_entries", data)
+
     def test_index_renders_business_name(self):
         with self.get("/") as response:
             body = response.read().decode("utf-8")
         self.assertEqual(response.status, 200)
         self.assertIn("Attività Demo", body)
         self.assertNotIn("{{BUSINESS_NAME}}", body)
+        self.assertNotIn("{{I18N_TEXT}}", body)
+        self.assertIn('"Panoramica": "Overview"', body)
 
     def test_api_requires_token(self):
         self.expect_http_error(401, lambda: self.get("/api/leads"))
