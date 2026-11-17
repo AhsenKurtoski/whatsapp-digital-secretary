@@ -41,6 +41,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - **`docs/ALWAYS_ON.md`**: verified free 24/7 options (own device, Oracle Always Free),
   what the watchdog already repairs, and the limits none of them removes (sleep, QR
   re-scan, idle reclamation, free AI quotas).
+- **`scripts/install-oracle.sh`**: a verified install on an Oracle Cloud Always Free VM
+  (Ubuntu 24.04). `--check` is read-only and reports blockers (OS/Python/Node/OpenClaw,
+  `linger`, repository, secrets); `--prepare` installs Node 22, OpenClaw, the repository
+  and lingering; `--install` runs `setup.py` non-interactively, `install.sh` and
+  `verify.sh`. It refuses to run as root and treats a dashboard listening on anything
+  other than `127.0.0.1` (or a firewall rule opening its port) as a failure, while never
+  touching Oracle Security Lists. The SSH tunnel command is printed at the end.
+- **`tests/test_smoke_guard_teardown.py`**: regression test for a gateway child that
+  ignores `SIGTERM`; the teardown must return quickly and leave no process alive.
 - **PDF acceptance block**: quotes end with a client acceptance area (date and signature)
   and the header uses the configured secretary name.
 
@@ -137,6 +146,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **`scripts/verify.sh` could hang forever in the smoke-test teardown**: the gateway was
+  started without its own session, so `terminate()` killed only the parent, and the second
+  `process.wait()` re-raised `TimeoutExpired` inside the `finally` block. Surviving
+  children kept the pipeline open. `stop_process()` now signals the whole process group
+  (`SIGTERM`, then `SIGKILL`), never propagates an exception, closes the streams, and the
+  gateway runs with `start_new_session=True`; `verify.sh` additionally bounds the smoke
+  test with `timeout --kill-after=15 240`.
 - **The bot refused to create PDF quotes** (“non ho il tool”): the persona referenced
   `request_quote` while OpenClaw exposes `secretary__request_quote`, and it contained an
   explicit escape hatch (“Se il tool non è disponibile…”). The persona now uses the exact

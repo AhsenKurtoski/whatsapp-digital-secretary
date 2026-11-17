@@ -17,6 +17,7 @@ import argparse
 import json
 import os
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -230,24 +231,65 @@ def wait_for(predicate, timeout: float, interval: float = 0.4) -> bool:
     return False
 
 
-def stop_process(process: subprocess.Popen, log_path: Path) -> None:
-    if process.poll() is not None:
-        return
-    if os.name == "nt":
-        subprocess.run(
-            ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            check=False,
-        )
-    else:
-        process.terminate()
+def _signal_group(process: subprocess.Popen, sig: int) -> None:
+    """Invia un segnale all'intero gruppo del gateway, non solo al padre."""
+    if os.name != "nt":
         try:
-            process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            process.kill()
+            os.killpg(os.getpgid(process.pid), sig)
+            return
+        except (ProcessLookupError, PermissionError, OSError):
+            pass
+    try:
+        process.send_signal(sig)
+    except Exception:
+        pass
+
+
+def stop_process(process: subprocess.Popen, log_path: Path) -> None:
+    """Chiude il gateway senza poter bloccare la verifica.
+
+    Il gateway avvia processi figli: terminare solo il padre lascia vivo
+    l'albero, tiene occupate le porte e faceva restare appeso il teardown
+    (il secondo `wait` rilanciava dentro il `finally`). Qui si chiude l'intero
+    gruppo, con SIGKILL come ultima risorsa, e nessuna eccezione esce da questa
+    funzione: il teardown non deve mai trasformare un test riuscito in un blocco.
+    """
+    try:
+        if process.poll() is not None:
+            return
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                check=False,
+            )
+        else:
+            _signal_group(process, signal.SIGTERM)
+        try:
             process.wait(timeout=5)
-    if process.poll() is None:
-        print(f"warning: gateway ancora attivo; log: {log_path}", file=sys.stderr)
+        except subprocess.TimeoutExpired:
+            if os.name == "nt":
+                try:
+                    process.kill()
+                except Exception:
+                    pass
+            else:
+                _signal_group(process, signal.SIGKILL)
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                pass
+        if process.poll() is None:
+            print(f"warning: gateway ancora attivo; log: {log_path}", file=sys.stderr)
+    except Exception as exc:  # il teardown non deve mai propagare errori
+        print(f"warning: teardown gateway: {str(exc)[:160]}", file=sys.stderr)
+    finally:
+        for stream in (getattr(process, "stdin", None),):
+            try:
+                if stream:
+                    stream.close()
+            except Exception:
+                pass
 
 
 def build_config(workspace: Path, model_port: int, gateway_port: int) -> dict:
@@ -366,6 +408,9 @@ def main() -> int:
         (tmp / "state").mkdir()
         log_path = tmp / "gateway.log"
         log_handle = log_path.open("w", encoding="utf-8")
+        # Sessione separata: il teardown può chiudere tutto il gruppo senza
+        # coinvolgere il processo che esegue i test.
+        popen_extra = {} if os.name == "nt" else {"start_new_session": True}
         gateway = subprocess.Popen(
             [*openclaw, "gateway", "run", "--port", str(gateway_port),
              "--auth", "none", "--allow-unconfigured"],
@@ -375,6 +420,7 @@ def main() -> int:
             text=True,
             encoding="utf-8",
             errors="replace",
+            **popen_extra,
         )
         health = f"http://127.0.0.1:{gateway_port}/health"
         if not wait_http(health, timeout=args.timeout):
@@ -465,8 +511,17 @@ def main() -> int:
     finally:
         if gateway is not None:
             stop_process(gateway, tmp / "gateway.log")
+        if model is not None:
+            try:
+                model.shutdown()
+                model.server_close()
+            except Exception:
+                pass
         if log_handle is not None:
-            log_handle.close()
+            try:
+                log_handle.close()
+            except Exception:
+                pass
         if model is not None:
             model.shutdown()
             model.server_close()

@@ -79,17 +79,36 @@ segnala nella dashboard (Health) e su WhatsApp.
 Serve una carta per la verifica (addebito tipico 0–1 € stornato), **non** un piano a
 pagamento. Scegli con cura la *home region*: le risorse Always Free devono nascere lì.
 
+Lo script `scripts/install-oracle.sh` fa i passaggi ripetibili e verifica che la
+dashboard non sia esposta. Sulla VM Ubuntu 24.04 (A1.Flex, 2 OCPU / 12 GB,
+100 GB boot volume), come utente `ubuntu`:
+
 ```bash
-# Sulla VM Ubuntu 24.04 (A1.Flex, 2 OCPU / 12 GB, 100 GB boot volume)
-sudo apt update && sudo apt install -y python3 python3-venv git curl
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt install -y nodejs
-# segui README.md per OpenClaw, poi:
 git clone https://github.com/AhsenKurtoski/whatsapp-digital-secretary.git
 cd whatsapp-digital-secretary
-python3 setup.py && bash scripts/install.sh
-sudo loginctl enable-linger "$USER"
+
+# 1. Diagnosi in sola lettura: non modifica nulla, esce 1 se c'è un blocco
+bash scripts/install-oracle.sh --check
+
+# 2. Dipendenze, Node 22, OpenClaw, aggiornamento repo e avvio senza login
+bash scripts/install-oracle.sh --prepare
+
+# 3. Passaggi interattivi (servono il tuo telefono)
+openclaw onboard                       # modello AI e gateway
+# poi: interfaccia OpenClaw -> login WhatsApp col QR
+# e chiavi API in ~/.openclaw/secretary/secrets.env (chmod 600)
+
+# 4. Configurazione attività + installazione + verifica finale
+bash scripts/install-oracle.sh --install \
+  --business-name "Studio Rossi" --owner-name "Mario Rossi" \
+  --owner-number +393331234567 --city Milano
 ```
+
+`--check` controlla sistema, Python/Node/OpenClaw, linger, repository, segreti e
+soprattutto **dove ascolta la dashboard**: se la 8787 è su un indirizzo diverso da
+`127.0.0.1`, o se ufw la apre, lo segnala come problema bloccante. `--install`
+esegue `setup.py`, `install.sh` e `verify.sh`, e non tocca né firewall né Security
+List. `--yes` evita le conferme, `--repo-dir`/`--port` cambiano i percorsi.
 
 Poi:
 

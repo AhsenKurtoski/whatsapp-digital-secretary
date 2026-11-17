@@ -425,6 +425,10 @@ Tailscale personal plan and OpenSSH are free and do not require a credit card. T
 not cloud hosting: the host must stay powered and connected. See
 [`docs/REMOTE_ACCESS.md`](docs/REMOTE_ACCESS.md) for firewall, port and recovery notes.
 
+On an Oracle Always Free VM use the dedicated installer, which also proves the dashboard
+was not exposed: `bash scripts/install-oracle.sh --check` (read-only), `--prepare`, then
+`--install` (see [`docs/ALWAYS_ON.md`](docs/ALWAYS_ON.md)).
+
 For a VPS, complete onboarding and `bash scripts/install.sh`, keep port `8787` closed,
 and enable user lingering (`sudo loginctl enable-linger $USER`). Back up `~/.openclaw`
 and `~/.config/digital-secretary` encrypted; they contain the WhatsApp session and

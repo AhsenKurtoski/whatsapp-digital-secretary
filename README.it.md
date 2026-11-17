@@ -431,7 +431,10 @@ connesso. Vedi [`docs/REMOTE_ACCESS.md`](docs/REMOTE_ACCESS.md)
 per firewall, porte e revoca dell'accesso.
 
 Su una VPS completa onboarding e `bash scripts/install.sh`, lascia la porta `8787`
-chiusa e abilita il lingering (`sudo loginctl enable-linger $USER`). Fai backup
+chiusa e abilita il lingering (`sudo loginctl enable-linger $USER`). Su una VM Oracle
+Always Free usa lo script dedicato, che verifica anche che la dashboard non sia
+esposta: `bash scripts/install-oracle.sh --check` (sola lettura),
+`--prepare`, poi `--install` (vedi [`docs/ALWAYS_ON.md`](docs/ALWAYS_ON.md)). Fai backup
 cifrati di `~/.openclaw` e `~/.config/digital-secretary`: contengono la sessione
 WhatsApp e le chiavi private. Non esporre mai la porta 8787 su Internet.
 
