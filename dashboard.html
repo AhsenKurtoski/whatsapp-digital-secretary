@@ -246,7 +246,7 @@ select option{background:#081420}
       <div class="logo">{{BOT_INITIAL}}</div>
       <div>
         <h1>{{BUSINESS_NAME}}</h1>
-        <p>{{BOT_NAME}} · assistente digitale · dashboard privata</p>
+        <p>{{BOT_NAME}} · <span data-i18n="brand.tagline">assistente digitale · dashboard privata</span></p>
       </div>
     </div>
     <div class="header-right">
@@ -861,10 +861,11 @@ select option{background:#081420}
 const $ = (id) => document.getElementById(id);
 const state = { status:null, leads:[], alerts:[], approvals:null, quotes:[], contacts:null, tab:'overview', security:null, connectors:null, health:null };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmtDate = (v) => { if(!v) return '—'; const d = new Date(v); return isNaN(d) ? String(v) : d.toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); };
-const fmtMs = (v) => { if(!v) return '—'; const d = new Date(Number(v)); return isNaN(d) ? '—' : d.toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); };
+const locale = () => state.lang==='en' ? 'en-GB' : 'it-IT';
+const fmtDate = (v) => { if(!v) return '—'; const d = new Date(v); return isNaN(d) ? String(v) : d.toLocaleString(locale(),{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); };
+const fmtMs = (v) => { if(!v) return '—'; const d = new Date(Number(v)); return isNaN(d) ? '—' : d.toLocaleString(locale(),{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); };
 const safe = (fn, fallback='—') => { try { return fn(); } catch(e) { return fallback; } };
-const timerText = (t) => { if(!t?.active) return 'fermo'; const n=String(t.next||''); const m=n.match(/(\d{2}:\d{2})/); return m ? 'attivo · '+m[1] : 'attivo'; };
+const timerText = (v) => { if(!v?.active) return t('state.stopped'); const n=String(v.next||''); const m=n.match(/(\d{2}:\d{2})/); return m ? t('state.active')+' · '+m[1] : t('state.active'); };
 
 function toast(msg, bad=false){
   const t=$('toast'); t.textContent=msg;
@@ -884,7 +885,7 @@ async function api(path, opts={}){
 }
 function clock(){
   const d=new Date();
-  $('clock').textContent = d.toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'short'}) + ' · ' + d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  $('clock').textContent = d.toLocaleDateString(locale(),{weekday:'short',day:'2-digit',month:'short'}) + ' · ' + d.toLocaleTimeString(locale(),{hour:'2-digit',minute:'2-digit'});
 }
 function setPill(kind, text){ $('pillDot').className='dot '+kind; $('pillText').textContent=text; }
 function scoreChip(score){
@@ -912,57 +913,59 @@ function renderActivity(activity){
 }
 function renderStatus(s, leads, alerts){
   state.status=s; state.leads=leads; state.alerts=alerts;
-  const gw=s.gateway||{}, wa=s.whatsapp||{}, m=s.model||{}, t=s.timers||{}, c=s.counts||{}, k=s.keys||{}, h=s.health||{};
+  const gw=s.gateway||{}, wa=s.whatsapp||{}, m=s.model||{}, tm=s.timers||{}, c=s.counts||{}, k=s.keys||{}, h=s.health||{};
   const waOk = ['healthy','connected','ready'].includes(String(wa.state||'').toLowerCase());
   const online = !!gw.health;
   const healthBad = h.overall==='critical';
   const healthWarn = h.overall==='warn';
   const pillKind = !online ? 'bad' : (!waOk || healthBad ? 'warn' : (healthWarn ? 'warn' : 'ok'));
-  const pillText = !online ? 'Gateway offline' : (!waOk ? 'WhatsApp da verificare' : (healthBad ? 'Health: azione richiesta' : (healthWarn ? 'Health: avvisi' : 'Tutto online')));
+  const pillText = !online ? t('hero.offline') : (!waOk ? t('hero.waCheck') : (healthBad ? t('hero.healthAction') : (healthWarn ? t('hero.healthWarn') : t('hero.allOnline'))));
   setPill(pillKind, pillText);
   $('heroDot').className = 'dot ' + (online ? (healthBad ? 'warn' : 'ok') : 'bad');
   $('heroTitle').textContent = online ? 'La tua segreteria è online' : 'Segreteria in ripristino';
   $('heroSub').textContent = online
-    ? `WhatsApp ${waOk?'connesso':(wa.state||'in verifica')} · ${c.leads_today??0} lead oggi · ${c.alerts_today??0} alert · Health ${healthBad?'critico':(healthWarn?'da controllare':'ok')}.`
+    ? t('hero.sub').replace('{wa}', waOk?t('hero.connected'):(wa.state||t('hero.checking')))
+        .replace('{leads}', c.leads_today??0).replace('{alerts}', c.alerts_today??0)
+        .replace('{health}', healthBad?t('hero.healthCritical'):(healthWarn?t('hero.healthWarn'):'ok'))
     : 'Il gateway non risponde. Il watchdog tenta il ripristino automatico.';
   $('heroModel').textContent = safe(()=>m.primary||'—');
   $('heroUptime').textContent = safe(()=>gw.uptime||'—');
   $('heroKeys').textContent = safe(()=>`${k.total??0} / ${(k.gemini?.max??5)+(k.groq_backup?.max??5)}`);
-  $('heroHealth').textContent = h.available ? (healthBad ? 'critico' : (healthWarn ? 'avvisi' : 'ok')) : 'da scansionare';
+  $('heroHealth').textContent = h.available ? (healthBad ? t('hero.healthCritical') : (healthWarn ? t('health.warn') : t('health.ok'))) : t('hero.health');
   $('heroHealth').className = healthBad ? 'danger' : (healthWarn ? 'gold' : 'ok');
   renderTokenAlert(h);
   $('heroApprovals').textContent = c.approvals_pending??0;
   const badge=$('approvalBadge');
   if(badge){ badge.textContent=c.approvals_pending??0; badge.style.display=(c.approvals_pending??0)>0?'inline-flex':'none'; }
   $('mLeads').textContent = c.leads_today??0;
-  $('sLeads').textContent = `${c.leads_total??0} totali · ${c.senders_today??0} numeri`;
+  $('sLeads').textContent = `${c.leads_total??0} ${t('ov.total')} · ${c.senders_today??0} ${t('ov.numbers')}`;
   $('mSenders').textContent = c.senders_today??0;
   $('sSenders').textContent = 'contatti unici oggi';
   $('mAlerts').textContent = c.alerts_today??0;
-  $('sAlerts').textContent = `${c.scams_today??0} truffe · ${c.hot_today??0} call`;
+  $('sAlerts').textContent = `${c.scams_today??0} ${t('ov.scams')} · ${c.hot_today??0} ${t('ov.calls')}`;
   $('mScams').textContent = c.scams_today??0;
   $('sScams').textContent = 'truffe bloccate oggi';
-  $('sysGateway').innerHTML = online ? '<span class="ok">attivo</span>' : '<span class="danger">offline</span>';
+  $('sysGateway').innerHTML = online ? `<span class="ok">${esc(t('state.active'))}</span>` : '<span class="danger">offline</span>';
   $('sysWa').textContent = `${wa.state||'—'} · ${wa.lifecycle||'—'}`;
   $('sysUptime').textContent = gw.uptime||'—';
-  $('monitorNext').textContent = timerText(t.monitor);
-  $('watchdogNext').textContent = timerText(t.watchdog);
-  $('digestNext').textContent = timerText(t.digest);
-  if($('sysHealth')) $('sysHealth').textContent = timerText(t.health);
+  $('monitorNext').textContent = timerText(tm.monitor);
+  $('watchdogNext').textContent = timerText(tm.watchdog);
+  $('digestNext').textContent = timerText(tm.digest);
+  if($('sysHealth')) $('sysHealth').textContent = timerText(tm.health);
   $('modelChips').innerHTML = [`<span class="chip ok">${esc(m.primary||'—')}</span>`, ...(m.fallbacks||[]).map(x=>`<span class="chip">${esc(x)}</span>`)].join('');
   $('toolsState').textContent = m.tools||'nessuno';
   $('keysMini').textContent = `${k.gemini?.count??0} Gemini · ${k.groq_backup?.count??0} Groq backup`;
   $('footerDate').textContent = fmtDate(s.now);
   $('footerDash').textContent = `${s.dashboard?.host||''}:${s.dashboard?.port||''} · uptime ${s.dashboard?.uptime??0}s`;
-  $('sysGw').innerHTML = online ? '<span class="ok">attivo</span>' : '<span class="danger">offline</span>';
+  $('sysGw').innerHTML = online ? `<span class="ok">${esc(t('state.active'))}</span>` : '<span class="danger">offline</span>';
   $('sysPid').textContent = gw.pid||'—';
   $('sysUp').textContent = gw.uptime||'—';
   $('sysWa2').textContent = `${wa.state||'—'} · ${wa.lifecycle||'—'}`;
   $('sysReconnect').textContent = wa.reconnect??0;
   $('sysLastEvent').textContent = fmtMs(wa.lastEvent);
-  $('sysMonitor').textContent = timerText(t.monitor);
-  $('sysDigest').textContent = timerText(t.digest);
-  $('sysWatchdog').textContent = timerText(t.watchdog);
+  $('sysMonitor').textContent = timerText(tm.monitor);
+  $('sysDigest').textContent = timerText(tm.digest);
+  $('sysWatchdog').textContent = timerText(tm.watchdog);
   $('sysDash').textContent = `${s.dashboard?.uptime??0}s`;
   renderActivity(s.activity);
   renderRecent();
@@ -1004,7 +1007,7 @@ function healthItem(c){
   return `<div class="health-item ${esc(status)}">
     <h3><span>${esc(c.label||c.id||'Controllo')}</span>${healthStatusChip(status)}</h3>
     <p>${esc(c.detail||'')}</p>
-    ${c.expires?`<div class="health-exp">Scadenza: ${esc(c.expires)}</div>`:''}
+    ${c.expires?`<div class="health-exp">${esc(t('health.expiry').replace('{date}', c.expires))}</div>`:''}
     ${c.action?`<div class="health-action">→ ${esc(c.action)}</div>`:''}
   </div>`;
 }
@@ -1024,7 +1027,7 @@ function renderTokenAlert(h){
   $('tokenAlertTitle').textContent = isGoogle
     ? (worst.status==='critical'?'Gmail e Calendar sono fermi':'Token Google in scadenza')
     : (worst.label||'Token da rinnovare');
-  $('tokenAlertText').textContent = String(worst.detail||'').trim() + (worst.expires?` Scadenza: ${worst.expires}.`:'');
+  $('tokenAlertText').textContent = String(worst.detail||'').trim() + (worst.expires?` ${t('health.expiry').replace('{date}', worst.expires)}.`:'');
   $('tokenAlertRenew').hidden=!isGoogle;
 }
 let renewAuthUrl='';
@@ -1039,12 +1042,12 @@ async function googleRenewStart(){
     $('renewLink').href=r.auth_url;
     $('renewBox').hidden=false;
     $('googleRenewClose').hidden=false;
-    $('renewState').textContent=`Consenso pronto per ${r.account}. Apri Google, premi Consenti e incolla qui l'indirizzo finale.`;
+    $('renewState').textContent=t('consent.ready').replace('{account}', r.account);
     $('renewUrl').value='';
     switchTab('health');
     window.open(r.auth_url,'_blank','noopener');
     $('renewUrl').focus();
-  }catch(e){ if(e.message!=='auth') toast('Google: '+e.message,true); }
+  }catch(e){ if(e.message!=='auth') toast(t('lbl.google')+': '+e.message,true); }
   finally{ if(btn) btn.textContent='Riautorizza Google'; [btn,alertBtn].forEach(b=>{if(b) b.disabled=false;}); }
 }
 async function googleRenewFinish(){
@@ -1054,11 +1057,11 @@ async function googleRenewFinish(){
   try{
     const r=await api('/api/google/renew/finish',{method:'POST',body:JSON.stringify({auth_url:url})});
     if(!r.ok) throw new Error(r.error||'scambio non riuscito');
-    toast('Google riautorizzato: Gmail e Calendar sono attivi.');
+    toast(t('toast.googleReauth'));
     $('renewBox').hidden=true; $('googleRenewClose').hidden=true; renewAuthUrl='';
     $('renewState').textContent='Gmail e Calendar attivi: nessuna azione richiesta.';
     await loadHealth(true); load();
-  }catch(e){ if(e.message!=='auth') toast('Google: '+e.message,true); }
+  }catch(e){ if(e.message!=='auth') toast(t('lbl.google')+': '+e.message,true); }
   finally{ b.disabled=false; b.textContent=old; }
 }
 function renderHealth(d){
@@ -1070,12 +1073,12 @@ function renderHealth(d){
   const cls=overall==='critical'?'critical':(overall==='warn'?'warn':(overall==='ok'?'ok':''));
   $('healthBanner').className='health-banner '+cls;
   $('healthTitle').textContent=!available?'Nessuna scansione ancora':(overall==='critical'?'Serve un intervento':(overall==='warn'?'Qualcosa da controllare':(overall==='ok'?'Tutto in ordine':'Scansione salute')));
-  $('healthSub').textContent=!available?'Premi “Esegui scansione completa” per controllare configurazione, token, servizi, Google e disco.':`${data.counts?.ok??0} ok · ${data.counts?.warn??0} avvisi · ${data.counts?.critical??0} critici`;
+  $('healthSub').textContent=!available?t('health.scanHint'):`${data.counts?.ok??0} ${t('health.ok')} · ${data.counts?.warn??0} ${t('health.warn')} · ${data.counts?.critical??0} ${t('health.critical')}`;
   $('healthScore').textContent=available?`${data.counts?.critical??0}/${checks.length}`:'—';
   $('healthScoreLabel').textContent='critici / controlli';
-  $('healthLast').textContent=available?`Ultima scansione: ${fmtDate(data.generated_at)} · ${data.duration_ms??0} ms`:'Nessuna scansione disponibile.';
+  $('healthLast').textContent=available?t('scan.last').replace('{when}', fmtDate(data.generated_at)).replace('{ms}', data.duration_ms??0):'Nessuna scansione disponibile.';
   $('healthBadge').className='chip '+(overall==='critical'?'bad':(overall==='warn'?'gold':(overall==='ok'?'ok':'')));
-  $('healthBadge').textContent=available?(overall==='critical'?'critico':(overall==='warn'?'avvisi':'ok')):'—';
+  $('healthBadge').textContent=available?(overall==='critical'?t('health.critical'):(overall==='warn'?t('health.warn'):t('health.ok'))):'—';
   $('healthChecks').innerHTML=checks.length?checks.map(healthItem).join(''):'<div class="empty">Nessun controllo disponibile.</div>';
   $('healthTokens').innerHTML=tokens.length?tokens.map(t=>`<tr><td><b>${esc(t.label||t.id||'—')}</b></td><td>${healthStatusChip(t.status)}</td><td class="mono">${esc(t.expires||'—')}</td><td class="muted">${esc(t.detail||'')}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">Nessun token rilevato.</td></tr>';
   $('healthAlerts').innerHTML=alerts.length?alerts.map(a=>`<div class="health-item ${a.severity==='critical'?'critical':'warn'}" style="margin-bottom:8px"><h3><span>${esc(a.title||'Avviso')}</span>${healthStatusChip(a.severity)}</h3><p>${esc(a.message||'')}</p>${a.action?`<div class="health-action">→ ${esc(a.action)}</div>`:''}</div>`).join(''):'<span class="ok">Nessun avviso attivo.</span>';
@@ -1087,13 +1090,13 @@ async function loadHealth(force=false){
     try{
       const r=await api('/api/health/scan',{method:'POST',body:'{}'});
       renderHealth(r.data||{});
-      toast(r.ok?'Scansione completa terminata.':'Scansione terminata con errori: '+(r.error||''),!r.ok);
+      toast(r.ok?'Scansione completa terminata.':t('scan.errors').replace('{error}', r.error||''),!r.ok);
       if(r.ok) load();
-    }catch(e){ toast('Health: '+e.message,true); }
+    }catch(e){ toast(t('lbl.health')+': '+e.message,true); }
     finally{ btn.disabled=false; btn.textContent=old; }
   }else{
     try{ const r=await api('/api/health'); renderHealth(r.data||{}); }
-    catch(e){ if(e.message!=='auth') toast('Health: '+e.message,true); }
+    catch(e){ if(e.message!=='auth') toast(t('lbl.health')+': '+e.message,true); }
   }
 }
 function moneyText(value, currency){
@@ -1142,14 +1145,14 @@ function approvalCard(x){
 function renderApprovals(d){
   state.approvals=d||{};
   const pending=d?.pending||[], counts=d?.counts||{}, recent=d?.recent||[];
-  $('approvalCounts').innerHTML = `<span class="chip gold">${counts.pending??pending.length} in attesa</span><span class="chip ok">${counts.approved??0} approvate</span><span class="chip">${counts.rejected??0} rifiutate</span><span class="chip bad">${counts.failed??0} fallite</span>`;
+  $('approvalCounts').innerHTML = `<span class="chip gold">${counts.pending??pending.length} ${esc(t('ap.pending'))}</span><span class="chip ok">${counts.approved??0} ${esc(t('ap.approved'))}</span><span class="chip">${counts.rejected??0} ${esc(t('ap.rejected'))}</span><span class="chip bad">${counts.failed??0} ${esc(t('ap.failed'))}</span>`;
   const history=recent.filter(x=>x.status!=='pending').slice(0,12);
   $('approvalsList').innerHTML = (pending.length ? pending.map(approvalCard).join('') : '<div class="empty">Nessuna richiesta in attesa.</div>')
     + (history.length ? '<div class="divider"></div><h2 style="margin-top:12px">Storico recente</h2>'+history.map(approvalCard).join('') : '');
 }
 async function loadApprovals(){
   try{ const r=await api('/api/approvals?limit=120'); renderApprovals(r.data||{}); }
-  catch(e){ if(e.message!=='auth') toast('Approvazioni: '+e.message,true); }
+  catch(e){ if(e.message!=='auth') toast(t('lbl.approvals')+': '+e.message,true); }
 }
 $('refreshApprovalsBtn').addEventListener('click',loadApprovals);
 $('testEmailBtn').addEventListener('click', async ()=>{
@@ -1158,7 +1161,7 @@ $('testEmailBtn').addEventListener('click', async ()=>{
   try{
     const res=await api('/api/email/test',{method:'POST',body:'{}'});
     toast(res.result||'Email di prova inviata.',!res.ok);
-  }catch(e){ toast('Errore: '+e.message,true); }
+  }catch(e){ toast(t('lbl.error')+': '+e.message,true); }
   finally{ b.disabled=false; b.textContent=old; }
 });
 $('testQuoteEmailBtn').addEventListener('click', async ()=>{
@@ -1167,7 +1170,7 @@ $('testQuoteEmailBtn').addEventListener('click', async ()=>{
   try{
     const res=await api('/api/email/test-quote',{method:'POST',body:'{}'});
     toast(res.result||'Preventivo di prova inviato con PDF.',!res.ok);
-  }catch(e){ toast('Errore: '+e.message,true); }
+  }catch(e){ toast(t('lbl.error')+': '+e.message,true); }
   finally{ b.disabled=false; b.textContent=old; }
 });
 $('approvalsList').addEventListener('click', async (e)=>{
@@ -1180,9 +1183,9 @@ $('approvalsList').addEventListener('click', async (e)=>{
   (a||r).disabled=true;
   try{
     const res=await api('/api/approvals/'+action,{method:'POST',body:JSON.stringify({id})});
-    toast(action==='approve'?('Approvata: '+(res.result||'azione eseguita')):'Richiesta rifiutata.',!res.ok);
+    toast(action==='approve'?t('approve.done').replace('{result}', res.result||t('approve.executed')):'Richiesta rifiutata.',!res.ok);
     await loadApprovals(); load();
-  }catch(err){ toast('Errore: '+err.message,true); }
+  }catch(err){ toast(t('lbl.error')+': '+err.message,true); }
   finally{ (a||r).disabled=false; }
 });
 function quoteStatusChip(x){
@@ -1207,7 +1210,7 @@ function renderQuotes(d){
   const pending=rows0.filter(x=>x.status==='pending').length;
   const sent=rows0.filter(x=>x.status==='approved').length;
   const expired=rows0.filter(x=>x.expired&&x.status==='pending').length;
-  if($('quoteCounts')) $('quoteCounts').innerHTML = `<span class="chip gold">${pending} in attesa</span><span class="chip ok">${sent} inviati</span>`+(expired?`<span class="chip bad">${expired} scaduti</span>`:'')+`<span class="chip">${rows0.length} preventivi</span>`+(c.quotes?'' : '');
+  if($('quoteCounts')) $('quoteCounts').innerHTML = `<span class="chip gold">${pending} ${esc(t('q.pending'))}</span><span class="chip ok">${sent} ${esc(t('q.sent'))}</span>`+(expired?`<span class="chip bad">${expired} ${esc(t('q.expired'))}</span>`:'')+`<span class="chip">${rows0.length} ${esc(t('q.count'))}</span>`+(c.quotes?'' : '');
   if(!$('quotesBody')) return;
   const q=($('quoteSearch')?.value||'').toLowerCase();
   const rows=q?rows0.filter(x=>[x.number,x.client,x.email].some(v=>String(v||'').toLowerCase().includes(q))):rows0;
@@ -1220,7 +1223,7 @@ function renderQuotes(d){
 }
 async function loadQuotes(){
   try{ const r=await api('/api/quotes'); renderQuotes(r.data||{}); }
-  catch(e){ if(e.message!=='auth') toast('Preventivi: '+e.message,true); }
+  catch(e){ if(e.message!=='auth') toast(t('quotes.error').replace('{error}', e.message),true); }
 }
 $('refreshQuotesBtn').addEventListener('click',loadQuotes);
 $('newQuoteBtn').addEventListener('click',()=>openQuoteBuilder());
@@ -1242,9 +1245,9 @@ $('demoQuoteBtn').addEventListener('click', async ()=>{
   const b=$('demoQuoteBtn'); b.disabled=true; const old=b.textContent; b.textContent='Genero…';
   try{
     const r=await api('/api/quotes/demo',{method:'POST',body:'{}'});
-    toast('Preventivo demo '+(r.number||'')+' creato: PDF pronto.');
+    toast(t('toast.demoCreated').replace('{n}', r.number||''));
     await loadQuotes(); await loadApprovals(); load();
-  }catch(e){ toast('Preventivo: '+e.message,true); }
+  }catch(e){ toast(t('quote.error').replace('{error}', e.message),true); }
   finally{ b.disabled=false; b.textContent=old; }
 });
 function quoteItemRow(item){
@@ -1252,7 +1255,7 @@ function quoteItemRow(item){
   const row=document.createElement('div');
   row.className='quote-item';
   row.style.cssText='display:grid;grid-template-columns:minmax(0,2.4fr) .7fr .8fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center';
-  row.innerHTML=`<input class="input qi-desc" placeholder="Descrizione voce" value="${esc(item.description||'')}">
+  row.innerHTML=`<input class="input qi-desc" placeholder="${esc(t('quote.descPH'))}" value="${esc(item.description||'')}">
     <input class="input qi-qty" type="number" step="0.01" min="0.01" value="${esc(item.qty??1)}" title="Quantità">
     <input class="input qi-unit" placeholder="unità" value="${esc(item.unit||'')}">
     <input class="input qi-price" type="number" step="0.01" min="0" placeholder="prezzo €" value="${esc(item.unit_price??'')}">
@@ -1302,17 +1305,17 @@ async function submitQuote(){
     notes: $('qNotes').value.trim(),
     subject: $('qSubject').value.trim(),
   };
-  if(!payload.client_name){ toast('Inserisci il nome del cliente.',true); return; }
+  if(!payload.client_name){ toast(t('toast.clientRequired'),true); return; }
   if(!payload.client_email){ toast("Inserisci l'email del cliente: serve per inviare il preventivo.",true); return; }
-  if(!items.length){ toast('Aggiungi almeno una voce con descrizione e prezzo.',true); return; }
+  if(!items.length){ toast(t('toast.itemsRequired'),true); return; }
   const b=$('createQuoteBtn'); b.disabled=true; const old=b.textContent; b.textContent='Genero il PDF…';
   try{
     const r=await api('/api/quotes',{method:'POST',body:JSON.stringify(payload)});
     if(!r.ok) throw new Error(r.error||'creazione non riuscita');
-    toast('Preventivo '+(r.number||'')+' pronto: PDF creato e in attesa di approvazione.');
+    toast(t('toast.quoteReady').replace('{n}', r.number||''));
     $('quoteBuilderCard').hidden=true;
     await loadQuotes(); await loadApprovals(); load();
-  }catch(e){ toast('Preventivo: '+e.message,true); }
+  }catch(e){ toast(t('quote.error').replace('{error}', e.message),true); }
   finally{ b.disabled=false; b.textContent=old; }
 }
 async function previewQuoteEmail(id){
@@ -1321,11 +1324,11 @@ async function previewQuoteEmail(id){
     if(!r.ok) throw new Error(r.error||'anteprima non disponibile');
     $('demoPreviewCard').hidden=false;
     $('demoPreviewFrame').srcdoc=r.html||'';
-    $('demoPreviewMeta').innerHTML=`<span class="chip ok">Nessun invio</span><span class="chip mono">${esc(r.number||'')}</span><span class="chip">${esc(r.to||'')}</span>`;
+    $('demoPreviewMeta').innerHTML=`<span class="chip ok">${esc(t('quote.noSend'))}</span><span class="chip mono">${esc(r.number||'')}</span><span class="chip">${esc(r.to||'')}</span>`;
     $('demoPreviewPdf').href='/api/quotes/'+encodeURIComponent(id)+'.pdf';
     $('demoPreviewCard').scrollIntoView({behavior:'smooth',block:'start'});
-    toast('Anteprima email pronta: nessun invio.');
-  }catch(e){ toast('Anteprima: '+e.message,true); }
+    toast(t('toast.emailPreview'));
+  }catch(e){ toast(t('lbl.preview')+': '+e.message,true); }
 }
 async function loadCapabilities(){
   try{
@@ -1352,11 +1355,11 @@ $('previewDemoBtn').addEventListener('click', async ()=>{
     if(!r.ok) throw new Error(r.error||'anteprima non disponibile');
     $('demoPreviewCard').hidden=false;
     $('demoPreviewFrame').srcdoc=r.html||'';
-    $('demoPreviewMeta').innerHTML=`<span class="chip ok">Nessun invio</span><span class="chip mono">${esc(r.number||'demo')}</span><span class="chip">${esc(moneyText(r.total,r.currency))}</span><span class="chip">${Number(r.items)||0} voci</span><span class="chip">PDF ${esc(r.pdf_filename||'')}</span>`;
+    $('demoPreviewMeta').innerHTML=`<span class="chip ok">${esc(t('quote.noSend'))}</span><span class="chip mono">${esc(r.number||'demo')}</span><span class="chip">${esc(moneyText(r.total,r.currency))}</span><span class="chip">${Number(r.items)||0} ${esc(t('quote.items'))}</span><span class="chip">PDF ${esc(r.pdf_filename||'')}</span>`;
     $('demoPreviewPdf').href='/api/quotes/demo.pdf';
     $('demoPreviewCard').scrollIntoView({behavior:'smooth',block:'start'});
-    toast('Anteprima pronta: nessuna email inviata.');
-  }catch(e){ toast('Anteprima: '+e.message,true); }
+    toast(t('toast.previewNoSend'));
+  }catch(e){ toast(t('lbl.preview')+': '+e.message,true); }
   finally{ b.disabled=false; b.textContent=old; }
 });
 
@@ -1364,7 +1367,7 @@ function renderContacts(d){
   const data=(d&&d.contacts!==undefined)?d:(state.contacts||{}); state.contacts=data;
   const rows=data.contacts||[];
   const pending=Object.values(data.pending_by_phone||{}).reduce((a,b)=>a+b,0);
-  if($('contactsCounts')) $('contactsCounts').innerHTML = `<span class="chip">${data.total??rows.length} contatti</span><span class="chip">${data.messages??0} messaggi</span>` + (pending?`<span class="chip gold">${pending} richieste aperte</span>`:'');
+  if($('contactsCounts')) $('contactsCounts').innerHTML = `<span class="chip">${data.total??rows.length} ${esc(t('c.contacts'))}</span><span class="chip">${data.messages??0} ${esc(t('c.messages'))}</span>` + (pending?`<span class="chip gold">${pending} ${esc(t('c.open'))}</span>`:'');
   if($('contactsSummary')) $('contactsSummary').textContent=data.summary||'Nessun riepilogo disponibile.';
   if(!$('contactsBody')) return;
   $('contactsBody').innerHTML = rows.length ? rows.map(x=>{
@@ -1374,14 +1377,14 @@ function renderContacts(d){
 }
 async function loadContacts(){
   try{ const r=await api('/api/contacts'); renderContacts(r.data||{}); }
-  catch(e){ if(e.message!=='auth') toast('Contatti: '+e.message,true); }
+  catch(e){ if(e.message!=='auth') toast(t('contacts.error').replace('{error}', e.message),true); }
 }
 $('refreshContactsBtn').addEventListener('click',loadContacts);
 $('contactsSummaryBtn').addEventListener('click', async ()=>{
   if(!confirm('Inviare il riepilogo contatti sul tuo WhatsApp?')) return;
   const b=$('contactsSummaryBtn'); b.disabled=true; const old=b.textContent; b.textContent='Invio…';
   try{ const r=await api('/api/contacts/summary',{method:'POST',body:JSON.stringify({send:true})}); toast(r.sent?'Riepilogo inviato sul tuo WhatsApp.':'Riepilogo preparato (invio non eseguito).',!r.sent); }
-  catch(e){ toast('Riepilogo: '+e.message,true); }
+  catch(e){ toast(t('summary.error').replace('{error}', e.message),true); }
   finally{ b.disabled=false; b.textContent=old; }
 });
 $('remindersBtn').addEventListener('click', async ()=>{
@@ -1389,7 +1392,7 @@ $('remindersBtn').addEventListener('click', async ()=>{
   try{
     const r=await api('/api/reminders/run',{method:'POST',body:JSON.stringify({force:true})});
     toast(r.sent?'Promemoria inviato su WhatsApp.':'Nessun promemoria da inviare.',!r.ok);
-  }catch(e){ toast('Promemoria: '+e.message,true); }
+  }catch(e){ toast(t('lbl.reminder')+': '+e.message,true); }
   finally{ b.disabled=false; b.textContent=old; }
 });
 
@@ -1423,6 +1426,50 @@ const I18N={
     'usage.title':'Quote AI','usage.apply':'Applica modello consigliato',
     'usage.requests':'richieste','usage.latency':'latenza media','usage.none':'Nessun dato di utilizzo ancora.',
     'usage.model':'Modello consigliato','usage.alerts':'Avvisi',
+    'hero.sub':'WhatsApp {wa} · {leads} lead oggi · {alerts} alert · Health {health}.',
+    'hero.connected':'connesso','hero.checking':'in verifica','hero.health':'da scansionare',
+    'hero.healthCritical':'critico','hero.healthWarn':'da controllare',
+    'ov.total':'totali','ov.numbers':'numeri','ov.scams':'truffe','ov.calls':'call',
+    'state.active':'attivo','state.stopped':'fermo',
+    'model.applied':'Modello: {model}','model.notApplied':'Modello non applicato: {error}',
+    'scan.last':'Ultima scansione: {when} · {ms} ms','scan.errors':'Scansione terminata con errori: {error}',
+    'consent.ready':'Consenso pronto per {account}. Apri Google, premi Consenti e incolla qui l\'indirizzo finale.',
+    'bridge.unverified':'Bridge configurato, ma la verifica non risponde: {error}',
+    'health.expiry':'Scadenza: {date}',
+    'quotes.error':'Preventivi: {error}','quote.error':'Preventivo: {error}',
+    'contacts.error':'Contatti: {error}','summary.error':'Riepilogo: {error}',
+    'monitor.output':'Monitor: {output}','approve.done':'Approvata: {result}',
+    'approve.executed':'azione eseguita',
+    'test.sent':'Messaggio di test inviato su WhatsApp.','test.failed':'Invio non riuscito: {error}',
+    'chart.aria':'{day}: {messages} messaggi, {leads} lead',
+    'error':'errore','bridge.checkApps':'controlla Apps Script',
+    'brand.tagline':'assistente digitale · dashboard privata',
+    'hero.offline':'Gateway offline','hero.waCheck':'WhatsApp da verificare',
+    'hero.healthAction':'Health: azione richiesta','hero.healthWarn':'Health: avvisi',
+    'hero.allOnline':'Tutto online','health.ok':'ok','health.warn':'avvisi','health.critical':'critici',
+    'health.scanHint':'Premi “Esegui scansione completa” per controllare configurazione, token, servizi, Google e disco.',
+    'bridge.check':'da verificare',
+    'lbl.google':'Google','lbl.health':'Health','lbl.approvals':'Approvazioni','lbl.error':'Errore',
+    'lbl.preview':'Anteprima','lbl.reminder':'Promemoria','lbl.conversations':'Conversazioni',
+    'lbl.stats':'Statistiche','lbl.connectors':'Connettori','lbl.manualCopy':'Copia manuale',
+    'lbl.bridge':'Bridge','lbl.transcript':'Transcript','lbl.handoff':'Handoff',
+    'toast.googleReauth':'Google riautorizzato: Gmail e Calendar sono attivi.',
+    'toast.demoCreated':'Preventivo demo {n} creato: PDF pronto.',
+    'toast.clientRequired':'Inserisci il nome del cliente.',
+    'toast.itemsRequired':'Aggiungi almeno una voce con descrizione e prezzo.',
+    'toast.quoteReady':'Preventivo {n} pronto: PDF creato e in attesa di approvazione.',
+    'toast.emailPreview':'Anteprima email pronta: nessun invio.',
+    'toast.previewNoSend':'Anteprima pronta: nessuna email inviata.',
+    'toast.csv':'CSV esportato.','toast.restart':'Riavvio richiesto…',
+    'toast.geminiCleared':'Pool Gemini svuotato.','toast.groqCleared':'Pool Groq svuotato.',
+    'toast.connectorsOk':'Verifica completata.','toast.bridgeOk':'Bridge verificato e operativo.',
+    'toast.bridgeOff':'Bridge non ancora attivato: esegui l’attivazione una tantum.',
+    'toast.copied':'Comando copiato. Incollalo nel terminale WSL.',
+    'toast.noLines':'(nessuna riga)','quote.descPH':'Descrizione voce','quote.noSend':'Nessun invio',
+    'quote.items':'voci',
+    'ap.pending':'in attesa','ap.approved':'approvate','ap.rejected':'rifiutate','ap.failed':'fallite',
+    'q.pending':'in attesa','q.sent':'inviati','q.expired':'scaduti','q.count':'preventivi',
+    'c.contacts':'contatti','c.messages':'messaggi','c.open':'richieste aperte',
   },
   en:{
     'nav.overview':'Overview','nav.health':'Health','nav.leads':'Leads','nav.alerts':'Alerts',
@@ -1441,6 +1488,50 @@ const I18N={
     'usage.title':'AI quotas','usage.apply':'Apply recommended model',
     'usage.requests':'requests','usage.latency':'average latency','usage.none':'No usage data yet.',
     'usage.model':'Recommended model','usage.alerts':'Alerts',
+    'hero.sub':'WhatsApp {wa} · {leads} leads today · {alerts} alerts · Health {health}.',
+    'hero.connected':'connected','hero.checking':'checking','hero.health':'to scan',
+    'hero.healthCritical':'critical','hero.healthWarn':'to check',
+    'ov.total':'total','ov.numbers':'numbers','ov.scams':'scams','ov.calls':'calls',
+    'state.active':'active','state.stopped':'stopped',
+    'model.applied':'Model: {model}','model.notApplied':'Model not applied: {error}',
+    'scan.last':'Last scan: {when} · {ms} ms','scan.errors':'Scan finished with errors: {error}',
+    'consent.ready':'Consent ready for {account}. Open Google, press Allow and paste the final address here.',
+    'bridge.unverified':'Bridge configured, but the check is not responding: {error}',
+    'health.expiry':'Expiry: {date}',
+    'quotes.error':'Quotes: {error}','quote.error':'Quote: {error}',
+    'contacts.error':'Contacts: {error}','summary.error':'Summary: {error}',
+    'monitor.output':'Monitor: {output}','approve.done':'Approved: {result}',
+    'approve.executed':'action completed',
+    'test.sent':'Test message sent on WhatsApp.','test.failed':'Send failed: {error}',
+    'chart.aria':'{day}: {messages} messages, {leads} leads',
+    'error':'error','bridge.checkApps':'check Apps Script',
+    'brand.tagline':'digital assistant · private dashboard',
+    'hero.offline':'Gateway offline','hero.waCheck':'WhatsApp to verify',
+    'hero.healthAction':'Health: action needed','hero.healthWarn':'Health: warnings',
+    'hero.allOnline':'All online','health.ok':'ok','health.warn':'warnings','health.critical':'critical',
+    'health.scanHint':'Press “Run full scan” to check configuration, tokens, services, Google and disk.',
+    'bridge.check':'to verify',
+    'lbl.google':'Google','lbl.health':'Health','lbl.approvals':'Approvals','lbl.error':'Error',
+    'lbl.preview':'Preview','lbl.reminder':'Reminder','lbl.conversations':'Conversations',
+    'lbl.stats':'Stats','lbl.connectors':'Connectors','lbl.manualCopy':'Manual copy',
+    'lbl.bridge':'Bridge','lbl.transcript':'Transcript','lbl.handoff':'Handoff',
+    'toast.googleReauth':'Google reauthorized: Gmail and Calendar are active.',
+    'toast.demoCreated':'Demo quote {n} created: PDF ready.',
+    'toast.clientRequired':'Enter the customer name.',
+    'toast.itemsRequired':'Add at least one item with description and price.',
+    'toast.quoteReady':'Quote {n} ready: PDF created and waiting for approval.',
+    'toast.emailPreview':'Email preview ready: nothing sent.',
+    'toast.previewNoSend':'Preview ready: no email sent.',
+    'toast.csv':'CSV exported.','toast.restart':'Restart requested…',
+    'toast.geminiCleared':'Gemini pool cleared.','toast.groqCleared':'Groq pool cleared.',
+    'toast.connectorsOk':'Check completed.','toast.bridgeOk':'Bridge verified and working.',
+    'toast.bridgeOff':'Bridge not activated yet: run the one-time activation.',
+    'toast.copied':'Command copied. Paste it in the WSL terminal.',
+    'toast.noLines':'(no lines)','quote.descPH':'Item description','quote.noSend':'Not sent',
+    'quote.items':'items',
+    'ap.pending':'pending','ap.approved':'approved','ap.rejected':'rejected','ap.failed':'failed',
+    'q.pending':'pending','q.sent':'sent','q.expired':'expired','q.count':'quotes',
+    'c.contacts':'contacts','c.messages':'messages','c.open':'open requests',
   }
 };
 /* Traduzione delle schede storiche: mappa italiana → inglese generata dal file
@@ -1532,7 +1623,7 @@ async function loadConversations(){
     const r=await api('/api/conversations?limit=100');
     state.conversations=r.data||[];
     renderConversations();
-  }catch(e){ if(e.message!=='auth') toast('Conversazioni: '+e.message,true); }
+  }catch(e){ if(e.message!=='auth') toast(t('lbl.conversations')+': '+e.message,true); }
 }
 function renderConversations(){
   const box=$('conversationsBody'); if(!box) return;
@@ -1564,7 +1655,7 @@ async function openTranscript(phone){
     if($('handoffBtn')) $('handoffBtn').hidden=active;
     if($('handoffRelease')) $('handoffRelease').hidden=!active;
     $('transcriptBox').scrollTop=$('transcriptBox').scrollHeight;
-  }catch(e){ toast('Transcript: '+e.message,true); }
+  }catch(e){ toast(t('lbl.transcript')+': '+e.message,true); }
 }
 async function setHandoff(active){
   if(!state.phone) return;
@@ -1573,7 +1664,7 @@ async function setHandoff(active){
     if(!r.ok) throw new Error(r.error||'handoff non riuscito');
     toast(active?t('conv.human'):'Gina');
     await openTranscript(state.phone); await loadConversations();
-  }catch(e){ toast('Handoff: '+e.message,true); }
+  }catch(e){ toast(t('lbl.handoff')+': '+e.message,true); }
 }
 
 /* ---- Statistiche e quote AI ---- */
@@ -1582,7 +1673,7 @@ async function loadStats(){
     const [d,u]=await Promise.all([api('/api/stats'),api('/api/usage')]);
     state.stats=d.data||{}; state.usage=u||{};
     renderStats();
-  }catch(e){ if(e.message!=='auth') toast('Statistiche: '+e.message,true); }
+  }catch(e){ if(e.message!=='auth') toast(t('lbl.stats')+': '+e.message,true); }
 }
 function renderStats(){
   const k=(state.stats&&state.stats.kpis)||{};
@@ -1611,7 +1702,7 @@ function renderStats(){
       const h=Math.round(((Number(d.messages)||0)/max)*100);
       return `<div class="chart-bar" title="${esc(d.day)}: ${Number(d.messages)||0} msg, ${Number(d.leads)||0} lead"><span style="height:${h}%"></span><em>${esc(String(d.day).slice(5))}</em></div>`;
     }).join('');
-    chart.setAttribute('aria-label',daily.map(d=>`${d.day}: ${Number(d.messages)||0} messaggi, ${Number(d.leads)||0} lead`).join('; '));
+    chart.setAttribute('aria-label',daily.map(d=>t('chart.aria').replace('{day}', d.day).replace('{messages}', Number(d.messages)||0).replace('{leads}', Number(d.leads)||0)).join('; '));
   }
 
   const usage=state.usage&&state.usage.data?state.usage.data:(state.usage||{});
@@ -1633,9 +1724,9 @@ function renderStats(){
 async function applyModel(){
   try{
     const r=await api('/api/model/apply',{method:'POST',body:'{}'});
-    toast(r.ok?('Modello: '+r.model):('Modello non applicato: '+(r.error||'errore')),!r.ok);
+    toast(r.ok?t('model.applied').replace('{model}', r.model):t('model.notApplied').replace('{error}', r.error||t('error')),!r.ok);
     loadStats();
-  }catch(e){ toast('Modello: '+e.message,true); }
+  }catch(e){ toast(t('model.applied').replace('{model}', e.message),true); }
 }
 
 async function initGina(){
@@ -1673,7 +1764,7 @@ async function load(){
     loadCapabilities();
     if(state.tab==='security') loadSecurity();
     if(state.tab==='health') loadHealth();
-  }catch(e){ if(e.message!=='auth') toast('Errore: '+e.message,true); }
+  }catch(e){ if(e.message!=='auth') toast(t('lbl.error')+': '+e.message,true); }
 }
 function switchTab(name){
   state.tab=name;
@@ -1707,8 +1798,8 @@ $('healthNotifyBtn').addEventListener('click', async ()=>{
   const b=$('healthNotifyBtn'); b.disabled=true; const old=b.textContent; b.textContent='Invio…';
   try{
     const r=await api('/api/health/notify',{method:'POST',body:'{}'});
-    toast(r.ok?'Messaggio di test inviato su WhatsApp.':'Invio non riuscito: '+(r.error||r.output||''),!r.ok);
-  }catch(e){ toast('Health: '+e.message,true); }
+    toast(r.ok?t('test.sent'):t('test.failed').replace('{error}', r.error||r.output||''),!r.ok);
+  }catch(e){ toast(t('lbl.health')+': '+e.message,true); }
   finally{ b.disabled=false; b.textContent=old; }
 });
 $('leadSearch').addEventListener('input',renderLeads);
@@ -1721,7 +1812,7 @@ $('exportLeadsBtn').addEventListener('click',()=>{
   const blob=new Blob(["\ufeff"+csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='lead-segreteria.csv'; a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
-  toast('CSV esportato.');
+  toast(t('toast.csv'));
 });
 
 $('loginForm').addEventListener('submit', async (e)=>{
@@ -1736,17 +1827,17 @@ $('loginForm').addEventListener('submit', async (e)=>{
 
 async function doRestart(){
   if(!confirm('Riavviare il gateway? Il bot tornerà online in pochi secondi.')) return;
-  try{ await api('/api/restart',{method:'POST'}); toast('Riavvio richiesto…'); setTimeout(load,6000); }catch(e){ toast('Errore: '+e.message,true); }
+  try{ await api('/api/restart',{method:'POST'}); toast(t('toast.restart')); setTimeout(load,6000); }catch(e){ toast(t('lbl.error')+': '+e.message,true); }
 }
 $('restartBtn').addEventListener('click',doRestart);
 $('restartBtn2').addEventListener('click',doRestart);
 async function doMonitor(){
-  try{ const r=await api('/api/monitor',{method:'POST'}); toast('Monitor: '+String(r.output||'ok').slice(0,180)); load(); }catch(e){ toast('Errore: '+e.message,true); }
+  try{ const r=await api('/api/monitor',{method:'POST'}); toast(t('monitor.output').replace('{output}', String(r.output||'ok').slice(0,180))); load(); }catch(e){ toast(t('lbl.error')+': '+e.message,true); }
 }
 $('monitorBtn').addEventListener('click',doMonitor);
 $('monitorBtn2').addEventListener('click',doMonitor);
 $('logsBtn').addEventListener('click', async ()=>{
-  try{ const r=await api('/api/logs?lines=100'); $('logsBox').textContent=(r.lines||[]).join('\n')||'(nessuna riga)'; }catch(e){ toast('Errore: '+e.message,true); }
+  try{ const r=await api('/api/logs?lines=100'); $('logsBox').textContent=(r.lines||[]).join('\n')||t('toast.noLines'); }catch(e){ toast(t('lbl.error')+': '+e.message,true); }
 });
 
 function doctorChip(status){
@@ -1758,7 +1849,7 @@ function renderDoctor(d){
   if(!rows.length){ $('doctorResult').innerHTML='<div class="empty">'+esc((d&&d.error)||'Nessun controllo disponibile.')+'</div>'; return; }
   const c=(d&&d.counts)||{};
   $('doctorResult').innerHTML=
-    `<div class="chips" style="margin-bottom:10px"><span class="chip ok">${c.ok||0} ok</span><span class="chip gold">${c.warn||0} avvisi</span><span class="chip bad">${c.fail||0} critici</span></div>`+
+    `<div class="chips" style="margin-bottom:10px"><span class="chip ok">${c.ok||0} ${esc(t('health.ok'))}</span><span class="chip gold">${c.warn||0} ${esc(t('health.warn'))}</span><span class="chip bad">${c.fail||0} ${esc(t('health.critical'))}</span></div>`+
     rows.map(x=>`<div class="health-item ${x.status==='fail'?'critical':(x.status==='warn'?'warn':'ok')}" style="margin-bottom:8px">`+
       `<h3><span>${esc(x.label||'')}</span>${doctorChip(x.status)}</h3>`+
       `<p>${esc(x.detail||'')}</p>`+
@@ -1767,7 +1858,7 @@ function renderDoctor(d){
 async function runDoctor(){
   const btn=$('doctorBtn'); btn.disabled=true; btn.textContent='Diagnosi…';
   try{ const r=await api('/api/doctor'); renderDoctor(r); toast(r.ok?'Diagnosi completata: nessun blocco.':'Diagnosi completata: vedi i critici.',!r.ok); }
-  catch(e){ toast('Errore: '+e.message,true); }
+  catch(e){ toast(t('lbl.error')+': '+e.message,true); }
   finally{ btn.disabled=false; btn.textContent='Esegui diagnosi'; }
 }
 $('doctorBtn').addEventListener('click',runDoctor);
@@ -1786,18 +1877,18 @@ async function savePool(kind){
     $('keysResult').innerHTML='<span class="ok">Pool salvato. Gateway in riavvio.</span>';
     toast(r.restarting?'Pool salvato, riavvio in corso…':'Pool salvato');
     setTimeout(()=>{ delete $('keysResult').dataset.keep; load(); },7000);
-  }catch(e){ toast('Errore: '+e.message,true); }
+  }catch(e){ toast(t('lbl.error')+': '+e.message,true); }
   finally{ btn.disabled=false; }
 }
 $('saveGeminiBtn').addEventListener('click',()=>savePool('gemini'));
 $('saveGroqBtn').addEventListener('click',()=>savePool('groq'));
 $('clearGeminiBtn').addEventListener('click', async ()=>{
   if(!confirm('Svuotare il pool Gemini?')) return;
-  try{ await api('/api/keys/save',{method:'POST',body:JSON.stringify({gemini_keys:[]})}); toast('Pool Gemini svuotato.'); setTimeout(load,6000); }catch(e){ toast('Errore: '+e.message,true); }
+  try{ await api('/api/keys/save',{method:'POST',body:JSON.stringify({gemini_keys:[]})}); toast(t('toast.geminiCleared')); setTimeout(load,6000); }catch(e){ toast(t('lbl.error')+': '+e.message,true); }
 });
 $('clearGroqBtn').addEventListener('click', async ()=>{
   if(!confirm('Svuotare il pool Groq backup?')) return;
-  try{ await api('/api/keys/save',{method:'POST',body:JSON.stringify({groq_backup_keys:[]})}); toast('Pool Groq svuotato.'); setTimeout(load,6000); }catch(e){ toast('Errore: '+e.message,true); }
+  try{ await api('/api/keys/save',{method:'POST',body:JSON.stringify({groq_backup_keys:[]})}); toast(t('toast.groqCleared')); setTimeout(load,6000); }catch(e){ toast(t('lbl.error')+': '+e.message,true); }
 });
 $('testKeysBtn').addEventListener('click', async ()=>{
   const btn=$('testKeysBtn'); btn.disabled=true;
@@ -1809,7 +1900,7 @@ $('testKeysBtn').addEventListener('click', async ()=>{
     $('keysResult').innerHTML = (g.length||q.length)
       ? [...g.map(x=>row(x,'Gemini')), ...q.map(x=>row(x,'Groq'))].join(' ')
       : 'Nessuna chiave configurata.';
-  }catch(e){ $('keysResult').textContent='Errore: '+e.message; }
+  }catch(e){ $('keysResult').textContent=t('lbl.error')+': '+e.message; }
   finally{ btn.disabled=false; }
 });
 
@@ -1831,18 +1922,18 @@ async function loadConnectors(){
     $('bridgeChip').textContent = b.configured ? (b.healthy === false ? 'errore' : 'configurato') : 'non attivo';
     $('bridgeMode').textContent = b.configured ? 'Apps Script · permanente' : 'OAuth locale';
     $('bridgeHost').textContent = b.host || '—';
-    $('bridgeHealth').textContent = b.healthy === true ? 'ok' : (b.healthy === false ? (b.health_error || 'errore') : (b.configured ? 'da verificare' : '—'));
+    $('bridgeHealth').textContent = b.healthy === true ? t('health.ok') : (b.healthy === false ? (b.health_error || t('error')) : (b.configured ? t('bridge.check') : '—'));
     $('connConcurrent').textContent = p.max_concurrent ?? '—';
     $('connQueue').textContent = p.queue || '—';
     $('connDebounce').textContent = (p.debounce_ms ?? '—') + ' ms';
     $('connWaDebounce').textContent = (p.whatsapp_debounce_ms ?? '—') + ' ms';
     $('connOwner').textContent = d.owner || '—';
-  }catch(e){ toast('Connettori: '+e.message,true); }
+  }catch(e){ toast(t('lbl.connectors')+': '+e.message,true); }
 }
 $('testConnectorsBtn').addEventListener('click', async ()=>{
   const b=$('testConnectorsBtn'); b.disabled=true; b.textContent='Verifica…';
-  try{ await api('/api/connectors/test',{method:'POST'}); await loadConnectors(); toast('Verifica completata.'); }
-  catch(e){ toast('Errore: '+e.message,true); }
+  try{ await api('/api/connectors/test',{method:'POST'}); await loadConnectors(); toast(t('toast.connectorsOk')); }
+  catch(e){ toast(t('lbl.error')+': '+e.message,true); }
   finally{ b.disabled=false; b.textContent='Verifica connessione'; }
 });
 $('bridgeTestBtn').addEventListener('click', async ()=>{
@@ -1850,17 +1941,17 @@ $('bridgeTestBtn').addEventListener('click', async ()=>{
   try{
     await api('/api/connectors/test',{method:'POST'}); await loadConnectors();
     const bridge=(state.connectors||{}).bridge||{};
-    if(bridge.configured && bridge.healthy!==false) toast('Bridge verificato e operativo.');
-    else if(bridge.configured) toast('Bridge configurato, ma la verifica non risponde: '+((bridge.health_error)||'controlla Apps Script'),true);
-    else toast('Bridge non ancora attivato: esegui l’attivazione una tantum.',true);
+    if(bridge.configured && bridge.healthy!==false) toast(t('toast.bridgeOk'));
+    else if(bridge.configured) toast(t('bridge.unverified').replace('{error}', (bridge.health_error)||t('bridge.checkApps')),true);
+    else toast(t('toast.bridgeOff'),true);
   }
-  catch(e){ toast('Bridge: '+e.message,true); }
+  catch(e){ toast(t('lbl.bridge')+': '+e.message,true); }
   finally{ b.disabled=false; b.textContent='Verifica bridge'; }
 });
 $('bridgeCopyBtn').addEventListener('click', async ()=>{
   const cmd='bash ~/.openclaw/secretary/google-bridge/installa-bridge.sh';
-  try{ await navigator.clipboard.writeText(cmd); toast('Comando copiato. Incollalo nel terminale WSL.'); }
-  catch(e){ toast('Copia manuale: '+cmd,true); }
+  try{ await navigator.clipboard.writeText(cmd); toast(t('toast.copied')); }
+  catch(e){ toast(t('lbl.manualCopy')+': '+cmd,true); }
 });
 
 async function loadSecurity(){
@@ -1879,7 +1970,7 @@ async function loadSecurity(){
 $('loadAuditBtn').addEventListener('click',loadSecurity);
 $('rotateTokenBtn').addEventListener('click', async ()=>{
   if(!confirm('Rigenerare il token? Le altre sessioni della dashboard verranno scollegate.')) return;
-  try{ await api('/api/security/rotate',{method:'POST'}); toast('Token ruotato. Nuovo token nel file locale.'); loadSecurity(); }catch(e){ toast('Errore: '+e.message,true); }
+  try{ await api('/api/security/rotate',{method:'POST'}); toast('Token ruotato. Nuovo token nel file locale.'); loadSecurity(); }catch(e){ toast(t('lbl.error')+': '+e.message,true); }
 });
 
 document.addEventListener('keydown',(e)=>{

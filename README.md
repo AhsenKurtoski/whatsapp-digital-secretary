@@ -82,6 +82,8 @@ with Meta or WhatsApp.
 - **Owner reminders** — an hourly, deduplicated WhatsApp reminder for approvals waiting
   too long, upcoming appointments and expiring tokens.
 - **Multilingual** — answers in Italian or English based on the customer's message.
+- **Bilingual dashboard** — every tab, table, toast and dynamic label switches between
+  Italian and English, and the choice is remembered locally.
 - **Multiple conversations** — one isolated session per phone number, with a queue
   for bursts. Configure `maxConcurrent` for your machine and provider quota.
 - **Anti-fraud and anti-jailbreak** — never asks for OTPs, passwords, documents or

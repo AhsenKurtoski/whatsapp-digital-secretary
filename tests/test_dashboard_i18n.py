@@ -18,7 +18,8 @@ IDENTICAL_ALLOWED = {
     "bash ~/.openclaw/secretary/google-bridge/installa-bridge.sh",
     "~/.openclaw/secretary/dashboard_token", "⤓ CSV", "No", "Google AI Studio",
     "Groq Console", "Cloudflare", "OAuth locale", "Desktop", "Dashboard uptime",
-    "Endpoint", "Gateway",
+    "Endpoint", "Gateway", " min", "Email", "Monitor: ", "no",
+    "ok", "Gateway offline", "Bridge", "Transcript", "Handoff",
 }
 
 
@@ -63,11 +64,38 @@ class DashboardI18nTests(unittest.TestCase):
         self.assertEqual(missing, [], "stringhe senza traduzione: " + "; ".join(missing[:10]))
 
     def test_translated_values_are_real_translations(self):
+        allowed = {normalize(item) for item in IDENTICAL_ALLOWED}
         same = sorted(
             key for key, value in self.translations.items()
-            if normalize(key) == normalize(value) and normalize(key) not in IDENTICAL_ALLOWED
+            if normalize(key) == normalize(value) and normalize(key) not in allowed
         )
         self.assertEqual(same, [], "valori non tradotti: " + "; ".join(same[:10]))
+
+    def test_every_t_key_used_by_the_script_exists(self):
+        source = (ROOT / "dashboard.html").read_text(encoding="utf-8")
+        script = "\n".join(re.findall(r"<script>(.*?)</script>", source, flags=re.S))
+        keys = set(re.findall(r"\bt\('([^']+)'\)", script))
+        self.assertTrue(keys, "nessuna chiave t() trovata")
+        inline = script.split("const I18N=", 1)[1].split("const TEXT_EN", 1)[0]
+        defined = set(re.findall(r"'([a-zA-Z][a-zA-Z0-9_.]*)'\s*:", inline))
+        missing = sorted(key for key in keys if key not in defined)
+        self.assertEqual(missing, [], "chiavi t() senza traduzione: " + "; ".join(missing))
+
+    def test_dynamic_text_uses_translation_helper(self):
+        source = (ROOT / "dashboard.html").read_text(encoding="utf-8")
+        script = "\n".join(re.findall(r"<script>(.*?)</script>", source, flags=re.S))
+        italian = re.compile(r"[àèéìòùÀÈÉÌÒÙ]|\b(Nessun|Nessuna|nessun|avvisi|contatti|preventivi|fermo|scansion|ripristin|Errore|Richiesta|Approv|Rifiut|Modello|Scadenza|Messagg|Cliente|Titolare|prezzo|valore|configur|verific|riepilogo|promemoria)\b", re.I)
+        literals = re.findall(r"(?:textContent|innerHTML)\s*=\s*(?:`([^`]+)`|'([^']{0,160})'|\"([^\"]{0,160})\")", script)
+        offenders = []
+        for triple in literals:
+            text = next((part for part in triple if part), "")
+            if "${t(" in text or "esc(t(" in text or "t('" in text:
+                continue
+            if normalize(text) in self.translations:
+                continue
+            if italian.search(text):
+                offenders.append(text[:120])
+        self.assertEqual(offenders, [], "testo dinamico non tradotto: " + " | ".join(offenders[:5]))
 
     def test_template_placeholder_is_served_filled(self):
         source = (ROOT / "dashboard.html").read_text(encoding="utf-8")

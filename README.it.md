@@ -82,6 +82,8 @@ Meta o WhatsApp.
 - **Promemoria al titolare** — ogni ora, con deduplicazione, un messaggio WhatsApp per
   approvazioni ferme da troppo tempo, appuntamenti imminenti e token in scadenza.
 - **Multilingua** — risponde in italiano o inglese in base al messaggio del cliente.
+- **Dashboard bilingue** — ogni scheda, tabella, avviso ed etichetta dinamica passa tra
+  italiano e inglese, e la scelta resta salvata in locale.
 - **Conversazioni multiple** — una sessione isolata per numero, con coda per i picchi.
   Configura `maxConcurrent` in base a macchina e quota del provider.
 - **Anti-truffa e anti-jailbreak** — non chiede mai OTP, password, documenti o pagamenti;
