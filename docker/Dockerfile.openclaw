@@ -1,0 +1,30 @@
+# OpenClaw in container per il compose full-stack di Gina.
+#
+# Non contiene la dashboard: quella gira nel servizio separato. Il volume
+# /data conserva configurazione, sessione WhatsApp e database degli agenti;
+# senza quel volume il login WhatsApp va rifatto a ogni ricreazione.
+FROM node:22-bookworm-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl python3 python3-venv git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Versione fissata alla minima supportata dal progetto: aggiorna consapevolmente.
+ARG OPENCLAW_VERSION=2026.10.9
+RUN npm install -g "openclaw@${OPENCLAW_VERSION}" \
+    && npm cache clean --force
+
+WORKDIR /app
+COPY . /app
+
+ENV OPENCLAW_HOME=/data/openclaw \
+    OPENCLAW_STATE_DIR=/data/openclaw/state \
+    OPENCLAW_CONFIG_PATH=/data/openclaw/openclaw.json \
+    HOME=/data
+
+RUN mkdir -p /data/openclaw /data/secretary \
+    && chmod 700 /data/openclaw /data/secretary
+
+EXPOSE 18789
+# `gateway run` resta in foreground: è il processo che il container mantiene vivo.
+CMD ["openclaw", "gateway", "run", "--host", "127.0.0.1", "--port", "18789"]

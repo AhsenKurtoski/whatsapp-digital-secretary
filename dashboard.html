@@ -200,8 +200,32 @@ select option{background:#081420}
 @media (max-width:1050px){.span3,.span4,.span6{grid-column:span 6}.span5,.span7,.span8,.span12{grid-column:span 12}.metric{font-size:29px}}
 @media (max-width:680px){.span3,.span4,.span6{grid-column:span 12}.app{padding:18px 14px 44px}.brand{min-width:0}.header-right{width:100%;margin-left:0}.clock{display:none}.tabs{padding:5px;flex-wrap:wrap;overflow:visible}.tab{padding:9px 10px;flex:1 1 28%;text-align:center}.hero{padding:19px}.hero-side{width:100%}.hero-chip{flex:1}.metric{font-size:27px}.demo-email-frame{height:560px}.table-wrap:has(td.empty) table{min-width:0}.table-wrap:has(td.empty) thead{display:none}}
 </style>
+<style>
+  /* Accessibilità: link di salto, focus visibile, testo secondario con contrasto AA. */
+  :root{--dim:#829fb6}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  .skip-link{position:absolute;left:12px;top:-60px;z-index:50;background:var(--sky);color:#04120f;padding:10px 14px;border-radius:10px;font-weight:700;transition:top .15s}
+  .skip-link:focus{top:12px}
+  :focus-visible{outline:2px solid var(--sky);outline-offset:2px;border-radius:8px}
+  .section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  .transcript{max-height:440px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:6px}
+  .bubble{max-width:82%;padding:9px 12px;border-radius:14px;font-size:13.2px;line-height:1.45;border:1px solid var(--stroke)}
+  .bubble.user{align-self:flex-start;background:rgba(18,38,58,.7)}
+  .bubble.assistant{align-self:flex-end;background:rgba(94,234,212,.12);border-color:rgba(94,234,212,.3)}
+  .bubble-meta{font-size:10.5px;color:var(--muted);margin-bottom:3px;letter-spacing:.04em;text-transform:uppercase}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .kpi{padding:14px;border:1px solid var(--stroke);border-radius:16px;background:var(--glass)}
+  .kpi small{display:block;color:var(--muted);font-size:11.5px;margin-bottom:6px}
+  .kpi strong{font-size:23px;letter-spacing:-.02em}
+  .chart{display:flex;align-items:flex-end;gap:6px;height:150px;margin:12px 0 22px}
+  .chart-bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;background:rgba(125,211,252,.06);border-radius:6px;position:relative}
+  .chart-bar span{display:block;background:linear-gradient(180deg,var(--sky),var(--mint));border-radius:6px;min-height:2px}
+  .chart-bar em{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:9.5px;color:var(--dim);font-style:normal}
+  .usage-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--stroke);flex-wrap:wrap}
+</style>
 </head>
 <body>
+<a class="skip-link" href="#main">Salta al contenuto</a>
 
 <div id="login" class="login-overlay" hidden>
   <form id="loginForm" class="login-card" autocomplete="off">
@@ -228,26 +252,78 @@ select option{background:#081420}
     <div class="header-right">
       <span class="clock" id="clock">—</span>
       <span class="pill"><span id="pillDot" class="dot"></span><span id="pillText">Verifica…</span></span>
+      <label class="sr-only" for="langSelect">Lingua della dashboard</label>
+      <select id="langSelect" class="btn ghost" aria-label="Lingua della dashboard">
+        <option value="it">IT</option><option value="en">EN</option>
+      </select>
       <button class="btn ghost" id="refreshBtn" type="button">↻ Aggiorna</button>
       <a class="btn ghost" href="/logout">Esci</a>
     </div>
   </div>
 
-  <nav class="tabs">
-    <button class="tab active" data-tab="overview">Panoramica</button>
-    <button class="tab" data-tab="health">Health <span id="healthBadge" class="chip" style="padding:2px 6px;margin-left:4px">—</span></button>
-    <button class="tab" data-tab="leads">Lead</button>
-    <button class="tab" data-tab="alerts">Alert</button>
-    <button class="tab" data-tab="approvals">Approvazioni <span id="approvalBadge" class="chip gold" style="padding:2px 6px;margin-left:4px">0</span></button>
-    <button class="tab" data-tab="quotes">Preventivi</button>
-    <button class="tab" data-tab="contacts">Contatti</button>
-    <button class="tab" data-tab="keys">Chiavi</button>
-    <button class="tab" data-tab="connectors">Connettori</button>
-    <button class="tab" data-tab="security">Sicurezza</button>
-    <button class="tab" data-tab="system">Sistema</button>
+  <nav class="tabs" aria-label="Sezioni della dashboard" role="tablist">
+    <button class="tab active" data-tab="overview" role="tab" aria-selected="true" aria-controls="tab-overview"><span data-i18n="nav.overview">Panoramica</span></button>
+    <button class="tab" data-tab="health" role="tab" aria-selected="false" aria-controls="tab-health"><span data-i18n="nav.health">Health</span> <span id="healthBadge" class="chip" style="padding:2px 6px;margin-left:4px">—</span></button>
+    <button class="tab" data-tab="leads" role="tab" aria-selected="false" aria-controls="tab-leads"><span data-i18n="nav.leads">Lead</span></button>
+    <button class="tab" data-tab="alerts" role="tab" aria-selected="false" aria-controls="tab-alerts"><span data-i18n="nav.alerts">Alert</span></button>
+    <button class="tab" data-tab="approvals" role="tab" aria-selected="false" aria-controls="tab-approvals"><span data-i18n="nav.approvals">Approvazioni</span> <span id="approvalBadge" class="chip gold" style="padding:2px 6px;margin-left:4px">0</span></button>
+    <button class="tab" data-tab="quotes" role="tab" aria-selected="false" aria-controls="tab-quotes"><span data-i18n="nav.quotes">Preventivi</span></button>
+    <button class="tab" data-tab="conversations" role="tab" aria-selected="false" aria-controls="tab-conversations"><span data-i18n="nav.conversations">Conversazioni</span></button>
+    <button class="tab" data-tab="stats" role="tab" aria-selected="false" aria-controls="tab-stats"><span data-i18n="nav.stats">Statistiche</span></button>
+    <button class="tab" data-tab="contacts" role="tab" aria-selected="false" aria-controls="tab-contacts"><span data-i18n="nav.contacts">Contatti</span></button>
+    <button class="tab" data-tab="keys" role="tab" aria-selected="false" aria-controls="tab-keys"><span data-i18n="nav.keys">Chiavi</span></button>
+    <button class="tab" data-tab="connectors" role="tab" aria-selected="false" aria-controls="tab-connectors"><span data-i18n="nav.connectors">Connettori</span></button>
+    <button class="tab" data-tab="security" role="tab" aria-selected="false" aria-controls="tab-security"><span data-i18n="nav.security">Sicurezza</span></button>
+    <button class="tab" data-tab="system" role="tab" aria-selected="false" aria-controls="tab-system"><span data-i18n="nav.system">Sistema</span></button>
   </nav>
 
-  <main>
+  <main id="main">
+
+    <section id="tab-conversations" class="section" role="tabpanel" aria-labelledby="tab-conversations-title">
+      <div class="card">
+        <div class="section-head">
+          <h2 id="tab-conversations-title" data-i18n="conv.title">Conversazioni</h2>
+          <span class="chip" id="convCount">—</span>
+        </div>
+        <p class="muted" data-i18n="conv.hint">Transcript WhatsApp in sola lettura. I dati personali sono mascherati; puoi prendere il controllo di una conversazione e restituirla a Gina quando vuoi.</p>
+        <label class="sr-only" for="convSearch" data-i18n="conv.search">Cerca conversazione</label>
+        <input class="input" id="convSearch" type="search" placeholder="Cerca nome, numero o messaggio…" data-i18n-ph="conv.search" style="max-width:360px">
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th data-i18n="conv.col.last">Ultimo messaggio</th><th data-i18n="conv.col.name">Nome</th><th data-i18n="conv.col.phone">Numero</th>
+            <th data-i18n="conv.col.count">Messaggi</th><th data-i18n="conv.col.lang">Lingua</th><th data-i18n="conv.col.state">Gestione</th>
+            <th data-i18n="conv.col.preview">Anteprima</th><th><span class="sr-only">Azioni</span></th>
+          </tr></thead>
+          <tbody id="conversationsBody"></tbody>
+        </table></div>
+      </div>
+      <div class="card" id="transcriptCard" hidden>
+        <div class="section-head">
+          <h2 id="transcriptTitle">—</h2>
+          <div class="row">
+            <button class="btn primary" id="handoffBtn" type="button" data-i18n="conv.take">Prendi il controllo</button>
+            <button class="btn ghost" id="handoffRelease" type="button" data-i18n="conv.release">Restituisci a Gina</button>
+            <button class="btn ghost" id="transcriptClose" type="button" data-i18n="conv.close">Chiudi</button>
+          </div>
+        </div>
+        <div id="transcriptBox" class="transcript" aria-live="polite" aria-label="Transcript della conversazione"></div>
+      </div>
+    </section>
+
+    <section id="tab-stats" class="section" role="tabpanel" aria-labelledby="tab-stats-title">
+      <div class="card">
+        <div class="section-head"><h2 id="tab-stats-title" data-i18n="stats.title">Statistiche</h2><span class="chip" id="statsGenerated">—</span></div>
+        <div class="kpis" id="statsKpis"></div>
+      </div>
+      <div class="card">
+        <h3 data-i18n="stats.chart">Messaggi e lead, ultimi 14 giorni</h3>
+        <div class="chart" id="statsChart" role="img" aria-label="Grafico dei messaggi e lead degli ultimi 14 giorni"></div>
+      </div>
+      <div class="card">
+        <div class="section-head"><h3 data-i18n="usage.title">Quote AI</h3><button class="btn ghost" id="applyModelBtn" type="button" data-i18n="usage.apply">Applica modello consigliato</button></div>
+        <div id="usageBox"></div>
+      </div>
+    </section>
     <div id="tokenAlert" class="health-banner critical tab-alert" hidden>
       <div>
         <h2 id="tokenAlertTitle">Token Google da rinnovare</h2>
@@ -1328,6 +1404,198 @@ function renderKeys(){
     : '<span class="chip">Nessun fallback configurato</span>';
   if(!$('keysResult').dataset.keep) $('keysResult').textContent = 'Nessuna verifica eseguita.';
 }
+/* ---- Internazionalizzazione della dashboard (IT/EN) ---- */
+const I18N={
+  it:{
+    'nav.overview':'Panoramica','nav.health':'Health','nav.leads':'Lead','nav.alerts':'Alert',
+    'nav.approvals':'Approvazioni','nav.quotes':'Preventivi','nav.conversations':'Conversazioni',
+    'nav.stats':'Statistiche','nav.contacts':'Contatti','nav.keys':'Chiavi','nav.connectors':'Connettori',
+    'nav.security':'Sicurezza','nav.system':'Sistema',
+    'conv.title':'Conversazioni','conv.hint':'Transcript WhatsApp in sola lettura. I dati personali sono mascherati; puoi prendere il controllo di una conversazione e restituirla a Gina quando vuoi.',
+    'conv.search':'Cerca nome, numero o messaggio…','conv.col.last':'Ultimo messaggio','conv.col.name':'Nome',
+    'conv.col.phone':'Numero','conv.col.count':'Messaggi','conv.col.lang':'Lingua','conv.col.state':'Gestione',
+    'conv.col.preview':'Anteprima','conv.take':'Prendi il controllo','conv.release':'Restituisci a Gina','conv.close':'Chiudi',
+    'conv.empty':'Nessuna conversazione','conv.human':'Controllo umano','conv.open':'Apri',
+    'stats.title':'Statistiche','stats.chart':'Messaggi e lead, ultimi 14 giorni',
+    'stats.conversations':'Conversazioni','stats.leads':'Lead','stats.quotes':'Preventivi emessi',
+    'stats.approved':'Preventivi approvati','stats.conversion':'Conversione lead','stats.response':'Tempo medio di risposta',
+    'stats.score':'Score medio lead','stats.value':'Valore approvato','stats.handoffs':'Handoff attivi','stats.suspicious':'Messaggi sospetti',
+    'usage.title':'Quote AI','usage.apply':'Applica modello consigliato',
+    'usage.requests':'richieste','usage.latency':'latenza media','usage.none':'Nessun dato di utilizzo ancora.',
+    'usage.model':'Modello consigliato','usage.alerts':'Avvisi',
+  },
+  en:{
+    'nav.overview':'Overview','nav.health':'Health','nav.leads':'Leads','nav.alerts':'Alerts',
+    'nav.approvals':'Approvals','nav.quotes':'Quotes','nav.conversations':'Conversations',
+    'nav.stats':'Analytics','nav.contacts':'Contacts','nav.keys':'Keys','nav.connectors':'Connectors',
+    'nav.security':'Security','nav.system':'System',
+    'conv.title':'Conversations','conv.hint':'Read-only WhatsApp transcripts. Personal data is masked; you can take over a conversation and hand it back to Gina whenever you want.',
+    'conv.search':'Search name, number or message…','conv.col.last':'Last message','conv.col.name':'Name',
+    'conv.col.phone':'Number','conv.col.count':'Messages','conv.col.lang':'Language','conv.col.state':'Handling',
+    'conv.col.preview':'Preview','conv.take':'Take over','conv.release':'Hand back to Gina','conv.close':'Close',
+    'conv.empty':'No conversations','conv.human':'Human takeover','conv.open':'Open',
+    'stats.title':'Analytics','stats.chart':'Messages and leads, last 14 days',
+    'stats.conversations':'Conversations','stats.leads':'Leads','stats.quotes':'Quotes issued',
+    'stats.approved':'Approved quotes','stats.conversion':'Lead conversion','stats.response':'Average response time',
+    'stats.score':'Average lead score','stats.value':'Approved value','stats.handoffs':'Active handoffs','stats.suspicious':'Suspicious messages',
+    'usage.title':'AI quotas','usage.apply':'Apply recommended model',
+    'usage.requests':'requests','usage.latency':'average latency','usage.none':'No usage data yet.',
+    'usage.model':'Recommended model','usage.alerts':'Alerts',
+  }
+};
+function t(key){ const d=I18N[state.lang]||I18N.it; return d[key]||I18N.it[key]||key; }
+function applyLang(lang){
+  state.lang=(lang==='en')?'en':'it';
+  document.documentElement.lang=state.lang;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=t(el.dataset.i18n); if(v) el.textContent=v;});
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{const v=t(el.dataset.i18nPh); if(v) el.placeholder=v;});
+  const sel=$('langSelect'); if(sel) sel.value=state.lang;
+  try{localStorage.setItem('gina_lang',state.lang);}catch(e){}
+  if(state.conversations) renderConversations();
+  if(state.stats) renderStats();
+}
+function pct(x){ return Math.round((Number(x)||0)*100)+'%'; }
+function secs(x){ const n=Number(x)||0; return n>=60?Math.round(n/60)+' min':Math.round(n)+' s'; }
+
+/* ---- Conversazioni e handoff ---- */
+async function loadConversations(){
+  try{
+    const r=await api('/api/conversations?limit=100');
+    state.conversations=r.data||[];
+    renderConversations();
+  }catch(e){ if(e.message!=='auth') toast('Conversazioni: '+e.message,true); }
+}
+function renderConversations(){
+  const box=$('conversationsBody'); if(!box) return;
+  const q=($('convSearch')?.value||'').toLowerCase().trim();
+  const rows=(state.conversations||[]).filter(x=>!q||JSON.stringify(x).toLowerCase().includes(q));
+  const count=$('convCount'); if(count) count.textContent=rows.length;
+  box.innerHTML=rows.length?rows.map(x=>`<tr>
+    <td class="muted">${x.last_at?esc(fmtDate(x.last_at)):'—'}</td>
+    <td>${esc(x.name||'—')}</td>
+    <td class="mono">${esc(x.phone||'')}</td>
+    <td>${Number(x.messages)||0}</td>
+    <td>${esc(String(x.language||'').toUpperCase()||'—')}</td>
+    <td>${x.handoff?`<span class="chip gold">${esc(t('conv.human'))}</span>`:'<span class="chip ok">Gina</span>'}</td>
+    <td class="muted">${esc(x.preview||'')}</td>
+    <td><button class="btn ghost" type="button" data-phone="${esc(x.phone||'')}" onclick="openTranscript(this.dataset.phone)">${esc(t('conv.open'))}</button></td>
+  </tr>`).join(''):`<tr><td colspan="8" class="empty">${esc(t('conv.empty'))}</td></tr>`;
+}
+async function openTranscript(phone){
+  try{
+    const r=await api('/api/conversations/'+encodeURIComponent(phone));
+    state.phone=phone; state.transcript=r.data;
+    $('transcriptCard').hidden=false;
+    $('transcriptTitle').textContent=(r.data.name?r.data.name+' · ':'')+phone;
+    const rows=r.data.messages||[];
+    $('transcriptBox').innerHTML=rows.length?rows.map(m=>`<div class="bubble ${m.role==='user'?'user':'assistant'}">
+      <div class="bubble-meta">${m.role==='user'?'Cliente':'Gina'} · ${esc(String(m.ts||'').slice(11,16))}</div>
+      <div>${esc(m.text||'')}</div></div>`).join(''):'<p class="muted">—</p>';
+    const active=!!(r.data.handoff&&r.data.handoff.active);
+    if($('handoffBtn')) $('handoffBtn').hidden=active;
+    if($('handoffRelease')) $('handoffRelease').hidden=!active;
+    $('transcriptBox').scrollTop=$('transcriptBox').scrollHeight;
+  }catch(e){ toast('Transcript: '+e.message,true); }
+}
+async function setHandoff(active){
+  if(!state.phone) return;
+  try{
+    const r=await api('/api/conversations/handoff',{method:'POST',body:JSON.stringify({phone:state.phone,active:!!active})});
+    if(!r.ok) throw new Error(r.error||'handoff non riuscito');
+    toast(active?t('conv.human'):'Gina');
+    await openTranscript(state.phone); await loadConversations();
+  }catch(e){ toast('Handoff: '+e.message,true); }
+}
+
+/* ---- Statistiche e quote AI ---- */
+async function loadStats(){
+  try{
+    const [d,u]=await Promise.all([api('/api/stats'),api('/api/usage')]);
+    state.stats=d.data||{}; state.usage=u||{};
+    renderStats();
+  }catch(e){ if(e.message!=='auth') toast('Statistiche: '+e.message,true); }
+}
+function renderStats(){
+  const k=(state.stats&&state.stats.kpis)||{};
+  const items=[
+    ['stats.conversations',Number(k.conversations)||0],
+    ['stats.leads',Number(k.leads)||0],
+    ['stats.quotes',Number(k.quotes_issued)||0],
+    ['stats.approved',Number(k.quotes_approved)||0],
+    ['stats.conversion',pct(k.lead_conversion_rate)],
+    ['stats.response',secs(k.avg_response_seconds)],
+    ['stats.score',(Number(k.avg_lead_score)||0).toFixed(1)],
+    ['stats.value','€ '+((Number(k.quotes_value_approved)||0).toFixed(2))],
+    ['stats.handoffs',Number(k.handoffs_active)||0],
+    ['stats.suspicious',Number(k.suspicious_messages)||0],
+  ];
+  const box=$('statsKpis');
+  if(box) box.innerHTML=items.map(([key,value])=>`<div class="kpi"><small>${esc(t(key))}</small><strong>${esc(String(value))}</strong></div>`).join('');
+  const gen=$('statsGenerated');
+  if(gen) gen.textContent=state.stats&&state.stats.generated_at?fmtDate(state.stats.generated_at):'—';
+
+  const daily=(state.stats&&state.stats.daily)||[];
+  const max=Math.max(1,...daily.map(d=>Number(d.messages)||0));
+  const chart=$('statsChart');
+  if(chart){
+    chart.innerHTML=daily.map(d=>{
+      const h=Math.round(((Number(d.messages)||0)/max)*100);
+      return `<div class="chart-bar" title="${esc(d.day)}: ${Number(d.messages)||0} msg, ${Number(d.leads)||0} lead"><span style="height:${h}%"></span><em>${esc(String(d.day).slice(5))}</em></div>`;
+    }).join('');
+    chart.setAttribute('aria-label',daily.map(d=>`${d.day}: ${Number(d.messages)||0} messaggi, ${Number(d.leads)||0} lead`).join('; '));
+  }
+
+  const usage=state.usage&&state.usage.data?state.usage.data:(state.usage||{});
+  const providers=usage.providers||[];
+  const model=(state.usage&&state.usage.model)||{};
+  const ub=$('usageBox');
+  if(ub){
+    const rows=providers.map(p=>`<div class="usage-row">
+      <strong>${esc(p.provider)}</strong>
+      <span>${Number(p.requests)||0}/${Number(p.limit)||0} ${esc(t('usage.requests'))}${p.rate_limited?` · 429×${p.rate_limited}`:''}</span>
+      <span class="chip ${p.level==='ok'?'ok':(p.level==='warn'?'gold':'critical')}">${esc(p.level||'—')}</span>
+      <span class="muted">${esc(t('usage.latency'))}: ${Number(p.avg_latency_ms)||0} ms</span>
+    </div>`).join('');
+    const alerts=(usage.alerts||[]).map(a=>`<p class="muted">⚠️ ${esc(a)}</p>`).join('');
+    const rec=model.primary?`<p class="muted"><strong>${esc(t('usage.model'))}:</strong> <span class="mono">${esc(model.primary)}</span> · ${esc((model.reasons||[]).join(' · '))}</p>`:'';
+    ub.innerHTML=(rows||`<p class="muted">${esc(t('usage.none'))}</p>`)+alerts+rec;
+  }
+}
+async function applyModel(){
+  try{
+    const r=await api('/api/model/apply',{method:'POST',body:'{}'});
+    toast(r.ok?('Modello: '+r.model):('Modello non applicato: '+(r.error||'errore')),!r.ok);
+    loadStats();
+  }catch(e){ toast('Modello: '+e.message,true); }
+}
+
+async function initGina(){
+  let saved='it';
+  try{saved=localStorage.getItem('gina_lang')||'it';}catch(e){}
+  applyLang(saved);
+  const sel=$('langSelect');
+  if(sel) sel.addEventListener('change',()=>applyLang(sel.value));
+  try{ const me=await api('/api/me'); state.me=me.user; }catch(e){ state.me={role:'viewer',can_write:false}; }
+  const canWrite=!!(state.me&&state.me.can_write);
+  ['handoffBtn','applyModelBtn'].forEach(id=>{ if($(id)) $(id).hidden=!canWrite; });
+  if($('handoffBtn')) $('handoffBtn').addEventListener('click',()=>setHandoff(true));
+  if($('handoffRelease')) $('handoffRelease').addEventListener('click',()=>setHandoff(false));
+  if($('transcriptClose')) $('transcriptClose').addEventListener('click',()=>{$('transcriptCard').hidden=true;});
+  if($('convSearch')) $('convSearch').addEventListener('input',renderConversations);
+  if($('applyModelBtn')) $('applyModelBtn').addEventListener('click',applyModel);
+  const nav=document.querySelector('nav.tabs');
+  if(nav) nav.addEventListener('keydown',(e)=>{
+    if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft') return;
+    const tabs=[...nav.querySelectorAll('.tab')];
+    const index=tabs.findIndex(b=>b.classList.contains('active'));
+    e.preventDefault();
+    const next=tabs[(index+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length];
+    next.focus(); switchTab(next.dataset.tab);
+  });
+  if(state.role==='viewer') document.body.dataset.role='viewer';
+}
+initGina();
+
 async function load(){
   try{
     const st=await api('/api/status');
@@ -1340,7 +1608,11 @@ async function load(){
 }
 function switchTab(name){
   state.tab=name;
-  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+  document.querySelectorAll('.tab').forEach(b=>{
+    const on=b.dataset.tab===name;
+    b.classList.toggle('active',on);
+    b.setAttribute('aria-selected',on?'true':'false');
+  });
   document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id==='tab-'+name));
   if(name==='security') loadSecurity();
   if(name==='connectors') loadConnectors();
@@ -1348,6 +1620,8 @@ function switchTab(name){
   if(name==='quotes') loadQuotes();
   if(name==='contacts') loadContacts();
   if(name==='health') loadHealth();
+  if(name==='conversations') loadConversations();
+  if(name==='stats') loadStats();
   if(name==='system') $('logsBox').textContent='Premi “Carica log”.';
 }
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));

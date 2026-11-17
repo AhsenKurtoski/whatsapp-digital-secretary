@@ -12,7 +12,7 @@ import glob
 import json
 import os
 import shutil
-from datetime import datetime, timezone as dt_timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
@@ -124,7 +124,7 @@ def resolve_timezone(name: str | None = None):
     except ZoneInfoNotFoundError:
         if available_timezones():
             raise
-        return datetime.now().astimezone().tzinfo or dt_timezone.utc
+        return datetime.now().astimezone().tzinfo or UTC
 
 
 def wa_link() -> str:

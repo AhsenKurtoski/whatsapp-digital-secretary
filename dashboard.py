@@ -70,6 +70,34 @@ try:
     import contacts as contacts_history
 except Exception:
     contacts_history = None
+try:
+    import conversations as conversations_view
+except Exception:
+    conversations_view = None
+try:
+    import stats as stats_view
+except Exception:
+    stats_view = None
+try:
+    import identity as identity_store
+except Exception:
+    identity_store = None
+try:
+    import quotas as quotas_view
+except Exception:
+    quotas_view = None
+try:
+    import webhooks as webhooks_view
+except Exception:
+    webhooks_view = None
+try:
+    import gdpr as gdpr_tools
+except Exception:
+    gdpr_tools = None
+try:
+    import router as router_view
+except Exception:
+    router_view = None
 CONNECTOR_CACHE = {"ts": 0.0, "data": None}
 BRIDGE_CONFIG = os.path.join(BASE, "google_bridge.json")
 LOG = os.path.join(BASE, "dashboard.log")
@@ -581,7 +609,7 @@ def connector_status() -> dict:
             "max_concurrent": int(defaults.get("maxConcurrent") or 1),
             "queue": str((messages.get("queue") or {}).get("mode") or "steer"),
             "debounce_ms": int((messages.get("inbound") or {}).get("debounceMs") or 0),
-            "whatsapp_debounce_ms": int((((messages.get("inbound") or {}).get("byChannel") or {}).get("whatsapp") or 0)),
+            "whatsapp_debounce_ms": int(((messages.get("inbound") or {}).get("byChannel") or {}).get("whatsapp") or 0),
         },
         "owner": (OWNER[:3] + " *** " + OWNER[-4:]) if len(OWNER) >= 7 else OWNER,
     }
@@ -1411,6 +1439,20 @@ def approve_request(request_id: str) -> dict:
         return {"ok": False, "error": str(exc)[:600], "id": request_id}
     approval_store.set_status(request_id, "approved", result=result)
     log(f"approval approved {request_id} type={request.get('type')}")
+    if webhooks_view is not None:
+        event = {"quote": "quote.approved", "calendar": "appointment.created"}.get(
+            str(request.get("type") or "")
+        )
+        if event:
+            try:
+                payload = request.get("payload") or {}
+                webhooks_view.emit(event, {
+                    "number": payload.get("number", ""),
+                    "client": request.get("client_name", ""),
+                    "total": (payload.get("totals") or {}).get("total", 0),
+                })
+            except Exception:
+                pass
     return {"ok": True, "id": request_id, "result": result, "data": approvals_data(80)}
 
 
@@ -1418,7 +1460,7 @@ def reject_request(request_id: str) -> dict:
     if approval_store is None:
         return {"ok": False, "error": "coda approvazioni non disponibile"}
     try:
-        request = approval_store.set_status(request_id, "rejected")
+        approval_store.set_status(request_id, "rejected")
     except Exception as exc:
         return {"ok": False, "error": str(exc)[:300]}
     log(f"approval rejected {request_id}")
@@ -1511,13 +1553,33 @@ class Handler(BaseHTTPRequestHandler):
         m = c.get("ocdash")
         return m.value if m else ""
 
-    def _authed(self) -> bool:
+    def _identity(self) -> dict | None:
         val = self._cookie_token()
         if not val:
             auth = self.headers.get("Authorization", "")
             if auth.startswith("Bearer "):
                 val = auth[7:].strip()
-        return bool(val) and hmac.compare_digest(val, DASH_TOKEN)
+        if not val:
+            return None
+        if hmac.compare_digest(val, DASH_TOKEN):
+            return {"name": "owner", "role": "admin"}
+        if identity_store is not None:
+            try:
+                return identity_store.authenticate(val)
+            except Exception:
+                return None
+        return None
+
+    def _authed(self) -> bool:
+        return self._identity() is not None
+
+    def _audit(self, action: str, detail: str = "", ok: bool = True) -> None:
+        if identity_store is None:
+            return
+        try:
+            identity_store.audit(getattr(self, "actor", "owner"), action, detail, ok)
+        except Exception:
+            pass
 
     def _discard_body(self, max_bytes: int = 1_000_000) -> None:
         """Consuma il body prima di una risposta anticipata.
@@ -1547,12 +1609,19 @@ class Handler(BaseHTTPRequestHandler):
             self._body_consumed = True
             self.close_connection = True
 
-    def _require(self) -> bool:
-        if self._authed():
-            return True
-        self._discard_body()
-        self._json({"ok": False, "error": "auth"}, 401)
-        return False
+    def _require(self, role: str = "viewer") -> bool:
+        who = self._identity()
+        if not who:
+            self._discard_body()
+            self._json({"ok": False, "error": "auth"}, 401)
+            return False
+        self.actor = str(who.get("name") or "")
+        self.role = str(who.get("role") or "viewer")
+        if identity_store is not None and not identity_store.role_allows(self.role, role):
+            self._discard_body()
+            self._json({"ok": False, "error": "permesso negato", "role": self.role}, 403)
+            return False
+        return True
 
     def _body(self, max_bytes: int = 1_000_000) -> bytes:
         if getattr(self, "_body_consumed", False):
@@ -1777,6 +1846,89 @@ class Handler(BaseHTTPRequestHandler):
                 limit = 60
             self._json({"ok": True, "data": contacts_data(limit)})
             return
+        if path == "/api/me":
+            if not self._require():
+                return
+            can_write = True
+            if identity_store is not None:
+                can_write = identity_store.role_allows(getattr(self, "role", "viewer"), "operator")
+            self._json({"ok": True, "user": {
+                "name": getattr(self, "actor", "owner"),
+                "role": getattr(self, "role", "admin"),
+                "can_write": can_write,
+            }})
+            return
+        if path == "/api/stats":
+            if not self._require():
+                return
+            data = stats_view.compute() if stats_view is not None else {"kpis": {}, "daily": [], "empty": True}
+            self._json({"ok": True, "data": data})
+            return
+        if path == "/api/conversations":
+            if not self._require():
+                return
+            q = parse_qs(urlparse(self.path).query)
+            try:
+                limit = int((q.get("limit") or ["60"])[0])
+            except Exception:
+                limit = 60
+            rows = conversations_view.list_conversations(limit) if conversations_view is not None else []
+            self._json({"ok": True, "data": rows})
+            return
+        conversation_match = re.match(r"^/api/conversations/(%2B|\+)?(\d{6,20})$", path)
+        if conversation_match:
+            if not self._require():
+                return
+            phone = "+" + conversation_match.group(2)
+            q = parse_qs(urlparse(self.path).query)
+            redact = (q.get("redact") or ["1"])[0] != "0"
+            try:
+                data = conversations_view.transcript(phone, redact=redact) if conversations_view is not None else None
+            except Exception as exc:
+                self._json({"ok": False, "error": str(exc)[:200]}, 400)
+                return
+            if data is None:
+                self._json({"ok": False, "error": "modulo conversazioni non disponibile"}, 503)
+                return
+            self._json({"ok": True, "data": data})
+            return
+        if path == "/api/usage":
+            if not self._require():
+                return
+            data = quotas_view.status() if quotas_view is not None else {"providers": [], "alerts": []}
+            model = router_view.choose(load=len(conversations_view.list_conversations(50))) if (router_view and conversations_view) else {}
+            self._json({"ok": True, "data": data, "model": model})
+            return
+        if path == "/api/users":
+            if not self._require("admin"):
+                return
+            rows = identity_store.list_users() if identity_store is not None else []
+            self._json({"ok": True, "data": rows})
+            return
+        if path == "/api/audit/users":
+            if not self._require("admin"):
+                return
+            q = parse_qs(urlparse(self.path).query)
+            try:
+                limit = int((q.get("limit") or ["100"])[0])
+            except Exception:
+                limit = 100
+            rows = identity_store.recent_audit(limit) if identity_store is not None else []
+            self._json({"ok": True, "data": rows})
+            return
+        if path == "/api/webhooks":
+            if not self._require("admin"):
+                return
+            rows = webhooks_view.list_endpoints() if webhooks_view is not None else []
+            log_rows = webhooks_view.deliveries(40) if webhooks_view is not None else []
+            self._json({"ok": True, "data": rows, "deliveries": log_rows, "events": list(webhooks_view.EVENTS) if webhooks_view else []})
+            return
+        if path == "/api/gdpr/inventory":
+            if not self._require("admin"):
+                return
+            data = gdpr_tools.inventory() if gdpr_tools is not None else {}
+            self._json({"ok": True, "data": data})
+            return
         self._json({"ok": False, "error": "not found"}, 404)
 
     def do_POST(self):
@@ -1802,15 +1954,24 @@ class Handler(BaseHTTPRequestHandler):
             if len(fails) >= 10:
                 self._json({"ok": False, "error": "Troppi tentativi. Riprova tra 5 minuti."}, 429)
                 return
-            if token and hmac.compare_digest(token, DASH_TOKEN):
+            valid_user = None
+            if token and identity_store is not None:
+                try:
+                    valid_user = identity_store.authenticate(token)
+                except Exception:
+                    valid_user = None
+            if token and (hmac.compare_digest(token, DASH_TOKEN) or valid_user):
                 global LAST_LOGIN
                 LOGIN_FAILS[ip] = []
                 LAST_LOGIN = now_iso()
                 save_security_state()
-                log("login ok")
+                actor = valid_user.get("name") if valid_user else "owner"
+                if identity_store is not None:
+                    identity_store.audit(actor, "login", self.client_address[0], True)
+                log(f"login ok ({actor})")
                 self.send_response(302)
                 self.send_header("Location", "/")
-                self.send_header("Set-Cookie", f"ocdash={DASH_TOKEN}; Path=/; Max-Age=604800; HttpOnly; SameSite=Strict")
+                self.send_header("Set-Cookie", f"ocdash={token}; Path=/; Max-Age=604800; HttpOnly; SameSite=Strict")
                 self.end_headers()
                 return
             LOGIN_FAILS[ip].append(now)
@@ -1821,11 +1982,21 @@ class Handler(BaseHTTPRequestHandler):
             self._discard_body()
             self._json({"ok": False, "error": "not found"}, 404)
             return
-        if not self._require():
+        if not self._require("operator"):
             return
         if not self._post_ok():
             self._discard_body()
             self._json({"ok": False, "error": "csrf"}, 403)
+            return
+        admin_only = {
+            "/api/users", "/api/users/revoke", "/api/webhooks", "/api/webhooks/remove",
+            "/api/webhooks/test", "/api/gdpr/delete", "/api/gdpr/export", "/api/model/apply",
+        }
+        if path in admin_only and identity_store is not None and not identity_store.role_allows(
+            getattr(self, "role", "viewer"), "admin"
+        ):
+            self._audit(path, "permesso negato", False)
+            self._json({"ok": False, "error": "permesso negato"}, 403)
             return
         if path in {"/api/contacts/summary", "/api/reminders/run", "/api/quotes/demo"}:
             if _throttled(f"{self.client_address[0]}:{path}", 15.0):
@@ -1884,11 +2055,15 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/api/approvals/approve":
             data = self._json_body()
-            self._json(approve_request(str(data.get("id") or "")))
+            result = approve_request(str(data.get("id") or ""))
+            self._audit("approval.approve", str(data.get("id") or ""), bool(result.get("ok")))
+            self._json(result)
             return
         if path == "/api/approvals/reject":
             data = self._json_body()
-            self._json(reject_request(str(data.get("id") or "")))
+            result = reject_request(str(data.get("id") or ""))
+            self._audit("approval.reject", str(data.get("id") or ""), bool(result.get("ok")))
+            self._json(result)
             return
         if path == "/api/connectors/test":
             CONNECTOR_CACHE["ts"] = 0.0
@@ -1914,7 +2089,119 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/api/quotes":
             data = self._json_body()
-            self._json(create_manual_quote(data))
+            result = create_manual_quote(data)
+            self._audit("quote.create", str(data.get("client_name") or "")[:80], bool(result.get("ok")))
+            if result.get("ok") and webhooks_view is not None:
+                try:
+                    webhooks_view.emit("quote.created", {
+                        "number": (result.get("request") or {}).get("payload", {}).get("number", ""),
+                        "total": ((result.get("request") or {}).get("payload", {}).get("totals") or {}).get("total", 0),
+                    })
+                except Exception:
+                    pass
+            self._json(result)
+            return
+        if path == "/api/conversations/handoff":
+            data = self._json_body()
+            phone = str(data.get("phone") or "").strip()
+            if not phone:
+                self._json({"ok": False, "error": "numero mancante"}, 400)
+                return
+            active = bool(data.get("active"))
+            try:
+                result = conversations_view.set_handoff(
+                    phone, active, str(data.get("operator") or getattr(self, "actor", ""))[:60]
+                ) if conversations_view is not None else {"ok": False}
+            except Exception as exc:
+                self._json({"ok": False, "error": str(exc)[:200]}, 400)
+                return
+            self._audit("handoff", f"{phone} active={active}")
+            self._json({"ok": True, **result})
+            return
+        if path == "/api/users":
+            data = self._json_body()
+            if identity_store is None:
+                self._json({"ok": False, "error": "modulo utenti non disponibile"}, 503)
+                return
+            try:
+                created = identity_store.create_user(
+                    str(data.get("name") or ""), str(data.get("role") or "operator")
+                )
+            except ValueError as exc:
+                self._json({"ok": False, "error": str(exc)[:200]}, 400)
+                return
+            self._audit("user.create", f"{created['name']} {created['role']}")
+            self._json({"ok": True, "user": created})
+            return
+        if path == "/api/users/revoke":
+            data = self._json_body()
+            name = str(data.get("name") or "").strip()
+            changed = identity_store.revoke_user(name) if identity_store is not None else False
+            self._audit("user.revoke", name, changed)
+            self._json({"ok": changed, "error": "" if changed else "utente non trovato"})
+            return
+        if path == "/api/webhooks":
+            data = self._json_body()
+            if webhooks_view is None:
+                self._json({"ok": False, "error": "modulo webhook non disponibile"}, 503)
+                return
+            try:
+                entry = webhooks_view.add_endpoint(
+                    str(data.get("url") or ""),
+                    [str(e) for e in (data.get("events") or [])] or None,
+                )
+            except ValueError as exc:
+                self._json({"ok": False, "error": str(exc)[:200]}, 400)
+                return
+            self._audit("webhook.add", str(entry.get("url"))[:120])
+            self._json({"ok": True, "endpoint": entry})
+            return
+        if path == "/api/webhooks/remove":
+            data = self._json_body()
+            removed = webhooks_view.remove_endpoint(int(data.get("id") or 0)) if webhooks_view is not None else False
+            self._audit("webhook.remove", str(data.get("id")), removed)
+            self._json({"ok": removed, "error": "" if removed else "endpoint non trovato"})
+            return
+        if path == "/api/webhooks/test":
+            data = self._json_body()
+            result = webhooks_view.test_endpoint(int(data.get("id") or 0)) if webhooks_view is not None else {"ok": False}
+            self._audit("webhook.test", str(data.get("id")), bool(result.get("ok")))
+            self._json(result)
+            return
+        if path == "/api/gdpr/export":
+            data = self._json_body()
+            phone = str(data.get("phone") or "").strip()
+            if gdpr_tools is None or not phone:
+                self._json({"ok": False, "error": "numero mancante"}, 400)
+                return
+            self._audit("gdpr.export", phone)
+            self._json({"ok": True, "data": gdpr_tools.export_contact(phone)})
+            return
+        if path == "/api/gdpr/delete":
+            data = self._json_body()
+            phone = str(data.get("phone") or "").strip()
+            if gdpr_tools is None or not phone:
+                self._json({"ok": False, "error": "numero mancante"}, 400)
+                return
+            if str(data.get("confirm") or "") != "DELETE":
+                self._json({"ok": False, "error": "conferma richiesta: invia confirm=DELETE"}, 400)
+                return
+            result = gdpr_tools.delete_contact(phone)
+            self._audit("gdpr.delete", phone)
+            self._json({"ok": True, **result})
+            return
+        if path == "/api/model/apply":
+            data = self._json_body()
+            if router_view is None:
+                self._json({"ok": False, "error": "router non disponibile"}, 503)
+                return
+            model = str(data.get("model") or "").strip()
+            if not model:
+                decision = router_view.choose(load=0)
+                model = decision["primary"]
+            result = router_view.apply_choice(model)
+            self._audit("model.apply", model, bool(result.get("ok")))
+            self._json(result)
             return
         if path == "/api/contacts/summary":
             data = self._json_body()

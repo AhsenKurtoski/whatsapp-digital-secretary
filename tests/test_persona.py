@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest import mock
 
 import support  # noqa: F401
+
 import setup
 
 

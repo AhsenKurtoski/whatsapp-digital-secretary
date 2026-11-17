@@ -15,7 +15,7 @@ from __future__ import annotations
 import html
 import re
 from datetime import datetime
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 import config
 
@@ -340,7 +340,6 @@ def meta_email_link(value: str) -> bool:
 
 
 if __name__ == "__main__":
-    import json
     import sys
 
     if len(sys.argv) > 1 and sys.argv[1] == "--demo-quote":

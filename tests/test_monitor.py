@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 import support  # noqa: F401
+
 import monitor
 
 ROOT = Path(__file__).resolve().parents[1]

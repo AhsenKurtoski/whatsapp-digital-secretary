@@ -1,0 +1,12 @@
+# Gina — WhatsApp Digital Secretary
+#
+# Strumenti di sviluppo e CI. Installazione:
+#   python3 -m pip install -r requirements-dev.txt
+# La CI esegue gli stessi comandi (vedi .github/workflows/ci.yml).
+ruff>=0.6,<1
+mypy>=1.10,<2
+bandit[toml]>=1.7,<2
+pip-audit>=2.7,<3
+coverage[toml]>=7.5,<8
+# Necessaria per backup.py (AES-256-GCM): in produzione è già richiesta dal backup.
+cryptography>=42,<51

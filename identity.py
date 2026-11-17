@@ -1,0 +1,257 @@
+#!/usr/bin/env python3
+"""Utenti della dashboard con ruoli e audit per utente.
+
+Tre ruoli: `admin` (tutto, inclusi utenti e webhook), `operator` (approva,
+invia, gestisce handoff e preventivi), `viewer` (solo lettura). I token sono
+salvati solo come SHA-256 e mostrati una volta sola alla creazione; il vecchio
+token della dashboard resta valido come admin "owner".
+
+Uso:
+    python3 identity.py --list
+    python3 identity.py --add "Anna" --role operator
+    python3 identity.py --revoke "Anna"
+    python3 identity.py --self-test
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import hmac
+import json
+import os
+import secrets
+import sys
+import tempfile
+from datetime import datetime
+from pathlib import Path
+
+import config
+
+ROLES = {"viewer": 1, "operator": 2, "admin": 3}
+ROLE_LABELS = {"viewer": "solo lettura", "operator": "operatore", "admin": "admin"}
+MAX_USERS = 20
+
+
+def _base(base: Path | None) -> Path:
+    folder = Path(base or config.BASE)
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
+def users_path(base: Path | None = None) -> Path:
+    return _base(base) / "users.json"
+
+
+def audit_path(base: Path | None = None) -> Path:
+    return _base(base) / "user_audit.jsonl"
+
+
+def _hash(token: str) -> str:
+    return hashlib.sha256(str(token or "").encode("utf-8")).hexdigest()
+
+
+def _load(base: Path | None = None) -> dict:
+    path = users_path(base)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    users = data.get("users")
+    data["users"] = users if isinstance(users, list) else []
+    return data
+
+
+def _save(data: dict, base: Path | None = None) -> None:
+    path = users_path(base)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, path)
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+
+
+def _iso() -> str:
+    return datetime.now(config.resolve_timezone()).isoformat(timespec="seconds")
+
+
+def create_user(name: str, role: str, token: str | None = None, base: Path | None = None) -> dict:
+    name = str(name or "").strip()[:60]
+    role = str(role or "").strip().lower()
+    if not name:
+        raise ValueError("nome utente mancante")
+    if role not in ROLES:
+        raise ValueError("ruolo non valido: usa admin, operator o viewer")
+    data = _load(base)
+    if any(str(u.get("name", "")).lower() == name.lower() for u in data["users"]):
+        raise ValueError("utente già esistente")
+    if len(data["users"]) >= MAX_USERS:
+        raise ValueError(f"massimo {MAX_USERS} utenti")
+    raw = str(token or secrets.token_urlsafe(24)).strip()
+    if len(raw) < 16:
+        raise ValueError("token troppo corto (minimo 16 caratteri)")
+    entry = {
+        "name": name,
+        "role": role,
+        "token": _hash(raw),
+        "created_at": _iso(),
+        "active": True,
+    }
+    data["users"].append(entry)
+    _save(data, base)
+    result = {k: v for k, v in entry.items() if k != "token"}
+    result["token"] = raw  # mostrato una sola volta
+    return result
+
+
+def list_users(base: Path | None = None) -> list[dict]:
+    return [
+        {k: v for k, v in user.items() if k != "token"}
+        for user in _load(base)["users"]
+    ]
+
+
+def revoke_user(name: str, base: Path | None = None) -> bool:
+    data = _load(base)
+    changed = False
+    for user in data["users"]:
+        if str(user.get("name", "")).lower() == str(name or "").strip().lower() and user.get("active", True):
+            user["active"] = False
+            user["revoked_at"] = _iso()
+            changed = True
+    if changed:
+        _save(data, base)
+    return changed
+
+
+def authenticate(token: str, base: Path | None = None) -> dict | None:
+    """Restituisce l'identità attiva che possiede il token, o None."""
+    raw = str(token or "").strip()
+    if not raw:
+        return None
+    digest = _hash(raw)
+    found = None
+    for user in _load(base)["users"]:
+        if user.get("active") and hmac.compare_digest(str(user.get("token") or ""), digest):
+            found = {"name": user.get("name", ""), "role": user.get("role", "viewer")}
+    return found
+
+
+def role_allows(role: str, required: str) -> bool:
+    return ROLES.get(str(role or ""), 0) >= ROLES.get(str(required or "viewer"), 99)
+
+
+def audit(actor: str, action: str, detail: str = "", ok: bool = True,
+          base: Path | None = None) -> dict:
+    entry = {
+        "ts": _iso(),
+        "user": str(actor or "owner")[:60],
+        "action": str(action or "")[:80],
+        "detail": str(detail or "")[:300],
+        "ok": bool(ok),
+    }
+    try:
+        path = audit_path(base)
+        with open(path, "a", encoding="utf-8") as handle:
+            handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        os.chmod(path, 0o600)
+        if path.stat().st_size > 1_000_000:
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()[-2000:]
+            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    except OSError:
+        pass
+    return entry
+
+
+def recent_audit(limit: int = 100, base: Path | None = None) -> list[dict]:
+    path = audit_path(base)
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()[-max(1, int(limit)):]
+    except OSError:
+        return []
+    out = []
+    for line in reversed(lines):
+        try:
+            item = json.loads(line)
+        except Exception:
+            continue
+        if isinstance(item, dict):
+            out.append(item)
+    return out
+
+
+def self_test() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        owner = create_user("Owner", "admin", token="owner-token-0123456789", base=base)
+        assert owner["role"] == "admin"
+        assert owner["token"] == "owner-token-0123456789", "il token va mostrato una volta"
+        assert "token" not in list_users(base)[0], "il token non va mai riletto"
+        saved = json.loads(users_path(base).read_text(encoding="utf-8"))
+        assert saved["users"][0]["token"] != owner["token"], "il token deve essere hashato"
+        assert len(saved["users"][0]["token"]) == 64
+
+        who = authenticate("owner-token-0123456789", base)
+        assert who == {"name": "Owner", "role": "admin"}, who
+        assert authenticate("token-sbagliato-0000", base) is None
+
+        viewer = create_user("Lettura", "viewer", base=base)
+        assert viewer["role"] == "viewer"
+        assert not role_allows("viewer", "operator")
+        assert role_allows("admin", "operator")
+        assert role_allows("operator", "viewer")
+
+        try:
+            create_user("Owner", "viewer", base=base)
+            raise AssertionError("utente duplicato accettato")
+        except ValueError:
+            pass
+        try:
+            create_user("X", "superuser", base=base)
+            raise AssertionError("ruolo invalido accettato")
+        except ValueError:
+            pass
+
+        audit("Owner", "approve", "apr-1", base=base)
+        rows = recent_audit(10, base)
+        assert rows[0]["action"] == "approve" and rows[0]["user"] == "Owner", rows
+
+        assert revoke_user("Lettura", base) is True
+        assert authenticate(viewer["token"], base) is None
+        assert revoke_user("Lettura", base) is False
+    print("SELF-TEST OK")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Utenti dashboard con ruoli")
+    parser.add_argument("--list", action="store_true")
+    parser.add_argument("--add", default="")
+    parser.add_argument("--role", default="operator")
+    parser.add_argument("--revoke", default="")
+    parser.add_argument("--self-test", action="store_true")
+    args = parser.parse_args()
+    if args.self_test:
+        self_test()
+        return 0
+    try:
+        if args.add:
+            created = create_user(args.add, args.role)
+            print(json.dumps(created, ensure_ascii=False))
+            print("Salva questo token ora: non sarà più mostrato.", file=sys.stderr)
+            return 0
+        if args.revoke:
+            print("revocato" if revoke_user(args.revoke) else "utente non trovato")
+            return 0
+    except ValueError as exc:
+        print(f"identity: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(list_users(), ensure_ascii=False, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

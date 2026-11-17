@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import support  # noqa: F401  (sets the isolated environment)
+
 import dashboard
 
 ROOT = Path(__file__).resolve().parents[1]

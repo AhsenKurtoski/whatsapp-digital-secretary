@@ -8,6 +8,49 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Platform modules for Gina** (each with self-test and unit tests):
+  `lead_intel.py` (IT/EN intent, 0-100 score, scam signals, PII redaction, audit
+  trail), `memory.py` (per-customer language, facts, intents, redacted transcript,
+  handoff, export/erase), `cache.py` (thread-safe TTL+LRU with persisted stats),
+  `identity.py` (admin/operator/viewer, SHA-256 tokens, per-user audit),
+  `quotas.py` (per-provider requests, tokens, 429s, configurable alert
+  thresholds), `router.py` (model choice by load, latency and provider health),
+  `webhooks.py` (HMAC-SHA256 signed deliveries, event filters, retries, log),
+  `stats.py` (real KPIs and 14-day series), `conversations.py` (read-only
+  OpenClaw transcripts with redaction and handoff), `gdpr.py` (access, erasure,
+  retention, inventory) and `backup.py` (AES-256-GCM with scrypt, rotation and a
+  restore that verifies every SHA-256).
+- **Dashboard**: Conversations tab with masked transcripts and one-click
+  handoff/release, Analytics tab with KPIs, a 14-day chart, AI quota usage and
+  the recommended model; role-aware UI from `GET /api/me`; new APIs for
+  conversations, stats, usage, users, webhooks, GDPR and model application; every
+  mutation is written to the per-user audit log.
+- **Internationalisation** of the dashboard shell and the new views (IT/EN with a
+  language selector persisted in `localStorage`), plus accessibility fixes:
+  skip link, ARIA tablist/tab/tabpanel, `aria-selected`, keyboard navigation with
+  arrow keys, visible focus ring, screen-reader-only labels and a higher-contrast
+  secondary text colour.
+- **Guided setup** (`python3 setup.py --wizard`, `setup_wizard.py`): validates the
+  AI key against the real provider, reads gateway and WhatsApp channel state, sends
+  a real test email through the same path used by approvals, and writes validated
+  keys only to `secrets.env` (mode 600) after confirmation.
+- **Quality gates**: `requirements-dev.txt`, `pyproject.toml` (ruff, mypy, bandit,
+  coverage threshold 80%), `scripts/coverage.sh`, a `quality` CI job and a
+  `release` workflow that validates SemVer tags and publishes release notes from
+  this changelog; Dependabot for pip, npm and GitHub Actions.
+- **Operations documentation**: `docs/E2E.md` (dedicated WhatsApp number and
+  Google sandbox, step-by-step checklist), `docs/WALKTHROUGH.md` (60-second
+  storyboard and ffmpeg commands), `docs/DISASTER_RECOVERY.md`,
+  `docs/WHATSAPP_BAN.md`, `docs/GDPR.md` with a DPA template, `docs/PLUGINS.md`
+  with a runnable `examples/hello-plugin`, and `docs/DOCKER.md` with
+  `docker-compose.full.yml` for OpenClaw + dashboard.
+
+### Changed
+
+- `scripts/verify.sh` also runs the self-test of every new module.
+- The dashboard's legacy token still works as the `admin` owner, so upgrades do not
+  lock the owner out; additional users get their own token and role.
+
 - **Manual quote builder** (`dashboard.py`, `dashboard.html`): *Nuovo preventivo* creates
   a quote and its PDF from the dashboard without the model, the AI provider or WhatsApp.
   Items, discount, VAT, validity and notes are validated server-side, totals are always

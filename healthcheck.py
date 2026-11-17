@@ -27,14 +27,14 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE / "google-bridge"))
 
-import config
+import config  # noqa: E402 - sys.path è impostato sopra per google-bridge
 
 VERSION = "1.1.1"
 HOME = os.path.expanduser("~")
@@ -149,7 +149,7 @@ def _parse_dt(value):
         text = str(value).strip().replace("Z", "+00:00")
         stamp = datetime.fromisoformat(text)
         if stamp.tzinfo is None:
-            stamp = stamp.replace(tzinfo=timezone.utc)
+            stamp = stamp.replace(tzinfo=UTC)
         return stamp
     except Exception:
         return None
@@ -279,7 +279,7 @@ def _systemctl_next(unit: str) -> str:
         # Con --output=json systemd restituisce microsecondi epoch (intero).
         if isinstance(stamp, (int, float)) and stamp > 0:
             try:
-                parsed = datetime.fromtimestamp(stamp / 1_000_000, tz=timezone.utc)
+                parsed = datetime.fromtimestamp(stamp / 1_000_000, tz=UTC)
                 return parsed.astimezone(ROME).strftime("%d/%m %H:%M")
             except Exception:
                 continue
@@ -546,7 +546,7 @@ def check_whatsapp() -> dict:
             "Attendi due minuti o esegui watchdog.py",
         )
     stamp = _parse_dt(last)
-    age = int((datetime.now(timezone.utc) - stamp.astimezone(timezone.utc)).total_seconds()) if stamp else 9999
+    age = int((datetime.now(UTC) - stamp.astimezone(UTC)).total_seconds()) if stamp else 9999
     result = state.get("last_result") or {}
     wa = str(result.get("whatsapp") or "unknown")
     healthy = wa in {"healthy", "connected", "ready"}
@@ -636,7 +636,7 @@ def check_approvals() -> dict:
             oldest = stamp
     age_hours = 0
     if oldest:
-        age_hours = int((datetime.now(timezone.utc) - oldest.astimezone(timezone.utc)).total_seconds() // 3600)
+        age_hours = int((datetime.now(UTC) - oldest.astimezone(UTC)).total_seconds() // 3600)
     if len(pending) >= 10 or age_hours >= 24 or failed:
         detail = f"{len(pending)} in attesa"
         if age_hours >= 24:
@@ -731,7 +731,7 @@ def check_ai() -> dict:
     cfg = _read_json(CONFIG, {})
     model = (((cfg.get("agents") or {}).get("defaults") or {}).get("model") or {})
     primary = str(model.get("primary") or "-")
-    fallbacks = model.get("fallbacks") or []
+    _fallbacks = model.get("fallbacks") or []
     total = gemini + groq
     if total == 0:
         return _check(
@@ -793,7 +793,7 @@ def check_google_oauth() -> dict:
     expires = created + timedelta(days=7) if created else None
     days_left = None
     if expires:
-        days_left = (expires - datetime.now(timezone.utc)).total_seconds() / 86400
+        days_left = (expires - datetime.now(UTC)).total_seconds() / 86400
     probe_rc, probe_out, probe_err = _run(
         [GOG, "--json", "gmail", "labels", "list"],
         timeout=25,
@@ -998,7 +998,7 @@ def check_site() -> dict:
             "site",
             "Sito pubblico",
             "ok",
-            f"Risponde HTTP 200.",
+            "Risponde HTTP 200.",
             expires="certificato gestito dall'hosting",
             token={
                 "id": "site",
@@ -1110,7 +1110,7 @@ def expiring_tokens(tokens: list[dict], horizon_days: int = 7) -> list[dict]:
     Usa ``expires_iso`` (aggiunto dai check che conoscono la data esatta) e
     ignora le voci senza scadenza fissa come la sessione WhatsApp.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     out: list[dict] = []
     for token in tokens:
         if not isinstance(token, dict):
@@ -1337,8 +1337,8 @@ def self_test() -> int:
     ]
     assert overall(checks) == "warn"
     assert overall([{"id": "c", "status": "critical"}, {"id": "d", "status": "warn"}]) == "critical"
-    created = datetime(2026, 10, 25, 14, 53, 14, tzinfo=timezone.utc)
-    assert created + timedelta(days=7) == datetime(2026, 11, 1, 14, 53, 14, tzinfo=timezone.utc)
+    created = datetime(2026, 10, 25, 14, 53, 14, tzinfo=UTC)
+    assert created + timedelta(days=7) == datetime(2026, 11, 1, 14, 53, 14, tzinfo=UTC)
     alerts = build_alerts([
         {"id": "google_oauth", "status": "critical", "detail": "token scaduto", "action": ""},
         {"id": "google_bridge", "status": "info", "detail": "non configurato", "meta": {"configured": False}},

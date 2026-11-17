@@ -221,7 +221,7 @@ def check(dry: bool = False) -> dict:
             start(UNITS["dashboard"])
             result["actions"].append("dashboard-start")
     elif not result["dashboard_health"]:
-        log(f"dashboard active but unhealthy; restarting")
+        log("dashboard active but unhealthy; restarting")
         if not dry:
             restart(UNITS["dashboard"])
             result["actions"].append("dashboard-restart")

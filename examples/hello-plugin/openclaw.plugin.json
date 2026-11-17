@@ -1,0 +1,16 @@
+{
+  "id": "hello-gina",
+  "name": "Hello Gina",
+  "description": "Plugin di esempio: registra un hook inbound e aggiunge un prefisso di log, senza modificare i messaggi.",
+  "version": "1.0.0",
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "label": { "type": "string", "default": "hello-gina" }
+    }
+  }
+}

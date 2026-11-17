@@ -1,6 +1,7 @@
 import unittest
 
 import support  # noqa: F401
+
 import email_template
 
 

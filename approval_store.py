@@ -221,7 +221,7 @@ def _locked():
                 break
             except FileExistsError:
                 if time.monotonic() >= deadline:
-                    raise TimeoutError("timeout while waiting for the approval queue lock")
+                    raise TimeoutError("timeout while waiting for the approval queue lock") from None
                 time.sleep(0.05)
         try:
             yield

@@ -90,6 +90,7 @@ def render_persona(data: dict) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Configura la segreteria digitale")
     parser.add_argument("--non-interactive", action="store_true", help="usa solo i flag, senza domande")
+    parser.add_argument("--wizard", action="store_true", help="valida chiave AI, WhatsApp ed email prima di salvare")
     parser.add_argument("--business-name", default="")
     parser.add_argument("--owner-name", default="")
     parser.add_argument("--bot-name", default="")
@@ -153,6 +154,13 @@ def main() -> int:
     # (max_concurrent, max_reply_lines, whatsapp_number, future keys).
     data = {**existing, **data}
 
+    # Wizard: tre prove reali prima di scrivere qualsiasi file. Se l'utente
+    # annulla, la configurazione non viene salvata.
+    if getattr(args, "wizard", False):
+        import setup_wizard
+        if not setup_wizard.run(data, lambda _data: None):
+            return 1
+
     config.DEFAULT_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     os.chmod(config.DEFAULT_CONFIG_PATH.parent, 0o700)
     tmp = config.DEFAULT_CONFIG_PATH.with_suffix(".json.tmp")
@@ -196,4 +204,4 @@ if __name__ == "__main__":
         raise SystemExit(main())
     except KeyboardInterrupt:
         print("\nAnnullato.", file=sys.stderr)
-        raise SystemExit(130)
+        raise SystemExit(130) from None

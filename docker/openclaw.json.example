@@ -1,0 +1,24 @@
+{
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "groq/llama-3.3-70b-versatile",
+        "fallbacks": ["google/gemini-2.5-flash"]
+      }
+    }
+  },
+  "channels": {
+    "whatsapp": {
+      "enabled": true
+    }
+  },
+  "messages": {
+    "inbound": {
+      "debounceMs": 1200,
+      "byChannel": { "whatsapp": 1800 }
+    },
+    "queue": {
+      "byChannel": { "whatsapp": "collect" }
+    }
+  }
+}

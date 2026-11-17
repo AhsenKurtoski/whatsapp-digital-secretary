@@ -5,6 +5,7 @@ import unittest
 from unittest import mock
 
 import support  # noqa: F401
+
 import healthcheck
 
 
@@ -113,7 +114,7 @@ class HealthcheckTests(unittest.TestCase):
         self.assertEqual(check["id"], "config")
 
     def test_expiring_tokens_filters_and_sorts(self):
-        now = healthcheck.datetime.now(healthcheck.timezone.utc)
+        now = healthcheck.datetime.now(healthcheck.UTC)
         soon = (now + healthcheck.timedelta(days=3)).isoformat()
         late = (now + healthcheck.timedelta(days=30)).isoformat()
         past = (now - healthcheck.timedelta(days=1)).isoformat()

@@ -95,7 +95,7 @@ def main() -> int:
     gemini_keys = pool_values(env, "gemini")
     groq_keys = pool_values(env, "groq")
     has_gemini = bool(gemini_keys)
-    has_groq2 = bool(groq_keys)
+    _has_groq2 = bool(groq_keys)
 
     try:
         cfg = read_config()

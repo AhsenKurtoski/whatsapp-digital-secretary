@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 import support  # noqa: F401
+
 from scripts import openclaw_compat
 
 

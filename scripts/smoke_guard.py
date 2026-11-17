@@ -127,7 +127,7 @@ class MockModelHandler(BaseHTTPRequestHandler):
                 ({}, "stop"),
             ):
                 chunk = {**base, "choices": [{"index": 0, "delta": delta, "finish_reason": finish}]}
-                self.wfile.write(f"data: {json.dumps(chunk)}\n\n".encode("utf-8"))
+                self.wfile.write(f"data: {json.dumps(chunk)}\n\n".encode())
                 self.wfile.flush()
             self.wfile.write(b"data: [DONE]\n\n")
             self.wfile.flush()

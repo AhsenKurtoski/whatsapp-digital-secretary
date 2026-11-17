@@ -382,6 +382,35 @@ widgets (gateway uptime, timers) are unavailable inside the container. Key manag
 and the restart button in the container do not control the host gateway: edit
 `~/.openclaw/secretary/secrets.env` on the host or use the host dashboard.
 
+## Gina platform (v1.3): intelligence, roles, GDPR, backups
+
+Everything below is implemented and tested, not a roadmap:
+
+| Area | What it does | Command / document |
+|---|---|---|
+| Intent and audit | intent, IT/EN language, score, scam signals, audit trail without full text | `python3 lead_intel.py --json --text "..."` |
+| Per-customer memory | language, facts, intents, redacted transcript, handoff | `python3 memory.py --profile +39...` |
+| Latency | TTL cache for frequent answers with hit rate | `python3 cache.py --stats` |
+| Dynamic model | chooses by load, latency and 429s; explicit apply | `python3 router.py --load 4` |
+| AI quotas | requests, tokens, 429s, thresholds and alerts | `python3 quotas.py --json` |
+| Users and roles | admin / operator / viewer, hashed tokens, per-user audit | `python3 identity.py --add "Anna" --role operator` |
+| Webhooks | HMAC-signed events to Zapier/Make/HubSpot | `python3 webhooks.py --list` |
+| Conversations | read-only transcripts, redaction, bot→human handoff | dashboard → Conversations |
+| Analytics | KPIs and 14-day series from real data | dashboard → Analytics |
+| GDPR | access, erasure, retention, data inventory | [`docs/GDPR.md`](docs/GDPR.md) · `python3 gdpr.py --report` |
+| Encrypted backup | AES-256-GCM, rotation, restore verified with SHA-256 | [`docs/DISASTER_RECOVERY.md`](docs/DISASTER_RECOVERY.md) |
+| WhatsApp ban | operational plan and customer communication | [`docs/WHATSAPP_BAN.md`](docs/WHATSAPP_BAN.md) |
+| Plugins | API, hooks and a runnable example | [`docs/PLUGINS.md`](docs/PLUGINS.md) · `examples/hello-plugin` |
+| Docker | full-stack compose with OpenClaw | [`docs/DOCKER.md`](docs/DOCKER.md) |
+| Quality | ruff, mypy, bandit, pip-audit, 80% coverage | `bash scripts/coverage.sh` |
+| E2E and video | test accounts, checklist, 60 s storyboard | [`docs/E2E.md`](docs/E2E.md) · [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) |
+
+Guided setup with real checks (AI key, WhatsApp gateway, test email):
+
+```bash
+python3 setup.py --wizard
+```
+
 ## Running 24/7 for free
 
 There is no free hosting that keeps a process alive without a machine that stays on.

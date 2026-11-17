@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import support  # noqa: F401
+
 import approval_store
 import dashboard
 

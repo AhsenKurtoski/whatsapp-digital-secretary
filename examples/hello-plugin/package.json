@@ -1,0 +1,10 @@
+{
+  "name": "hello-gina",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Plugin di esempio per la segreteria Gina",
+  "openclaw": {
+    "extensions": ["./index.js"]
+  }
+}

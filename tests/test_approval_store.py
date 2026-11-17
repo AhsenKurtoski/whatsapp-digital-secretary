@@ -1,9 +1,10 @@
 import os
 import stat
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import support  # noqa: F401
+
 import approval_store
 
 
@@ -39,7 +40,7 @@ class ApprovalStoreTests(unittest.TestCase):
             approval_store.append_request("email", {"to": "not-an-email", "subject": "x", "body": "y"})
 
     def test_calendar_end_must_be_after_start(self):
-        start = datetime.now(timezone.utc) + timedelta(days=1)
+        start = datetime.now(UTC) + timedelta(days=1)
         with self.assertRaises(ValueError):
             approval_store.append_request(
                 "calendar",

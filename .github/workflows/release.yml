@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate SemVer tag
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          if ! printf '%s' "$tag" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "Tag non SemVer: $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+
+      - name: Extract release notes from CHANGELOG
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          python3 - "$version" > notes.md <<'PY'
+          import re, sys
+          from pathlib import Path
+          version = sys.argv[1]
+          text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          pattern = re.compile(r"^## \[%s\].*?$(.*?)(?=^## \[|\Z)" % re.escape(version), re.M | re.S)
+          match = pattern.search(text)
+          if not match:
+              sys.exit(f"Sezione {version} assente in CHANGELOG.md")
+          print(match.group(1).strip())
+          PY
+          test -s notes.md
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md

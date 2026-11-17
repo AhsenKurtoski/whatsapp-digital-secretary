@@ -11,11 +11,10 @@ dell'euro sono supportati dai font base-14 senza incorporare file di font.
 """
 from __future__ import annotations
 
-import math
 import re
 import unicodedata
 from datetime import date, datetime, timedelta
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 import config
 
@@ -504,7 +503,7 @@ def render_quote_pdf(quote: dict) -> bytes:
     issued = q.get("date") or date.today().isoformat()
     valid_until = q.get("valid_until") or issued
 
-    ink, muted, line, soft = _rgb(INK), _rgb(MUTED), _rgb(LINE), _rgb(SOFT)
+    ink, muted, line, _soft = _rgb(INK), _rgb(MUTED), _rgb(LINE), _rgb(SOFT)
     violet, cyan, white = _rgb(VIOLET), _rgb(CYAN), _rgb(WHITE)
     c = Canvas({
         "Title": f"Preventivo {number}".strip(),
@@ -516,7 +515,7 @@ def render_quote_pdf(quote: dict) -> bytes:
     })
 
     def header(minimal: bool = False) -> float:
-        top = 0.0
+        _top = 0.0
         if not minimal:
             segments = 48
             for i in range(segments):

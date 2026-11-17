@@ -25,7 +25,8 @@ run node google-bridge/test_code_gs.js
 run node plugins/secretary-guard/test_guard.js
 run python3 quote_pdf.py /tmp/preventivo-verifica.pdf
 
-for script in monitor watchdog healthcheck contacts reminders gateway_policy doctor remote_access; do
+for script in monitor watchdog healthcheck contacts reminders gateway_policy doctor remote_access \
+              lead_intel cache identity memory quotas router webhooks stats conversations gdpr backup setup_wizard; do
   run python3 "$script.py" --self-test
 done
 

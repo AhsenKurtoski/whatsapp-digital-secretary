@@ -70,6 +70,39 @@ jobs:
       - name: Test inbound and outbound guard
         run: node plugins/secretary-guard/test_guard.js
 
+  quality:
+    name: Lint, types, security, coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install dev tools
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Ruff
+        run: ruff check .
+
+      - name: Mypy (nuovi moduli)
+        run: >-
+          mypy --config-file pyproject.toml --follow-imports=skip
+          lead_intel.py memory.py cache.py identity.py quotas.py router.py
+          webhooks.py stats.py conversations.py gdpr.py backup.py setup_wizard.py
+
+      - name: Bandit (medium/high)
+        run: bandit -q -c pyproject.toml -r . -x tests,node_modules,google-bridge -lll
+
+      - name: pip-audit
+        run: pip-audit -r requirements-dev.txt
+
+      - name: Coverage (soglia 80%)
+        run: bash scripts/coverage.sh
+
   shell:
     name: Shell syntax
     runs-on: ubuntu-latest
@@ -82,3 +115,13 @@ jobs:
           for file in scripts/*.sh docker-entrypoint.sh google-bridge/*.sh; do
             bash -n "$file"
           done
+
+      - name: Test hello-world plugin
+        run: |
+          node --input-type=module -e '
+          import define from "./examples/hello-plugin/index.js";
+          const hooks = [];
+          define({ config: {}, log: () => {}, on: (name) => hooks.push(name) });
+          if (hooks.join(",") !== "before_dispatch,message_sending,agent_end") process.exit(1);
+          console.log("hello-plugin: OK");
+          '

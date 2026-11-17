@@ -115,7 +115,7 @@ def get_sessions(db):
                ORDER BY updated_at DESC"""
         ).fetchall()
         out = []
-        for sid, key, display, updated in rows:
+        for sid, key, display, _updated in rows:
             low = (key or "").lower()
             if any(x in low for x in ("test", "diag", "cron", "heartbeat")):
                 continue

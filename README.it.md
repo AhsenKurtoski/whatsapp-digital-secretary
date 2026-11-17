@@ -385,6 +385,36 @@ gateway, timer) non sono disponibili nel container. La gestione chiavi e il puls
 riavvio nel container non comandano il gateway dell'host: modifica
 `~/.openclaw/secretary/secrets.env` sull'host o usa la dashboard host.
 
+## Piattaforma Gina (v1.3): intelligence, ruoli, GDPR, backup
+
+Questa versione porta la segreteria a un prodotto operativo completo. Ogni voce è
+implementata in codice testato, non è un annuncio:
+
+| Area | Cosa c'è | Comando / documento |
+|---|---|---|
+| Classificazione e audit | intento, lingua IT/EN, score, segnali di truffa, audit trail senza testo integrale | `python3 lead_intel.py --json --text "..."` |
+| Memoria per cliente | lingua, fatti, intenti, transcript redatto, handoff | `python3 memory.py --profile +39...` |
+| Latenza | cache TTL delle risposte frequenti con hit rate | `python3 cache.py --stats` |
+| Modello dinamico | scelta per carico, latenza e 429; applicazione esplicita | `python3 router.py --load 4` |
+| Quote AI | richieste, token, 429, soglie e alert | `python3 quotas.py --json` |
+| Utenti e ruoli | admin / operatore / solo lettura, token hash, audit per utente | `python3 identity.py --add "Anna" --role operator` |
+| Webhook | eventi firmati HMAC verso Zapier/Make/HubSpot | `python3 webhooks.py --list` |
+| Conversazioni | transcript in sola lettura, redazione, handoff bot→umano | dashboard → Conversazioni |
+| Statistiche | KPI e serie 14 giorni sui dati reali | dashboard → Statistiche |
+| GDPR | accesso, cancellazione, retention, inventario dati | [`docs/GDPR.md`](docs/GDPR.md) · `python3 gdpr.py --report` |
+| Backup cifrato | AES-256-GCM, rotazione, ripristino verificato con SHA-256 | [`docs/DISASTER_RECOVERY.md`](docs/DISASTER_RECOVERY.md) |
+| Ban WhatsApp | piano operativo e comunicazione ai clienti | [`docs/WHATSAPP_BAN.md`](docs/WHATSAPP_BAN.md) |
+| Plugin | API, hook ed esempio eseguibile | [`docs/PLUGINS.md`](docs/PLUGINS.md) · `examples/hello-plugin` |
+| Docker | compose full-stack con OpenClaw | [`docs/DOCKER.md`](docs/DOCKER.md) |
+| Qualità | ruff, mypy, bandit, pip-audit, coverage 80% | `bash scripts/coverage.sh` |
+| E2E e video | account di test, checklist, storyboard 60 s | [`docs/E2E.md`](docs/E2E.md) · [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) |
+
+Setup guidato con prove reali (chiave AI, gateway WhatsApp, email di prova):
+
+```bash
+python3 setup.py --wizard
+```
+
 ## Restare online 24/7 gratis
 
 Non esiste un hosting gratuito che tenga vivo un processo senza una macchina accesa.

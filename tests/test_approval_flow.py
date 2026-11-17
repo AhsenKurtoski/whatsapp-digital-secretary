@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import support  # noqa: F401  (sets the isolated environment)
+
 import approval_mcp
 import approval_store
 import dashboard

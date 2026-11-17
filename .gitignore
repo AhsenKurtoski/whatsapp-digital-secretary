@@ -58,6 +58,9 @@ dist/
 node_modules/
 npm-debug.log*
 coverage/
+.coverage
+.coverage.*
+htmlcov/
 
 # OS / editors
 .DS_Store
