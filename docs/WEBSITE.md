@@ -152,8 +152,10 @@ non viene mai inclusa.
 - Vercel legge gli header dal [`vercel.json`](../vercel.json) nella root del
   repository, non da quello dentro la cartella generata: il test
   `test_vercel_manifest_matches_the_build` impedisce che i due divergano.
-- `base_url` è `https://gina-secretary.vercel.app`; ogni push su `main` rigenera il
-  sito con canonical, sitemap e `robots.txt` coerenti.
+- `base_url` è `https://gina-secretary.vercel.app`, quindi canonical, sitemap e
+  `robots.txt` puntano già al dominio definitivo.
+- Il progetto non ha auto-deploy: dopo un push su `main` rilancia il deployment del
+  progetto Vercel (dashboard o CLI) per rigenerare il sito.
 - Il progetto Vercel è separato dalla dashboard: non pubblicare mai la porta 8787.
 
 Verifica dopo il deploy:
