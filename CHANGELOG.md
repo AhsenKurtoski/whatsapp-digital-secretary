@@ -23,8 +23,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
   Google/Bing/Yandex verification tags, strict security headers (`_headers` and
   `vercel.json`) and a build that refuses empty/malformed IDs. `seo_audit.py` gates
   title, description, headings, structured data, sitemap, robots and headers; CI and
-  `scripts/verify.sh` run both. Documented in `docs/WEBSITE.md`. The dashboard stays
-  local-only and is never published.
+  `scripts/verify.sh` run both. Live at <https://gina-secretary.vercel.app> (Vercel
+  project `gina-secretary`, static output in `public/`). Documented in
+  `docs/WEBSITE.md`. The dashboard stays local-only and is never published.
 - **CodeQL workflow** for Python and JavaScript on push, pull request and weekly
   schedule, alongside the existing Dependabot, Bandit and `pip-audit` checks.
 

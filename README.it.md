@@ -124,7 +124,8 @@ Meta o WhatsApp.
   `request_quote_resend` rigenera il PDF dal preventivo originale e mette in coda una
   nuova approvazione. Chi chiede “mandami di nuovo il PDF” non si sente più rispondere
   che il comando non esiste.
-- **Sito pubblico con SEO, analytics e sicurezza** — il progetto separato [`site/`](site)
+- **Sito pubblico con SEO, analytics e sicurezza** — online su
+  <https://gina-secretary.vercel.app>. Il progetto separato [`site/`](site)
   genera una pagina pubblica reale per Gina e il suo autore, con canonical, Open
   Graph/Twitter Card, JSON-LD (`Person`, `SoftwareApplication`, `WebSite`, `FAQPage`),
   sitemap, robots, `security.txt`, GA4 con Consent Mode v2, Cloudflare Web Analytics
