@@ -1,4 +1,8 @@
 {
+  "framework": null,
+  "buildCommand": "python3 site_build.py --config site/config.json --out public",
+  "outputDirectory": "public",
+  "installCommand": "echo \"static site: no dependencies\"",
   "headers": [
     {
       "source": "/(.*)",

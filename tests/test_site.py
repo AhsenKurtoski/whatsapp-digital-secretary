@@ -118,10 +118,13 @@ class SiteBuildTests(unittest.TestCase):
         root = json.loads((ROOT / "vercel.json").read_text(encoding="utf-8"))
         expected = [{"key": key, "value": value} for key, value in site_build.SECURITY_HEADERS]
         self.assertEqual(root["headers"][0]["headers"], expected)
+        self.assertIsNone(root["framework"], "Vercel deve usare Other, non il runtime Python")
+        self.assertEqual(root["outputDirectory"], "public")
+        self.assertIn("site_build.py", root["buildCommand"])
         self.assertFalse(root.get("cleanUrls", False))
         site_build.build(self.config, self.out)
         built = json.loads((self.out / "vercel.json").read_text(encoding="utf-8"))
-        self.assertEqual(built, root)
+        self.assertEqual(built["headers"], root["headers"])
 
 
     def test_cloudflare_analytics_and_default_security_contact(self):
