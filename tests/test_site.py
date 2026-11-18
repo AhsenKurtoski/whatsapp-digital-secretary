@@ -113,6 +113,16 @@ class SiteBuildTests(unittest.TestCase):
         self.assertEqual(site_build.self_test(), 0)
         self.assertEqual(seo_audit.self_test(), 0)
 
+    def test_vercel_manifest_matches_the_build(self):
+        """The root vercel.json is what Vercel reads; it must not drift."""
+        root = json.loads((ROOT / "vercel.json").read_text(encoding="utf-8"))
+        expected = [{"key": key, "value": value} for key, value in site_build.SECURITY_HEADERS]
+        self.assertEqual(root["headers"][0]["headers"], expected)
+        self.assertFalse(root.get("cleanUrls", False))
+        site_build.build(self.config, self.out)
+        built = json.loads((self.out / "vercel.json").read_text(encoding="utf-8"))
+        self.assertEqual(built, root)
+
 
     def test_cloudflare_analytics_and_default_security_contact(self):
         data = json.loads(self.config.read_text(encoding="utf-8"))

@@ -143,9 +143,25 @@ Pubblica **solo** `site/dist`, mai la root del repository e mai la dashboard.
 
 ### Vercel
 
-- Framework preset: **Other**, output directory `site/dist`.
-- `vercel.json` nella cartella pubblicata contiene già gli header di sicurezza.
+Il progetto è collegato al repository e pubblica solo il sito statico; la dashboard
+non viene mai inclusa.
+
+- Framework preset: **Other**.
+- Build command: `python3 site_build.py --config site/config.json --out public`.
+- Output directory: `public`.
+- Vercel legge gli header dal [`vercel.json`](../vercel.json) nella root del
+  repository, non da quello dentro la cartella generata: il test
+  `test_vercel_manifest_matches_the_build` impedisce che i due divergano.
+- `base_url` è `https://gina-secretary.vercel.app`; ogni push su `main` rigenera il
+  sito con canonical, sitemap e `robots.txt` coerenti.
 - Il progetto Vercel è separato dalla dashboard: non pubblicare mai la porta 8787.
+
+Verifica dopo il deploy:
+
+```bash
+curl -sSI https://gina-secretary.vercel.app/ | grep -Ei 'content-security|strict-transport|x-content|x-frame|referrer|permissions'
+curl -sS https://gina-secretary.vercel.app/sitemap.xml
+```
 
 ### GitHub Pages
 

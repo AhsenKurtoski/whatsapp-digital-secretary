@@ -189,7 +189,6 @@ def _vercel_config() -> str:
             "source": "/(.*)",
             "headers": [{"key": name, "value": value} for name, value in SECURITY_HEADERS],
         }],
-        "cleanUrls": True,
         "trailingSlash": False,
     }
     return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
