@@ -31,6 +31,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Mobile Lighthouse performance on the public site**: the hero was a lazily
+  loaded 843 KiB PNG rendered at 364 px, giving a 5.3 s LCP. It now uses four WebP
+  widths with `srcset`/`sizes`, a matching preload, `loading="eager"` and
+  `fetchpriority="high"`; the built site shrank from 1.8 MiB to 1.1 MiB. Live
+  Lighthouse mobile: Performance 100, Accessibility 100, Best Practices 100, SEO
+  100, LCP 1.0 s.
 - **Dashboard table rows stayed Italian in English**: the DOM translator skipped
   every `<tbody>`, so contacts, conversations and analytics cells were never
   translated. Rows are now translated, composed strings use `t()` (customer/Gina
