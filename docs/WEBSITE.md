@@ -21,7 +21,7 @@ site/dist/
 ├── _headers                # security headers per Cloudflare Pages / Netlify
 ├── vercel.json             # gli stessi header per Vercel
 ├── security.txt            # RFC 9116 (anche in .well-known/security.txt)
-├── site.webmanifest
+├── manifest.json
 └── assets/
     ├── style.css
     ├── app.js              # banner consenso, nessun cookie prima dell'accept

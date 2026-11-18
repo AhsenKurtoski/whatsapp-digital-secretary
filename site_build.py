@@ -259,7 +259,7 @@ def build(config_path: Path, out_dir: Path, templates: Path | None = None,
         if not source.is_file():
             _fail(f"asset mancante: {source}")
         shutil.copy2(source, out_dir / "assets" / asset)
-    shutil.copy2(templates / "site.webmanifest", out_dir / "site.webmanifest")
+    shutil.copy2(templates / "manifest.json", out_dir / "manifest.json")
     (out_dir / "assets" / "analytics.config.js").write_text(analytics_js, encoding="utf-8")
 
     screenshot = ROOT / "docs" / "screenshot-dashboard.png"
