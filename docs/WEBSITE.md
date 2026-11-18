@@ -28,9 +28,17 @@ site/dist/
     ├── analytics.js        # GA4 Consent Mode v2 + Cloudflare Web Analytics
     ├── analytics.config.js # ID generati dal build (mai inventati)
     ├── favicon.svg
-    ├── og.png              # anteprima social (screenshot reale della dashboard)
-    └── dashboard.png
+    ├── dashboard-480.webp  # hero responsive: 480/720/1080/1440 px
+    ├── dashboard-720.webp
+    ├── dashboard-1080.webp # versione precaricata su mobile
+    ├── dashboard-1440.webp
+    └── og.png              # anteprima social (screenshot reale della dashboard)
 ```
+
+L'immagine hero è servita in WebP a quattro larghezze con `srcset`/`sizes`,
+`loading="eager"`, `fetchpriority="high"` e un `preload` con `imagesrcset`: è
+l'elemento LCP e senza questi attributi Lighthouse misurava 5,3 s di LCP. Il PNG
+originale resta solo come `og.png` per le anteprime social.
 
 SEO incluso: title e description per pagina, canonical assoluto, Open Graph,
 Twitter Card, `hreflang` non necessario (sito in italiano), JSON-LD `Person`,

@@ -12,6 +12,7 @@
 <link rel="canonical" href="{{BASE_URL}}/">
 <link rel="icon" href="{{BASE_URL}}/assets/favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="{{BASE_URL}}/manifest.json">
+<link rel="preload" as="image" href="{{BASE_URL}}/assets/dashboard-1080.webp" imagesrcset="{{BASE_URL}}/assets/dashboard-480.webp 480w, {{BASE_URL}}/assets/dashboard-720.webp 720w, {{BASE_URL}}/assets/dashboard-1080.webp 1080w, {{BASE_URL}}/assets/dashboard-1440.webp 1440w" imagesizes="(max-width: 1120px) calc(100vw - 48px), 1072px" fetchpriority="high">
 <link rel="stylesheet" href="{{BASE_URL}}/assets/style.css">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{SITE_NAME}}">
@@ -146,7 +147,7 @@
       <li><strong>0</strong><span>invii senza approvazione</span></li>
     </ul>
     <figure class="shot">
-      <img src="{{BASE_URL}}/assets/dashboard.png" width="1440" height="1100" loading="lazy" decoding="async" alt="Dashboard privata di Gina con lead, stato del gateway, approvazioni e preventivi">
+      <img src="{{BASE_URL}}/assets/dashboard-1080.webp" srcset="{{BASE_URL}}/assets/dashboard-480.webp 480w, {{BASE_URL}}/assets/dashboard-720.webp 720w, {{BASE_URL}}/assets/dashboard-1080.webp 1080w, {{BASE_URL}}/assets/dashboard-1440.webp 1440w" sizes="(max-width: 1120px) calc(100vw - 48px), 1072px" width="1440" height="1100" loading="eager" fetchpriority="high" decoding="async" alt="Dashboard privata di Gina con lead, stato del gateway, approvazioni e preventivi">
       <figcaption>La dashboard privata: lead, salute del sistema, approvazioni e preventivi in un'unica vista.</figcaption>
     </figure>
   </section>

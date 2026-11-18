@@ -43,7 +43,9 @@ class SiteBuildTests(unittest.TestCase):
             self.assertTrue((self.out / name).is_file(), name)
         self.assertTrue((self.out / ".well-known" / "security.txt").is_file())
         self.assertTrue((self.out / "assets" / "og.png").is_file())
-        self.assertTrue((self.out / "assets" / "dashboard.png").is_file())
+        for width in (480, 720, 1080, 1440):
+            self.assertTrue((self.out / "assets" / f"dashboard-{width}.webp").is_file(), width)
+        self.assertFalse((self.out / "assets" / "dashboard.png").exists())
         robots = (self.out / "robots.txt").read_text(encoding="utf-8")
         self.assertIn("Sitemap: https://example.com/sitemap.xml", robots)
         headers = (self.out / "_headers").read_text(encoding="utf-8")
@@ -112,6 +114,17 @@ class SiteBuildTests(unittest.TestCase):
     def test_self_tests_are_real(self):
         self.assertEqual(site_build.self_test(), 0)
         self.assertEqual(seo_audit.self_test(), 0)
+
+    def test_hero_image_is_eager_responsive_and_small(self):
+        site_build.build(self.config, self.out)
+        index = (self.out / "index.html").read_text(encoding="utf-8")
+        self.assertIn('fetchpriority="high"', index)
+        self.assertNotIn('loading="lazy"', index)
+        self.assertIn("dashboard-480.webp 480w", index)
+        self.assertIn("dashboard-1440.webp 1440w", index)
+        self.assertIn('rel="preload" as="image"', index)
+        self.assertNotIn("/assets/dashboard.png", index)
+        self.assertLess((self.out / "assets" / "dashboard-1080.webp").stat().st_size, 120_000)
 
     def test_vercel_manifest_matches_the_build(self):
         """The root vercel.json is what Vercel reads; it must not drift."""

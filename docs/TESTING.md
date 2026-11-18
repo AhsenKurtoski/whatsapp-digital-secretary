@@ -183,6 +183,19 @@ curl -sSI https://YOUR-DOMAIN/ | grep -Ei 'content-security|strict-transport|x-c
 - [ ] The private dashboard is still bound to localhost and is not reachable from the
       public domain.
 
+Lighthouse mobile on the live site (Chrome headless):
+
+```bash
+npx lighthouse https://gina-secretary.vercel.app/ --form-factor=mobile \
+  --only-categories=performance,accessibility,best-practices,seo --view
+```
+
+- [ ] Performance ≥ 90, Accessibility/Best Practices/SEO = 100.
+- [ ] LCP < 2,5 s; the hero request is a WebP from `srcset`, not the 843 KiB PNG,
+      and has `fetchpriority="high"` without `loading="lazy"`.
+- [ ] Unknown paths return HTTP 404 with the custom page; `canonical`, `sitemap.xml`
+      and `robots.txt` all use `https://gina-secretary.vercel.app`.
+
 ## Failure and recovery tests
 
 1. Stop the gateway: dashboard shows disconnected, watchdog restarts it after two
