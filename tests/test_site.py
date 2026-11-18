@@ -169,7 +169,11 @@ class SiteBuildTests(unittest.TestCase):
         config = json.loads((ROOT / "lighthouserc.json").read_text(encoding="utf-8"))
         collect = config["ci"]["collect"]
         self.assertEqual(collect["numberOfRuns"], 3)
-        self.assertEqual(collect["settings"]["formFactor"], "mobile")
+        self.assertNotEqual(
+            (collect.get("settings") or {}).get("formFactor"),
+            "desktop",
+            "Lighthouse mobile è il default: la config non deve chiedere desktop",
+        )
         self.assertTrue(collect["url"])
         self.assertTrue(all(url.startswith("https://") for url in collect["url"]))
         assertions = config["ci"]["assert"]["assertions"]

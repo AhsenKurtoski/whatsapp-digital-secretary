@@ -263,7 +263,19 @@ In locale, con Chrome installato:
 npx --yes @lhci/cli@0.16.1 autorun
 ```
 
-I report HTML finiscono in `artifacts/lighthouse/`. La stessa configurazione gira
+I report HTML finiscono in `artifacts/lighthouse/`.
+
+Misura reale del 18/11/2026 (Chrome for Testing 158, mobile, throttling simulato,
+sei run totali, tutte le assertion superate):
+
+| URL | Performance | Accessibility | Best Practices | SEO | LCP (mediana) | CLS | TBT |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `/` | 100 · 100 · 100 | 100 | 100 | 100 | 0,82 s | 0 | 0–13 ms |
+| `/privacy.html` | 100 · 100 · 100 | 100 | 100 | 100 | 0,80 s | 0 | 0 ms |
+
+Se in un container Lighthouse riporta `NO_FCP` solo sulle pagine di testo, mancano i
+font di sistema (la home dipinge comunque l'immagine hero). Non è un problema del
+sito: installa `fonts-dejavu-core` o fornisci un `fonts.conf` al browser. La stessa configurazione gira
 in [`.github/workflows/lighthouse.yml`](../.github/workflows/lighthouse.yml) a ogni
 push su `main`, sulle pull request, ogni lunedì e su richiesta manuale. Il workflow
 testa l'URL di produzione: se il deploy manuale non è ancora avvenuto, il gate può

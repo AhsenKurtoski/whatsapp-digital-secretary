@@ -200,7 +200,10 @@ npx --yes @lhci/cli@0.16.1 autorun
 ```
 
 - [ ] `All assertions passed`: Performance ≥ 0,90, Accessibility/Best Practices ≥ 0,95,
-      SEO = 1,00 on the median of three runs.
+      SEO = 1,00 on the median of three runs. Reference measurement of 18/11/2026:
+      100/100/100/100 on `/` and `/privacy.html`, LCP 0,82 s and 0,80 s.
+- [ ] Both URLs complete three runs each: a `NO_FCP` error on a text-only page in a
+      bare container means the browser has no system fonts, not a site bug.
 - [ ] LCP < 2,5 s; the hero request is a WebP from `srcset`, not the 843 KiB PNG,
       and has `fetchpriority="high"` without `loading="lazy"`.
 - [ ] Unknown paths return HTTP 404 with the custom page; `canonical`, `sitemap.xml`

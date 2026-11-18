@@ -39,6 +39,7 @@ archive/
 # Dashboard and email previews
 *.html.tmp
 artifacts/
+.lighthouseci/
 preview-*.html
 screenshots/*.png
 !docs/screenshot-dashboard.png
