@@ -14,6 +14,22 @@ class ContactsTests(unittest.TestCase):
         self.assertIn("Officina Demo", text)
         self.assertIn("Nessun contatto", text)
 
+    def test_summary_is_fully_english_when_requested(self):
+        empty = contacts.summary_text([], {"business_name": "Demo"}, lang="en")
+        self.assertIn("WhatsApp contacts", empty)
+        self.assertIn("No customer contacts", empty)
+        self.assertNotIn("Nessun", empty)
+        rows = [{
+            "phone": "+393331112222", "name": "Mario", "messages_in": 1, "messages_out": 1,
+            "last_at": "2026-11-04T18:00:00+01:00", "score": 80, "intent": "preventivo",
+            "last_messages": [{"text": "Vorrei un preventivo"}],
+        }]
+        text = contacts.summary_text(rows, {"business_name": "Demo"}, {"+393331112222": 2}, lang="en")
+        self.assertIn("1 people", text)
+        self.assertIn("2 awaiting approval", text)
+        self.assertIn("quote", text)
+        self.assertNotIn("da approvare", text)
+
     def test_summary_ranks_hot_leads_first(self):
         rows = [
             {

@@ -850,7 +850,7 @@ select option{background:#081420}
   </main>
 
   <div class="footer">
-    <span>{{BOT_NAME}} di {{OWNER_NAME}} · solo localhost · <span id="footerDate">—</span></span>
+    <span><span id="footerOwner" data-bot="{{BOT_NAME}}" data-owner="{{OWNER_NAME}}">{{BOT_NAME}} di {{OWNER_NAME}} · solo localhost</span> · <span id="footerDate">—</span></span>
     <span class="mono" id="footerDash">—</span>
   </div>
 </div>
@@ -895,8 +895,11 @@ function scoreChip(score){
   return `<span class="score ${cls}">${n}</span>`;
 }
 function intentLabel(v){
-  const m={preventivo:'Preventivo',call:'Call',supporto:'Supporto',info:'Info',sospetto:'Sospetto'};
-  return `<span class="chip ${v==='sospetto'?'bad':(v==='call'?'gold':'')}">${esc(m[v]||v||'—')}</span>`;
+  const keys={preventivo:'intent.quote',quote:'intent.quote',appointment:'intent.appointment',
+    call:'intent.call',supporto:'intent.support',support:'intent.support',
+    info:'intent.info',lead:'intent.lead',sospetto:'intent.suspicious',suspicious:'intent.suspicious'};
+  const label=v?(keys[v]?t(keys[v]):v):'—';
+  return `<span class="chip ${v==='sospetto'||v==='suspicious'?'bad':(v==='call'?'gold':'')}">${esc(label)}</span>`;
 }
 function badgeKind(k){
   if(k==='scam') return '<span class="chip bad">truffa</span>';
@@ -1368,22 +1371,22 @@ function renderContacts(d){
   const rows=data.contacts||[];
   const pending=Object.values(data.pending_by_phone||{}).reduce((a,b)=>a+b,0);
   if($('contactsCounts')) $('contactsCounts').innerHTML = `<span class="chip">${data.total??rows.length} ${esc(t('c.contacts'))}</span><span class="chip">${data.messages??0} ${esc(t('c.messages'))}</span>` + (pending?`<span class="chip gold">${pending} ${esc(t('c.open'))}</span>`:'');
-  if($('contactsSummary')) $('contactsSummary').textContent=data.summary||'Nessun riepilogo disponibile.';
+  if($('contactsSummary')) $('contactsSummary').textContent=data.summary||t('contacts.none');
   if(!$('contactsBody')) return;
   $('contactsBody').innerHTML = rows.length ? rows.map(x=>{
     const last=((x.last_messages||[]).slice(-1)[0]||{}).text||'';
     return `<tr><td class="muted">${fmtDate(x.last_at)}</td><td>${esc(x.name||'—')}</td><td class="mono">${esc(x.phone||'—')}</td><td>${x.messages_in??0} / ${x.messages_out??0}</td><td>${intentLabel(x.intent)}</td><td>${scoreChip(x.score)}</td><td>${esc(last.slice(0,180))}</td></tr>`;
-  }).join('') : '<tr><td colspan="7" class="empty">Nessun contatto WhatsApp registrato.</td></tr>';
+  }).join('') : `<tr><td colspan="7" class="empty">${esc(t('contacts.empty'))}</td></tr>`;
 }
 async function loadContacts(){
-  try{ const r=await api('/api/contacts'); renderContacts(r.data||{}); }
+  try{ const r=await api('/api/contacts?lang='+state.lang); renderContacts(r.data||{}); }
   catch(e){ if(e.message!=='auth') toast(t('contacts.error').replace('{error}', e.message),true); }
 }
 $('refreshContactsBtn').addEventListener('click',loadContacts);
 $('contactsSummaryBtn').addEventListener('click', async ()=>{
-  if(!confirm('Inviare il riepilogo contatti sul tuo WhatsApp?')) return;
-  const b=$('contactsSummaryBtn'); b.disabled=true; const old=b.textContent; b.textContent='Invio…';
-  try{ const r=await api('/api/contacts/summary',{method:'POST',body:JSON.stringify({send:true})}); toast(r.sent?'Riepilogo inviato sul tuo WhatsApp.':'Riepilogo preparato (invio non eseguito).',!r.sent); }
+  if(!confirm(t('contacts.confirmSummary'))) return;
+  const b=$('contactsSummaryBtn'); b.disabled=true; const old=b.textContent; b.textContent=t('contacts.summarySending');
+  try{ const r=await api('/api/contacts/summary',{method:'POST',body:JSON.stringify({send:true})}); toast(r.sent?t('contacts.summarySent'):t('contacts.summaryPrepared'),!r.sent); }
   catch(e){ toast(t('summary.error').replace('{error}', e.message),true); }
   finally{ b.disabled=false; b.textContent=old; }
 });
@@ -1470,6 +1473,17 @@ const I18N={
     'ap.pending':'in attesa','ap.approved':'approvate','ap.rejected':'rifiutate','ap.failed':'fallite',
     'q.pending':'in attesa','q.sent':'inviati','q.expired':'scaduti','q.count':'preventivi',
     'c.contacts':'contatti','c.messages':'messaggi','c.open':'richieste aperte',
+    'intent.quote':'Preventivo','intent.call':'Call','intent.support':'Supporto',
+    'intent.info':'Info','intent.suspicious':'Sospetto','intent.lead':'Lead',
+    'intent.appointment':'Appuntamento',
+    'role.client':'Cliente','chart.msgShort':'msg','chart.leadShort':'lead',
+    'contacts.empty':'Nessun contatto WhatsApp registrato.',
+    'contacts.none':'Nessun riepilogo disponibile.',
+    'contacts.confirmSummary':'Inviare il riepilogo contatti sul tuo WhatsApp?',
+    'contacts.summarySent':'Riepilogo inviato sul tuo WhatsApp.',
+    'contacts.summaryPrepared':'Riepilogo preparato (invio non eseguito).',
+    'contacts.summarySending':'Invio…',
+    'footer.owner':'{bot} di {owner} · solo localhost',
   },
   en:{
     'nav.overview':'Overview','nav.health':'Health','nav.leads':'Leads','nav.alerts':'Alerts',
@@ -1532,13 +1546,26 @@ const I18N={
     'ap.pending':'pending','ap.approved':'approved','ap.rejected':'rejected','ap.failed':'failed',
     'q.pending':'pending','q.sent':'sent','q.expired':'expired','q.count':'quotes',
     'c.contacts':'contacts','c.messages':'messages','c.open':'open requests',
+    'intent.quote':'Quote','intent.call':'Call','intent.support':'Support',
+    'intent.info':'Info','intent.suspicious':'Suspicious','intent.lead':'Lead',
+    'intent.appointment':'Appointment',
+    'role.client':'Customer','chart.msgShort':'msgs','chart.leadShort':'leads',
+    'contacts.empty':'No WhatsApp contacts recorded.',
+    'contacts.none':'No summary available.',
+    'contacts.confirmSummary':'Send the contact summary to your WhatsApp?',
+    'contacts.summarySent':'Summary sent to your WhatsApp.',
+    'contacts.summaryPrepared':'Summary prepared (not sent).',
+    'contacts.summarySending':'Sending…',
+    'footer.owner':'{bot} by {owner} · localhost only',
   }
 };
 /* Traduzione delle schede storiche: mappa italiana → inglese generata dal file
    i18n.json e applicata ai nodi di testo, agli attributi e ai contenuti dinamici. */
 const TEXT_EN = {{I18N_TEXT}};
 const I18N_ORIGINALS = new WeakMap();
-const I18N_SKIP_TAGS = new Set(['SCRIPT','STYLE','CODE','PRE','TEXTAREA','TBODY']);
+/* I tbody non vanno saltati: le righe delle tabelle sono contenuto dinamico e
+   devono essere tradotte come tutto il resto. */
+const I18N_SKIP_TAGS = new Set(['SCRIPT','STYLE','CODE','PRE','TEXTAREA']);
 const I18N_ATTRS = ['placeholder','title','aria-label'];
 function i18nSkipped(node){
   let el = node && node.nodeType===1 ? node : (node && node.parentElement);
@@ -1609,10 +1636,16 @@ function applyLang(lang){
   document.querySelectorAll('[data-i18n]').forEach(el=>{const v=t(el.dataset.i18n); if(v) el.textContent=v;});
   document.querySelectorAll('[data-i18n-ph]').forEach(el=>{const v=t(el.dataset.i18nPh); if(v) el.placeholder=v;});
   const sel=$('langSelect'); if(sel) sel.value=state.lang;
+  const footerOwner=$('footerOwner');
+  if(footerOwner) footerOwner.textContent=t('footer.owner')
+    .replace('{bot}', footerOwner.dataset.bot||'')
+    .replace('{owner}', footerOwner.dataset.owner||'');
   try{localStorage.setItem('gina_lang',state.lang);}catch(e){}
   if(state.conversations) renderConversations();
   if(state.stats) renderStats();
   i18nTree(document.body,state.lang==='en');
+  if(state.tab==='contacts') loadContacts();
+  if(state.tab==='stats') loadStats();
 }
 function pct(x){ return Math.round((Number(x)||0)*100)+'%'; }
 function secs(x){ const n=Number(x)||0; return n>=60?Math.round(n/60)+' min':Math.round(n)+' s'; }
@@ -1649,7 +1682,7 @@ async function openTranscript(phone){
     $('transcriptTitle').textContent=(r.data.name?r.data.name+' · ':'')+phone;
     const rows=r.data.messages||[];
     $('transcriptBox').innerHTML=rows.length?rows.map(m=>`<div class="bubble ${m.role==='user'?'user':'assistant'}">
-      <div class="bubble-meta">${m.role==='user'?'Cliente':'Gina'} · ${esc(String(m.ts||'').slice(11,16))}</div>
+      <div class="bubble-meta">${m.role==='user'?esc(t('role.client')):'Gina'} · ${esc(String(m.ts||'').slice(11,16))}</div>
       <div>${esc(m.text||'')}</div></div>`).join(''):'<p class="muted">—</p>';
     const active=!!(r.data.handoff&&r.data.handoff.active);
     if($('handoffBtn')) $('handoffBtn').hidden=active;
@@ -1670,7 +1703,7 @@ async function setHandoff(active){
 /* ---- Statistiche e quote AI ---- */
 async function loadStats(){
   try{
-    const [d,u]=await Promise.all([api('/api/stats'),api('/api/usage')]);
+    const [d,u]=await Promise.all([api('/api/stats'),api('/api/usage?lang='+state.lang)]);
     state.stats=d.data||{}; state.usage=u||{};
     renderStats();
   }catch(e){ if(e.message!=='auth') toast(t('lbl.stats')+': '+e.message,true); }
@@ -1700,7 +1733,7 @@ function renderStats(){
   if(chart){
     chart.innerHTML=daily.map(d=>{
       const h=Math.round(((Number(d.messages)||0)/max)*100);
-      return `<div class="chart-bar" title="${esc(d.day)}: ${Number(d.messages)||0} msg, ${Number(d.leads)||0} lead"><span style="height:${h}%"></span><em>${esc(String(d.day).slice(5))}</em></div>`;
+      return `<div class="chart-bar" title="${esc(d.day)}: ${Number(d.messages)||0} ${esc(t('chart.msgShort'))}, ${Number(d.leads)||0} ${esc(t('chart.leadShort'))}"><span style="height:${h}%"></span><em>${esc(String(d.day).slice(5))}</em></div>`;
     }).join('');
     chart.setAttribute('aria-label',daily.map(d=>t('chart.aria').replace('{day}', d.day).replace('{messages}', Number(d.messages)||0).replace('{leads}', Number(d.leads)||0)).join('; '));
   }

@@ -77,13 +77,16 @@ class McpProtocolTests(unittest.TestCase):
         self.assertEqual(reply["result"]["serverInfo"]["name"], "secretary-approvals")
         self.assertIn("tools", reply["result"]["capabilities"])
 
-    def test_tools_list_exposes_brief_and_the_three_approvals(self):
+    def test_tools_list_exposes_brief_memory_quotes_and_approvals(self):
         self.initialize()
         reply = self.request({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
         tools = reply["result"]["tools"]
         self.assertEqual(
             {tool["name"] for tool in tools},
-            {"client_brief", "request_email", "request_calendar", "request_quote"},
+            {
+                "client_brief", "remember_fact", "list_quotes", "request_email",
+                "request_calendar", "request_quote", "request_quote_resend",
+            },
         )
         brief = next(tool for tool in tools if tool["name"] == "client_brief")
         self.assertEqual(brief["inputSchema"]["required"], ["message"])
@@ -118,6 +121,7 @@ class McpProtocolTests(unittest.TestCase):
                 "arguments": {
                     "client_name": "Anna Verdi",
                     "client_email": "anna@example.com",
+                    "client_phone": "+393331118888",
                     "items": [
                         {"description": "Sito web vetrina", "qty": 1, "unit_price": 900, "unit": "forfait"},
                     ],
@@ -142,6 +146,76 @@ class McpProtocolTests(unittest.TestCase):
         self.assertEqual(row["type"], "quote")
         self.assertEqual(row["status"], "pending")
         self.assertEqual(row["payload"]["totals"]["total"], 1098.0)
+
+    def test_memory_quotes_and_pdf_recall_over_the_protocol(self):
+        self.initialize()
+        created = self.request({
+            "jsonrpc": "2.0", "id": 30, "method": "tools/call",
+            "params": {
+                "name": "request_quote",
+                "arguments": {
+                    "client_name": "Anna Verdi",
+                    "client_email": "anna@example.com",
+                    "client_phone": "+393331118888",
+                    "items": [{"description": "Sito web", "qty": 1, "unit_price": 900}],
+                },
+            },
+        })["result"]["structuredContent"]
+        number = created["number"]
+
+        listed = self.request({
+            "jsonrpc": "2.0", "id": 31, "method": "tools/call",
+            "params": {"name": "list_quotes", "arguments": {"phone": "+393331118888"}},
+        })["result"]
+        self.assertFalse(listed["isError"])
+        self.assertEqual(listed["structuredContent"]["count"], 1)
+        self.assertEqual(listed["structuredContent"]["quotes"][0]["number"], number)
+        self.assertTrue(listed["structuredContent"]["quotes"][0]["has_pdf"])
+
+        # Un altro numero non vede il preventivo di Anna.
+        other = self.request({
+            "jsonrpc": "2.0", "id": 32, "method": "tools/call",
+            "params": {"name": "list_quotes", "arguments": {"phone": "+393331117777"}},
+        })["result"]
+        self.assertEqual(other["structuredContent"]["count"], 0)
+
+        resent = self.request({
+            "jsonrpc": "2.0", "id": 33, "method": "tools/call",
+            "params": {
+                "name": "request_quote_resend",
+                "arguments": {"phone": "+393331118888", "reason": "Il cliente ha chiesto di nuovo il PDF"},
+            },
+        })["result"]
+        self.assertFalse(resent["isError"])
+        self.assertEqual(resent["structuredContent"]["status"], "pending")
+        self.assertTrue(resent["structuredContent"]["pdf"])
+        self.assertEqual(resent["structuredContent"]["resent_from"], number)
+
+        saved = self.request({
+            "jsonrpc": "2.0", "id": 34, "method": "tools/call",
+            "params": {
+                "name": "remember_fact",
+                "arguments": {"phone": "+393331118888", "key": "budget", "value": "3000 euro"},
+            },
+        })["result"]
+        self.assertFalse(saved["isError"])
+        self.assertTrue(saved["structuredContent"]["saved"])
+        brief = self.request({
+            "jsonrpc": "2.0", "id": 35, "method": "tools/call",
+            "params": {
+                "name": "client_brief",
+                "arguments": {"message": "Quanto avevamo detto?", "phone": "+393331118888"},
+            },
+        })["result"]["structuredContent"]
+        self.assertIn("budget=3000 euro", brief["context"])
+
+    def test_list_quotes_requires_a_client_identifier(self):
+        reply = self.request({
+            "jsonrpc": "2.0", "id": 40, "method": "tools/call",
+            "params": {"name": "list_quotes", "arguments": {}},
+        })
+        self.assertIn("error", reply)
+        self.assertIn("cliente", reply["error"]["message"])
 
     def test_invalid_quote_returns_a_clean_error(self):
         reply = self.request({

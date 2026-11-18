@@ -32,11 +32,18 @@ class ApprovalSetupTests(unittest.TestCase):
         # essere consentiti, altrimenti il tool risulta assente al modello.
         self.assertIn("mcp__secretary__request_quote", data["tools"]["alsoAllow"])
         self.assertIn("request_email", server["toolFilter"]["include"])
+        for name in ("remember_fact", "list_quotes", "request_quote_resend"):
+            self.assertIn(name, server["toolFilter"]["include"])
 
     def test_tool_names_cover_every_approval(self):
         self.assertIn("secretary__request_quote", approval_setup.TOOL_NAMES)
         self.assertIn("secretary__request_email", approval_setup.TOOL_NAMES)
         self.assertIn("secretary__request_calendar", approval_setup.TOOL_NAMES)
+
+    def test_memory_and_quote_recall_tools_reach_the_bot(self):
+        for name in ("remember_fact", "list_quotes", "request_quote_resend"):
+            self.assertIn(f"secretary__{name}", approval_setup.TOOL_NAMES)
+            self.assertIn(f"mcp__secretary__{name}", approval_setup.TOOL_NAMES)
 
 
 if __name__ == "__main__":

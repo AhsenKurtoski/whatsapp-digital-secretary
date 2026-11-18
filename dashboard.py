@@ -1117,7 +1117,7 @@ def _pending_by_phone() -> dict[str, int]:
     return counts
 
 
-def contacts_data(limit: int = 60) -> dict:
+def contacts_data(limit: int = 60, lang: str = "it") -> dict:
     """Storico reale dei contatti WhatsApp, unito a lead e richieste aperte."""
     if contacts_history is None:
         return {"contacts": [], "total": 0, "messages": 0, "error": "modulo contatti non disponibile"}
@@ -1128,7 +1128,7 @@ def contacts_data(limit: int = 60) -> dict:
         "total": len(contacts),
         "messages": sum(int(c.get("messages_in") or 0) for c in contacts),
         "pending_by_phone": pending,
-        "summary": contacts_history.summary_text(contacts, pending_by_phone=pending),
+        "summary": contacts_history.summary_text(contacts, pending_by_phone=pending, lang=lang),
     }
 
 
@@ -1854,7 +1854,8 @@ class Handler(BaseHTTPRequestHandler):
                 limit = int((q.get("limit") or ["60"])[0])
             except Exception:
                 limit = 60
-            self._json({"ok": True, "data": contacts_data(limit)})
+            lang = "en" if (q.get("lang") or ["it"])[0].lower().startswith("en") else "it"
+            self._json({"ok": True, "data": contacts_data(limit, lang=lang)})
             return
         if path == "/api/me":
             if not self._require():
@@ -1905,8 +1906,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/usage":
             if not self._require():
                 return
-            data = quotas_view.status() if quotas_view is not None else {"providers": [], "alerts": []}
-            model = router_view.choose(load=len(conversations_view.list_conversations(50))) if (router_view and conversations_view) else {}
+            q = parse_qs(urlparse(self.path).query)
+            lang = "en" if (q.get("lang") or ["it"])[0].lower().startswith("en") else "it"
+            data = quotas_view.status(lang=lang) if quotas_view is not None else {"providers": [], "alerts": []}
+            model = router_view.choose(load=len(conversations_view.list_conversations(50)), lang=lang) if (router_view and conversations_view) else {}
             self._json({"ok": True, "data": data, "model": model})
             return
         if path == "/api/users":

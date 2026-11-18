@@ -24,6 +24,15 @@ run python3 google-bridge/test_bridge.py
 run node google-bridge/test_code_gs.js
 run node plugins/secretary-guard/test_guard.js
 run python3 quote_pdf.py /tmp/preventivo-verifica.pdf
+run python3 site_build.py --self-test
+run python3 seo_audit.py --self-test
+
+# Sito pubblico reale: solo se il dominio è configurato, così non si pubblica
+# mai un canonical finto.
+if python3 -c 'import json,sys; sys.exit(0 if json.load(open("site/config.json")).get("base_url") else 1)' 2>/dev/null; then
+  run python3 site_build.py --config site/config.json --out site/dist
+  run python3 seo_audit.py --dir site/dist
+fi
 
 for script in monitor watchdog healthcheck contacts reminders gateway_policy doctor remote_access \
               lead_intel cache identity memory quotas router webhooks stats conversations gdpr backup live setup_wizard; do

@@ -68,3 +68,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Sito pubblico generato (si pubblica solo dist, non il sorgente buildato)
+site/dist/

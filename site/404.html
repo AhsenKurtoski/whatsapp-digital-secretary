@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="{{CSP_META}}">
+<title>Pagina non trovata — Gina</title>
+<meta name="description" content="La pagina richiesta non esiste. Torna alla home di Gina, la segreteria digitale WhatsApp self-hosted.">
+<meta name="robots" content="noindex, follow">
+<meta name="theme-color" content="#0b1020">
+<link rel="icon" href="{{BASE_URL}}/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="{{BASE_URL}}/assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="{{BASE_URL}}/" aria-label="Gina, home">
+    <span class="brand-mark" aria-hidden="true">G</span>
+    <span>Gina<span class="brand-sub"> · digital secretary</span></span>
+  </a>
+</header>
+<main id="main" class="not-found">
+  <p class="eyebrow">404</p>
+  <h1>Questa pagina non esiste.</h1>
+  <p>Il link è vecchio o la pagina è stata spostata.</p>
+  <p><a class="btn primary" href="{{BASE_URL}}/">Torna alla home</a></p>
+</main>
+<footer class="site-footer">
+  <p>© {{YEAR}} {{OWNER_NAME}}</p>
+  <nav aria-label="Link legali">
+    <a href="{{BASE_URL}}/privacy.html">Privacy</a>
+    <a href="{{REPO_URL}}" rel="noopener">GitHub</a>
+  </nav>
+</footer>
+</body>
+</html>

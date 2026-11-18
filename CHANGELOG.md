@@ -8,6 +8,37 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Memory and quote-recall tools for Gina** (`approval_mcp.py`): `remember_fact`
+  stores confirmed, redacted customer facts per WhatsApp number so they survive
+  restarts and new chats; `list_quotes` lists only that customer's quotes with number,
+  date, total, status and PDF availability; `request_quote_resend` regenerates the PDF
+  from the original quote and queues a new approval. The persona now passes the
+  customer number to `client_brief` on every message and no longer tells customers
+  that a PDF command is missing. Covered by real JSON-RPC tests, including isolation
+  between two customers and the protocol self-test.
+- **Public SEO website** (`site/`, `site_build.py`, `seo_audit.py`): a separate public
+  page for Gina and its author with canonical URLs, Open Graph/Twitter cards, JSON-LD
+  (`Person`, `SoftwareApplication`, `WebSite`, `FAQPage`), sitemap, robots,
+  `security.txt`, GA4 with Consent Mode v2, optional cookieless Cloudflare analytics,
+  Google/Bing/Yandex verification tags, strict security headers (`_headers` and
+  `vercel.json`) and a build that refuses empty/malformed IDs. `seo_audit.py` gates
+  title, description, headings, structured data, sitemap, robots and headers; CI and
+  `scripts/verify.sh` run both. Documented in `docs/WEBSITE.md`. The dashboard stays
+  local-only and is never published.
+- **CodeQL workflow** for Python and JavaScript on push, pull request and weekly
+  schedule, alongside the existing Dependabot, Bandit and `pip-audit` checks.
+
+### Fixed
+
+- **Dashboard table rows stayed Italian in English**: the DOM translator skipped
+  every `<tbody>`, so contacts, conversations and analytics cells were never
+  translated. Rows are now translated, composed strings use `t()` (customer/Gina
+  bubble labels, chart tooltips, intent names, empty states, contact summary dialogs)
+  and the server returns the contact summary and AI-quota alerts in the requested
+  language (`/api/contacts?lang=`, `/api/usage?lang=`). Covered by new assertions in
+  `tests/test_dashboard_i18n.py`, `tests/test_contacts.py` and
+  `tests/test_gina_platform.py`.
+
 - **Live reply pipeline** (`live.py`): the same function the `client_brief` MCP tool
   calls on every message now joins classification, per-customer memory and a shared
   answer cache. Gina receives a ready, verified answer for factual questions

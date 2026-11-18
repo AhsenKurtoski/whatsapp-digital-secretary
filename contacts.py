@@ -243,18 +243,34 @@ def _short_date(iso: str) -> str:
         return "-"
 
 
+INTENT_LABELS_EN = {
+    "preventivo": "quote", "quote": "quote", "appuntamento": "appointment",
+    "call": "call", "supporto": "support", "support": "support",
+    "info": "info", "lead": "lead", "sospetto": "suspicious", "suspicious": "suspicious",
+}
+
+
 def summary_text(
     contacts: list[dict],
     cfg: dict | None = None,
     pending_by_phone: dict[str, int] | None = None,
     max_contacts: int = 8,
+    lang: str = "it",
 ) -> str:
     """Riepilogo WhatsApp compatto: chi ha scritto, cosa voleva, cosa è aperto."""
     cfg = cfg if isinstance(cfg, dict) else config.load()
-    brand = str(cfg.get("business_name") or "Attività").strip()
+    brand = str(cfg.get("business_name") or ("Business" if str(lang).lower().startswith("en") else "Attività")).strip()
     pending_by_phone = pending_by_phone or {}
     today = datetime.now(ROME).strftime("%d/%m/%Y")
+    en = str(lang or "").strip().lower().startswith("en")
     if not contacts:
+        if en:
+            return (
+                f"📇 WhatsApp contacts — {today}\n"
+                f"{brand}\n\n"
+                "No customer contacts recorded yet. "
+                "History is filled from the bot's WhatsApp conversations."
+            )
         return (
             f"📇 Contatti WhatsApp — {today}\n"
             f"{brand}\n\n"
@@ -264,12 +280,20 @@ def summary_text(
 
     total_messages = sum(int(c.get("messages_in") or 0) for c in contacts)
     open_requests = sum(int(v or 0) for v in pending_by_phone.values())
-    lines = [
-        f"📇 Contatti WhatsApp — {today}",
-        f"{len(contacts)} persone · {total_messages} messaggi ricevuti",
-    ]
-    if open_requests:
-        lines.append(f"⏳ {open_requests} richieste in attesa di approvazione")
+    if en:
+        lines = [
+            f"📇 WhatsApp contacts — {today}",
+            f"{len(contacts)} people · {total_messages} messages received",
+        ]
+        if open_requests:
+            lines.append(f"⏳ {open_requests} requests awaiting approval")
+    else:
+        lines = [
+            f"📇 Contatti WhatsApp — {today}",
+            f"{len(contacts)} persone · {total_messages} messaggi ricevuti",
+        ]
+        if open_requests:
+            lines.append(f"⏳ {open_requests} richieste in attesa di approvazione")
     lines.append("")
 
     ranked = sorted(
@@ -290,10 +314,11 @@ def summary_text(
         if score:
             meta.append(f"score {score}/100")
         if contact.get("intent"):
-            meta.append(str(contact["intent"]))
+            intent = str(contact["intent"])
+            meta.append(INTENT_LABELS_EN.get(intent, intent) if en else intent)
         pending = int(pending_by_phone.get(phone, 0) or 0)
         if pending:
-            meta.append(f"{pending} da approvare")
+            meta.append(f"{pending} awaiting approval" if en else f"{pending} da approvare")
         lines.append("   " + " · ".join(meta))
         last = (contact.get("last_messages") or [{}])[-1]
         snippet = re.sub(r"\s+", " ", str(last.get("text") or "")).strip()
@@ -302,7 +327,11 @@ def summary_text(
         lines.append("")
 
     if len(contacts) > max_contacts:
-        lines.append(f"+ altri {len(contacts) - max_contacts} contatti nella dashboard.")
+        extra = len(contacts) - max_contacts
+        lines.append(
+            f"+ {extra} more contacts in the dashboard." if en
+            else f"+ altri {extra} contatti nella dashboard."
+        )
     text = "\n".join(lines).strip()
     return text[:1750]
 

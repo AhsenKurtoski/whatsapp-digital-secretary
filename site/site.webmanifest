@@ -1,0 +1,19 @@
+{
+  "name": "Gina — WhatsApp Digital Secretary",
+  "short_name": "Gina",
+  "description": "Segreteria digitale WhatsApp self-hosted di Ahsen Kurtoski.",
+  "lang": "it",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#080c18",
+  "theme_color": "#0b1020",
+  "icons": [
+    {
+      "src": "assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

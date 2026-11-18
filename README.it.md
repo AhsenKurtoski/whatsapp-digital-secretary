@@ -111,10 +111,26 @@ Meta o WhatsApp.
   approvazione e anteprima email.
 - **Operatività** — servizi systemd utente, watchdog, riepilogo giornaliero, dashboard
   Docker opzionale e procedura di primo avvio guidata.
-- **Verifica dei tool del bot** — la dashboard controlla che il bot veda davvero i tre
-  tool di approvazione e mostra un banner al titolare se non li vede, invece di lasciare
-  che sia il cliente a sentirsi dire “non ho il tool”. `doctor.py` esegue il server MCP
-  installato (`tools/list` + PDF reale) con il controllo `mcp_runtime`.
+- **Verifica dei tool del bot** — la dashboard controlla che il bot veda davvero i
+  sette tool della segreteria e mostra un banner al titolare se non li vede, invece di
+  lasciare che sia il cliente a sentirsi dire “non ho il tool”. `doctor.py` esegue il
+  server MCP installato (`tools/list` + PDF reale) con il controllo `mcp_runtime`.
+- **Memoria duratura per cliente** — `remember_fact` salva i fatti confermati
+  (azienda, budget, servizio, contatto preferito) per numero WhatsApp: restano dopo i
+  riavvii e nelle nuove chat e tornano in `client_brief`, così Gina non richiede le
+  stesse informazioni. I valori sensibili vengono redatti prima del salvataggio.
+- **Richiamo preventivi e PDF** — `list_quotes` mostra i preventivi già emessi per
+  quel cliente (numero, data, totale, stato, PDF disponibile) e
+  `request_quote_resend` rigenera il PDF dal preventivo originale e mette in coda una
+  nuova approvazione. Chi chiede “mandami di nuovo il PDF” non si sente più rispondere
+  che il comando non esiste.
+- **Sito pubblico con SEO, analytics e sicurezza** — il progetto separato [`site/`](site)
+  genera una pagina pubblica reale per Gina e il suo autore, con canonical, Open
+  Graph/Twitter Card, JSON-LD (`Person`, `SoftwareApplication`, `WebSite`, `FAQPage`),
+  sitemap, robots, `security.txt`, GA4 con Consent Mode v2, Cloudflare Web Analytics
+  opzionale, verifica Google/Bing/Yandex e security header. `site_build.py` rifiuta ID
+  finti o malformati e `seo_audit.py` è il gate in CI. La dashboard privata non viene
+  mai pubblicata. Vedi [docs/WEBSITE.md](docs/WEBSITE.md).
 - **Autodiagnosi** — `doctor.py` controlla file installati, schede Preventivi/Contatti,
   motore PDF, regole di perimetro, policy anti-raffica, versione minima e feature di
   OpenClaw, allowlist dei tool MCP, unità systemd e API locali, e stampa il comando
@@ -341,6 +357,9 @@ python3 -m unittest discover -s tests -v
 python3 -m unittest discover -s tests -p 'test_install.py' -v
 python3 -m unittest discover -s tests -p 'test_remote_access.py' -v
 python3 -m py_compile *.py google-bridge/*.py scripts/*.py
+python3 site_build.py --self-test
+python3 seo_audit.py --self-test
+python3 -m unittest discover -s tests -p 'test_site.py' -v
 python3 scripts/openclaw_compat.py --json
 bash scripts/install.sh --check-compat
 python3 scripts/smoke_guard.py
@@ -362,8 +381,9 @@ La suite copre configurazione, rendering della persona e guardie anti-jailbreak/
 archivio approvazioni, preventivi PDF, storico contatti, promemoria, sicurezza del
 template email, autenticazione/CSRF della dashboard, stato del watchdog, punteggio
 Health/avvisi token, selezione automatica dei modelli, copia isolata dell'installer,
-compatibilità OpenClaw, validazione dell'accesso remoto privato e soppressione dei
-duplicati in ingresso e in uscita. L'integrazione con un numero WhatsApp reale e un account Google
+compatibilità OpenClaw, validazione dell'accesso remoto privato, soppressione dei
+duplicati in ingresso e in uscita, tool MCP di memoria/preventivi, righe bilingui
+delle tabelle e build/audit SEO del sito pubblico. L'integrazione con un numero WhatsApp reale e un account Google
 reale non è testabile in CI; vedi [docs/TESTING.md](docs/TESTING.md) per la checklist
 manuale.
 

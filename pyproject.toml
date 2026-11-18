@@ -36,6 +36,7 @@ source = [
   "lead_intel", "memory", "cache", "identity", "quotas", "router", "webhooks",
   "stats", "conversations", "gdpr", "backup", "live", "setup_wizard",
   "approval_store", "gateway_policy", "quote_pdf", "config", "remote_access",
+  "site_build", "seo_audit",
 ]
 omit = ["*/tests/*"]
 

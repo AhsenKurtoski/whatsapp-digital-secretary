@@ -1,0 +1,20 @@
+{
+  "base_url": "",
+  "site_name": "Gina — WhatsApp Digital Secretary",
+  "owner_name": "Ahsen Kurtoski",
+  "owner_url": "https://github.com/AhsenKurtoski",
+  "repo_url": "https://github.com/AhsenKurtoski/whatsapp-digital-secretary",
+  "description": "Gina è la segreteria digitale WhatsApp self-hosted di Ahsen Kurtoski: risponde ai clienti, prepara preventivi PDF ed email, con approvazione umana e dashboard privata.",
+  "locale": "it_IT",
+  "language": "it",
+  "analytics": {
+    "ga4_measurement_id": "",
+    "cloudflare_token": ""
+  },
+  "verification": {
+    "google": "",
+    "bing": "",
+    "yandex": ""
+  },
+  "security_txt_contact": "https://github.com/AhsenKurtoski/whatsapp-digital-secretary/security/advisories/new"
+}

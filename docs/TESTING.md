@@ -148,6 +148,40 @@ Also verify:
 - [ ] All tabs work at 375 px, 768 px and 1280 px; no horizontal overflow.
 - [ ] Keyboard navigation reaches the login field, tabs and action buttons.
 - [ ] Light/dark preference is respected; contrast is readable.
+- [ ] Switch to EN: Contatti, Conversazioni and Analytics show English rows, empty
+      states, intent names, chart tooltips, transcript labels, contact summary and AI
+      quota reasons; switching back to IT restores every label.
+
+## Memory, PDF recall and public site
+
+Memory and quote recall (real bot):
+
+- [ ] Tell Gina a durable fact (company, budget, service): `remember_fact` saves it.
+- [ ] Restart the gateway and ask again: `client_brief` returns the fact in `context`
+      and Gina does not ask the same question twice.
+- [ ] Ask for a quote, approve it, then ask "mandami di nuovo il PDF":
+      `list_quotes` finds the quote for that number and `request_quote_resend` queues a
+      new approval with a regenerated PDF. No other customer's quote is visible.
+- [ ] A customer who asks for a PDF never hears that the command is missing.
+
+Public site (after `base_url` and the real IDs are set):
+
+```bash
+python3 site_build.py --config site/config.json --out site/dist
+python3 seo_audit.py --dir site/dist
+curl -sSI https://YOUR-DOMAIN/ | grep -Ei 'content-security|strict-transport|x-content|x-frame|referrer|permissions'
+```
+
+- [ ] `SEO AUDIT OK` with no errors; only the GA4 warning is acceptable before the ID
+      is set.
+- [ ] Google Search Console verifies the property and accepts `sitemap.xml`.
+- [ ] Bing Webmaster Tools verifies the meta tag and imports the sitemap.
+- [ ] GA4 receives a page view only after "Accetta"; "Rifiuta" sends no analytics
+      cookie and the banner does not reappear (stored preference).
+- [ ] Open Graph/Twitter preview shows the dashboard screenshot and the author's name.
+- [ ] `security.txt`, `robots.txt`, `sitemap.xml` and the security headers are served.
+- [ ] The private dashboard is still bound to localhost and is not reachable from the
+      public domain.
 
 ## Failure and recovery tests
 

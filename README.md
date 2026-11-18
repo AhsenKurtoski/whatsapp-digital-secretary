@@ -112,9 +112,26 @@ with Meta or WhatsApp.
 - **Operations** — systemd user services, watchdog, daily digest, optional Docker
   dashboard, and a setup wizard.
 - **Tool capability check** — the dashboard verifies that the bot actually sees the
-  three approval tools and shows the owner a banner if it does not, instead of letting
+  seven secretary tools and shows the owner a banner if it does not, instead of letting
   a customer hear “I don't have that tool”. `doctor.py` runs the installed MCP server
   (`tools/list` + a real PDF) with the `mcp_runtime` check.
+- **Durable customer memory** — `remember_fact` lets Gina store confirmed facts
+  (company, budget, service, preferred contact) per WhatsApp number; they survive
+  restarts and new chats and come back in `client_brief`, so she stops asking the same
+  questions. Sensitive values are redacted before they are written.
+- **Quote recall and PDF resend** — `list_quotes` shows the quotes already issued to
+  that customer (number, date, total, status, PDF availability) and
+  `request_quote_resend` regenerates the PDF from the original quote and queues a new
+  approval. A customer who asks “send me the PDF again” no longer hears that the
+  command does not exist.
+- **Public website with SEO, analytics and security** — the separate [`site/`](site)
+  project builds a real public page for Gina and its author, with canonical URLs,
+  Open Graph/Twitter cards, JSON-LD (`Person`, `SoftwareApplication`, `WebSite`,
+  `FAQPage`), sitemap, robots, `security.txt`, GA4 with Consent Mode v2, optional
+  Cloudflare Web Analytics, Google/Bing/Yandex verification tags and security headers.
+  `site_build.py` refuses to publish a fake or malformed ID and `seo_audit.py` is the
+  CI gate. The private dashboard is never published. See
+  [docs/WEBSITE.md](docs/WEBSITE.md).
 - **Self-diagnosis** — `doctor.py` checks the installed files, the Preventivi/Contatti
   tabs, the PDF engine, the persona scope rules, the anti-burst policy, the OpenClaw
   minimum version and compatibility features, the MCP tool allowlist, systemd units and
@@ -340,6 +357,9 @@ python3 -m unittest discover -s tests -v
 python3 -m unittest discover -s tests -p 'test_install.py' -v
 python3 -m unittest discover -s tests -p 'test_remote_access.py' -v
 python3 -m py_compile *.py google-bridge/*.py scripts/*.py
+python3 site_build.py --self-test
+python3 seo_audit.py --self-test
+python3 -m unittest discover -s tests -p 'test_site.py' -v
 python3 scripts/openclaw_compat.py --json
 bash scripts/install.sh --check-compat
 python3 scripts/smoke_guard.py
@@ -360,8 +380,9 @@ python3 doctor.py --offline
 The suite covers configuration, persona rendering and jailbreak/refusal guards,
 approval storage, email template safety, dashboard authentication/CSRF, watchdog
 status, health scoring/token alerts, automatic model selection, isolated installer
-copies, OpenClaw compatibility planning, private remote-access validation and
-inbound/outbound duplicate suppression. Integration with a real WhatsApp number and a real Google account cannot
+copies, OpenClaw compatibility planning, private remote-access validation,
+inbound/outbound duplicate suppression, MCP memory/quote tools, bilingual table
+rows and the public site build/SEO audit. Integration with a real WhatsApp number and a real Google account cannot
 be tested in CI; see [docs/TESTING.md](docs/TESTING.md) for the manual checklist.
 
 ## Docker (dashboard only)

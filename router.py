@@ -87,18 +87,31 @@ def rank(load: int = 0, base: Path | None = None) -> list[dict]:
     return rows
 
 
-def choose(load: int = 0, base: Path | None = None) -> dict:
+def choose(load: int = 0, base: Path | None = None, lang: str = "it") -> dict:
     rows = rank(load, base)
     primary = rows[0]
     fallbacks = [row["model"] for row in rows[1:]]
-    reasons = [
-        f"carico attivo: {int(load or 0)} conversazioni",
-        f"provider scelto: {primary['provider']} (punteggio {primary['score']})",
-    ]
+    en = str(lang or "").strip().lower().startswith("en")
+    if en:
+        reasons = [
+            f"active load: {int(load or 0)} conversations",
+            f"chosen provider: {primary['provider']} (score {primary['score']})",
+        ]
+    else:
+        reasons = [
+            f"carico attivo: {int(load or 0)} conversazioni",
+            f"provider scelto: {primary['provider']} (punteggio {primary['score']})",
+        ]
     if primary.get("level") in {"warn", "critical"}:
-        reasons.append(f"attenzione: quota {primary['provider']} in stato {primary['level']}")
+        reasons.append(
+            f"warning: {primary['provider']} quota is {primary['level']}" if en
+            else f"attenzione: quota {primary['provider']} in stato {primary['level']}"
+        )
     if primary.get("avg_latency_ms"):
-        reasons.append(f"latenza media {primary['avg_latency_ms']} ms")
+        reasons.append(
+            f"average latency {primary['avg_latency_ms']} ms" if en
+            else f"latenza media {primary['avg_latency_ms']} ms"
+        )
     return {
         "primary": primary["model"],
         "provider": primary["provider"],

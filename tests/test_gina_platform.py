@@ -156,12 +156,27 @@ class QuotasTests(TempBase):
         self.assertIn(groq["level"], {"warn", "critical"})
         self.assertTrue(data["alerts"])
 
+    def test_alerts_are_english_when_requested(self):
+        quotas.record("groq", ok=False, status=429, base=self.base)
+        data = quotas.status(self.base, lang="en")
+        self.assertTrue(data["alerts"])
+        self.assertIn("quota", data["alerts"][0].lower())
+        self.assertIn("requests today", data["alerts"][0])
+        self.assertNotIn("richieste", data["alerts"][0])
+
     def test_unknown_provider(self):
         with self.assertRaises(ValueError):
             quotas.record("openai", base=self.base)
 
 
 class RouterTests(TempBase):
+    def test_reasons_are_english_when_requested(self):
+        decision = router.choose(load=2, base=self.base, lang="en")
+        text = " ".join(decision["reasons"])
+        self.assertIn("active load: 2 conversations", text)
+        self.assertIn("chosen provider:", text)
+        self.assertNotIn("carico", text)
+
     def test_prefers_fast_healthy_provider(self):
         quotas.record("groq", ok=True, latency_ms=400, base=self.base)
         quotas.record("gemini", ok=True, latency_ms=2400, base=self.base)

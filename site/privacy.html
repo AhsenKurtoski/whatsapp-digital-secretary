@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="{{CSP_META}}">
+<title>Privacy e cookie — Gina</title>
+<meta name="description" content="Informativa privacy del sito di Gina: quali dati tratta, analytics solo con consenso, cookie tecnici e diritti dell'interessato.">
+<meta name="author" content="{{OWNER_NAME}}">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#0b1020">
+<link rel="canonical" href="{{BASE_URL}}/privacy.html">
+<link rel="icon" href="{{BASE_URL}}/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="{{BASE_URL}}/assets/style.css">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Privacy e cookie — Gina">
+<meta property="og:description" content="Informativa privacy del sito di Gina: analytics solo con consenso e nessun cookie di profilazione.">
+<meta property="og:url" content="{{BASE_URL}}/privacy.html">
+<meta property="og:image" content="{{BASE_URL}}/assets/og.png">
+<meta property="og:image:alt" content="La dashboard privata di Gina">
+<meta property="og:locale" content="{{LOCALE}}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Privacy e cookie — Gina">
+<meta name="twitter:description" content="Analytics solo con consenso e nessun cookie di profilazione.">
+<meta name="twitter:image" content="{{BASE_URL}}/assets/og.png">
+</head>
+<body>
+<a class="skip" href="#main">Salta al contenuto</a>
+<header class="site-header">
+  <a class="brand" href="{{BASE_URL}}/" aria-label="Gina, home">
+    <span class="brand-mark" aria-hidden="true">G</span>
+    <span>Gina<span class="brand-sub"> · digital secretary</span></span>
+  </a>
+  <nav aria-label="Navigazione principale">
+    <a href="{{BASE_URL}}/#funzioni">Funzioni</a>
+    <a href="{{BASE_URL}}/#privacy">Privacy del prodotto</a>
+    <a href="{{REPO_URL}}" rel="noopener">GitHub</a>
+  </nav>
+</header>
+
+<main id="main" class="legal">
+  <p class="eyebrow">Informativa</p>
+  <h1>Privacy e cookie</h1>
+  <p>Questa pagina descrive come il sito pubblico di Gina tratta i dati. Gina è un software self-hosted: i dati delle conversazioni WhatsApp restano sulla macchina del titolare e non passano da questo sito.</p>
+
+  <h2>1. Titolare del trattamento</h2>
+  <p>Il titolare di questo sito è <strong>{{OWNER_NAME}}</strong>. Per qualsiasi richiesta puoi usare il <a href="{{OWNER_URL}}" rel="noopener">profilo GitHub dell'autore</a>.</p>
+
+  <h2>2. Quali dati tratta questo sito</h2>
+  <ul>
+    <li><strong>Dati tecnici di navigazione</strong> (indirizzo IP, agente utente, pagina richiesta, data e ora) registrati dal provider di hosting per sicurezza e disponibilità del servizio.</li>
+    <li><strong>Analytics</strong> (Google Analytics 4 e, se configurato, Cloudflare Web Analytics) solo dopo il consenso esplicito. Con Google Analytics l'indirizzo IP è anonimizzato e i segnali pubblicitari sono disattivati.</li>
+    <li><strong>Preferenza di consenso</strong> salvata nel browser nella chiave <code>gina_consent_v1</code>, per non mostrarti il banner a ogni visita.</li>
+  </ul>
+  <p>Il sito non ha moduli di contatto, non crea account e non richiede dati personali per essere consultato.</p>
+
+  <h2>3. Cookie</h2>
+  <p>Prima del consenso non viene installato alcun cookie di misurazione. Dopo l'accept, Google Analytics può impostare i cookie <code>_ga</code> e <code>_ga_*</code> per misurare le visite in forma aggregata. Cloudflare Web Analytics, quando attivo, è senza cookie. La preferenza di consenso è un dato tecnico salvato in <code>localStorage</code> e non viene inviata a terzi.</p>
+  <p>Puoi cambiare idea in qualsiasi momento cancellando i dati del sito dalle impostazioni del browser: alla visita successiva il banner ricompare.</p>
+
+  <h2>4. Base giuridica e finalità</h2>
+  <ul>
+    <li><strong>Consenso</strong> (art. 6, par. 1, lett. a GDPR) per gli analytics.</li>
+    <li><strong>Legittimo interesse</strong> (art. 6, par. 1, lett. f GDPR) per sicurezza, prevenzione degli abusi e continuità del servizio.</li>
+  </ul>
+
+  <h2>5. Conservazione</h2>
+  <p>I dati analytics sono conservati per il periodo configurato nel servizio di misurazione (di norma 14 mesi). I log tecnici dell'hosting seguono la retention del provider, di norma pochi giorni.</p>
+
+  <h2>6. Destinatari e trasferimenti</h2>
+  <p>I dati possono essere trattati dal provider di hosting e, se attivi, da Google Ireland Limited (Google Analytics) e Cloudflare, Inc. (Web Analytics). Questi fornitori possono trattare dati fuori dall'Unione Europea sulla base delle clausole contrattuali standard della Commissione Europea.</p>
+
+  <h2>7. I tuoi diritti</h2>
+  <p>Puoi chiedere accesso, rettifica, cancellazione, limitazione, opposizione e portabilità dei dati, e revocare il consenso in qualsiasi momento. Puoi inoltre proporre reclamo al Garante per la protezione dei dati personali (<a href="https://www.garanteprivacy.it" rel="noopener">garanteprivacy.it</a>).</p>
+
+  <h2>8. Sicurezza</h2>
+  <p>Il sito è servito in HTTPS e applica header di sicurezza (Content-Security-Policy, HSTS, <code>X-Content-Type-Options</code>, <code>Referrer-Policy</code>, <code>Permissions-Policy</code>). Le vulnerabilità si segnalano in forma privata tramite il <a href="{{SECURITY_CONTACT}}" rel="noopener">canale di sicurezza del repository</a>.</p>
+
+  <h2>9. Aggiornamenti</h2>
+  <p>Ultimo aggiornamento: {{DATE_IT}}. Le modifiche sostanziali saranno pubblicate su questa pagina.</p>
+
+  <p><a class="btn ghost" href="{{BASE_URL}}/">Torna alla home</a></p>
+</main>
+
+<footer class="site-footer">
+  <p>© {{YEAR}} {{OWNER_NAME}} · Gina è un progetto indipendente, non affiliato a WhatsApp o Meta.</p>
+  <nav aria-label="Link legali">
+    <a href="{{BASE_URL}}/privacy.html">Privacy</a>
+    <a href="{{BASE_URL}}/security.txt">Sicurezza</a>
+    <a href="{{REPO_URL}}" rel="noopener">GitHub</a>
+  </nav>
+</footer>
+</body>
+</html>

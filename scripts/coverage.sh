@@ -26,7 +26,7 @@ $COVERAGE run -m unittest discover -s tests
 # copertura reale, non un artificio (ogni self-test fa asserzioni vere).
 for module in lead_intel memory cache identity quotas router webhooks stats \
               conversations gdpr backup live setup_wizard gateway_policy approval_store \
-              quote_pdf remote_access config; do
+              quote_pdf remote_access config site_build seo_audit; do
   if [ -f "$module.py" ]; then
     # shellcheck disable=SC2086
     $COVERAGE run --append "$module.py" --self-test >/dev/null 2>&1 || true

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="{{CSP_META}}">
+<title>Gina, la segreteria digitale WhatsApp di Ahsen Kurtoski</title>
+<meta name="description" content="{{DESCRIPTION}}">
+<meta name="author" content="{{OWNER_NAME}}">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#0b1020">
+<link rel="canonical" href="{{BASE_URL}}/">
+<link rel="icon" href="{{BASE_URL}}/assets/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="{{BASE_URL}}/site.webmanifest">
+<link rel="stylesheet" href="{{BASE_URL}}/assets/style.css">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{SITE_NAME}}">
+<meta property="og:locale" content="{{LOCALE}}">
+<meta property="og:title" content="Gina, la segreteria digitale WhatsApp di Ahsen Kurtoski">
+<meta property="og:description" content="{{DESCRIPTION}}">
+<meta property="og:url" content="{{BASE_URL}}/">
+<meta property="og:image" content="{{BASE_URL}}/assets/og.png">
+<meta property="og:image:width" content="1440">
+<meta property="og:image:height" content="1100">
+<meta property="og:image:alt" content="La dashboard privata di Gina con lead, approvazioni e preventivi">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Gina, la segreteria digitale WhatsApp di Ahsen Kurtoski">
+<meta name="twitter:description" content="{{DESCRIPTION}}">
+<meta name="twitter:image" content="{{BASE_URL}}/assets/og.png">
+{{VERIFICATION}}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Person",
+      "@id": "{{BASE_URL}}/#ahsen-kurtoski",
+      "name": "Ahsen Kurtoski",
+      "url": "{{OWNER_URL}}",
+      "sameAs": ["{{OWNER_URL}}"],
+      "knowsAbout": ["WhatsApp automation", "digital secretary", "Python", "privacy", "OpenClaw"],
+      "description": "Ahsen Kurtoski è l'autore di Gina, la segreteria digitale WhatsApp self-hosted e open source."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "{{BASE_URL}}/#gina",
+      "name": "Gina — WhatsApp Digital Secretary",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Linux, WSL2",
+      "url": "{{BASE_URL}}/",
+      "codeRepository": "{{REPO_URL}}",
+      "license": "https://opensource.org/licenses/MIT",
+      "description": "{{DESCRIPTION_JSON}}",
+      "author": {"@id": "{{BASE_URL}}/#ahsen-kurtoski"},
+      "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"},
+      "featureList": [
+        "Risposte WhatsApp nel tono dell'attività",
+        "Memoria persistente per cliente",
+        "Preventivi in PDF",
+        "Email e appuntamenti con approvazione umana",
+        "Dashboard privata su localhost",
+        "GDPR, backup e audit locale"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "{{BASE_URL}}/#website",
+      "url": "{{BASE_URL}}/",
+      "name": "{{SITE_NAME_JSON}}",
+      "inLanguage": "it-IT",
+      "publisher": {"@id": "{{BASE_URL}}/#ahsen-kurtoski"}
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "{{BASE_URL}}/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Che cos'è Gina?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Gina è una segreteria digitale per WhatsApp che gira sul tuo computer, risponde ai clienti con i dati reali dell'attività e prepara azioni che il titolare deve approvare."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Gina invia email o crea appuntamenti da sola?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Email, appuntamenti e preventivi restano in una coda di approvazione: vengono eseguiti solo dopo il via libera del titolare dalla dashboard privata."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Dove finiscono i dati?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "I dati restano sulla macchina del titolare. La dashboard ascolta solo su localhost e le chiavi non vengono mai salvate nel repository."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Chi ha creato Gina?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Gina è un progetto open source di Ahsen Kurtoski, distribuito con licenza MIT."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<script src="{{BASE_URL}}/assets/analytics.config.js" defer></script>
+<script src="{{BASE_URL}}/assets/analytics.js" defer></script>
+<script src="{{BASE_URL}}/assets/app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Salta al contenuto</a>
+<header class="site-header">
+  <a class="brand" href="{{BASE_URL}}/" aria-label="Gina, home">
+    <span class="brand-mark" aria-hidden="true">G</span>
+    <span>Gina<span class="brand-sub"> · digital secretary</span></span>
+  </a>
+  <nav aria-label="Navigazione principale">
+    <a href="#cos-e">Cos'è</a>
+    <a href="#funzioni">Funzioni</a>
+    <a href="#privacy">Privacy</a>
+    <a href="#autore">Autore</a>
+    <a class="nav-cta" href="{{REPO_URL}}" rel="noopener">GitHub</a>
+  </nav>
+</header>
+
+<main id="main">
+  <section class="hero" id="cos-e">
+    <p class="eyebrow">Open source · self-hosted · licenza MIT</p>
+    <h1>La segreteria digitale WhatsApp che lavora per la tua attività, non per una piattaforma.</h1>
+    <p class="lead">Gina risponde ai clienti con i tuoi servizi, i tuoi orari e i tuoi prezzi. Prepara preventivi in PDF, email e appuntamenti, e lascia a te l'ultima parola: niente parte senza la tua approvazione.</p>
+    <div class="actions">
+      <a class="btn primary" href="{{REPO_URL}}" rel="noopener">Guarda il progetto su GitHub</a>
+      <a class="btn ghost" href="#funzioni">Scopri cosa fa</a>
+    </div>
+    <ul class="facts" aria-label="In sintesi">
+      <li><strong>100%</strong><span>sulla tua macchina</span></li>
+      <li><strong>1</strong><span>dashboard privata</span></li>
+      <li><strong>0</strong><span>invii senza approvazione</span></li>
+    </ul>
+    <figure class="shot">
+      <img src="{{BASE_URL}}/assets/dashboard.png" width="1440" height="1100" loading="lazy" decoding="async" alt="Dashboard privata di Gina con lead, stato del gateway, approvazioni e preventivi">
+      <figcaption>La dashboard privata: lead, salute del sistema, approvazioni e preventivi in un'unica vista.</figcaption>
+    </figure>
+  </section>
+
+  <section class="section" id="funzioni">
+    <div class="section-head">
+      <p class="eyebrow">Funzioni</p>
+      <h2>Una segreteria completa, senza servizi terzi obbligatori</h2>
+      <p>Gina non è un chatbot generico: conosce l'attività, ricorda il cliente e prepara documenti veri.</p>
+    </div>
+    <div class="grid">
+      <article class="card">
+        <h3>Risposte nel tuo tono</h3>
+        <p>Servizi, orari, zona, sito e note sui prezzi vivono in un unico file di configurazione. Se un dato manca, Gina non lo inventa.</p>
+      </article>
+      <article class="card">
+        <h3>Memoria per cliente</h3>
+        <p>Ogni numero ha la sua memoria: nome, lingua, preferenze e fatti confermati restano disponibili nei messaggi successivi e nelle chat future.</p>
+      </article>
+      <article class="card">
+        <h3>Preventivi in PDF</h3>
+        <p>Voci, quantità, sconto, IVA e totali vengono ricalcolati dal sistema. Il PDF si allega all'email solo dopo l'approvazione.</p>
+      </article>
+      <article class="card">
+        <h3>Email e appuntamenti</h3>
+        <p>Gina prepara la richiesta, non la esegue: Gmail e Calendar si muovono solo quando il titolare approva dalla dashboard.</p>
+      </article>
+      <article class="card">
+        <h3>Dashboard privata</h3>
+        <p>Ascolta solo su localhost, con token locale, cookie HttpOnly, protezione CSRF e audit delle azioni. Non è un sito pubblico.</p>
+      </article>
+      <article class="card">
+        <h3>Privacy e controllo</h3>
+        <p>Redazione dei dati personali nei transcript, diritto all'oblio, export GDPR, backup verificabili e watchdog di ripristino.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section split" id="privacy">
+    <div>
+      <p class="eyebrow">Privacy by design</p>
+      <h2>I dati del cliente restano a casa tua</h2>
+      <p>Gina non è un SaaS: non c'è un account centrale, non c'è un pannello condiviso e non c'è un database di altri clienti. Le conversazioni, i preventivi e le chiavi restano sulla macchina del titolare.</p>
+      <ul class="checks">
+        <li>Dashboard raggiungibile solo da localhost, mai pubblicata su una porta aperta.</li>
+        <li>Email, eventi e preventivi eseguiti solo dopo un'approvazione esplicita.</li>
+        <li>Transcript con email, telefoni e IBAN mascherati nella dashboard.</li>
+        <li>Nessuna chiave, token o sessione WhatsApp nel repository.</li>
+      </ul>
+    </div>
+    <aside class="panel">
+      <h3>Come funziona un preventivo</h3>
+      <ol class="steps">
+        <li><span>1</span>Il cliente chiede un preventivo su WhatsApp.</li>
+        <li><span>2</span>Gina raccoglie voci, quantità ed email confermate.</li>
+        <li><span>3</span>Il sistema genera il PDF e mette la richiesta in coda.</li>
+        <li><span>4</span>Tu controlli e approvi dalla dashboard privata.</li>
+      </ol>
+    </aside>
+  </section>
+
+  <section class="section" id="autore">
+    <div class="section-head">
+      <p class="eyebrow">L'autore</p>
+      <h2>Ahsen Kurtoski</h2>
+      <p>Ahsen Kurtoski è l'autore di Gina: un progetto indipendente, open source e self-hosted per chi vuole un'assistenza WhatsApp concreta senza consegnare i dati a una piattaforma.</p>
+    </div>
+    <div class="author">
+      <div class="author-badge" aria-hidden="true">AK</div>
+      <div>
+        <h3>Progetto indipendente, licenza MIT</h3>
+        <p>Codice, test, documentazione e cronologia delle release sono pubblici su GitHub. Gina non è un prodotto WhatsApp o Meta e non è affiliata a WhatsApp o Meta.</p>
+        <p><a class="btn ghost" href="{{REPO_URL}}" rel="noopener">Repository, test e release</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section faq" id="faq">
+    <div class="section-head">
+      <p class="eyebrow">Domande frequenti</p>
+      <h2>Le risposte essenziali</h2>
+    </div>
+    <details>
+      <summary>Che cos'è Gina?</summary>
+      <p>Una segreteria digitale per WhatsApp che gira sul tuo computer, risponde ai clienti con i dati reali dell'attività e prepara azioni che il titolare deve approvare.</p>
+    </details>
+    <details>
+      <summary>Gina invia email o crea appuntamenti da sola?</summary>
+      <p>No. Email, appuntamenti e preventivi restano in una coda di approvazione: vengono eseguiti solo dopo il via libera del titolare dalla dashboard privata.</p>
+    </details>
+    <details>
+      <summary>Dove finiscono i dati?</summary>
+      <p>Restano sulla macchina del titolare. La dashboard ascolta solo su localhost e le chiavi non vengono mai salvate nel repository.</p>
+    </details>
+    <details>
+      <summary>Chi ha creato Gina?</summary>
+      <p>Gina è un progetto open source di Ahsen Kurtoski, distribuito con licenza MIT.</p>
+    </details>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <p>© {{YEAR}} {{OWNER_NAME}} · Gina è un progetto indipendente, non affiliato a WhatsApp o Meta.</p>
+  <nav aria-label="Link legali">
+    <a href="{{BASE_URL}}/privacy.html">Privacy</a>
+    <a href="{{BASE_URL}}/security.txt">Sicurezza</a>
+    <a href="{{REPO_URL}}" rel="noopener">GitHub</a>
+  </nav>
+</footer>
+</body>
+</html>

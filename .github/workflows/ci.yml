@@ -93,12 +93,19 @@ jobs:
           mypy --config-file pyproject.toml --follow-imports=skip
           lead_intel.py memory.py cache.py identity.py quotas.py router.py
           webhooks.py stats.py conversations.py gdpr.py backup.py setup_wizard.py
+          site_build.py seo_audit.py
 
       - name: Bandit (medium/high)
         run: bandit -q -c pyproject.toml -r . -x tests,node_modules,google-bridge -lll
 
       - name: pip-audit
         run: pip-audit -r requirements-dev.txt
+
+      - name: Public site build and SEO audit
+        run: |
+          python site_build.py --self-test
+          python seo_audit.py --self-test
+          python -m unittest discover -s tests -p 'test_site.py' -v
 
       - name: Coverage (soglia 80%)
         run: bash scripts/coverage.sh

@@ -1,0 +1,192 @@
+# Sito pubblico, SEO, analytics e sicurezza
+
+La dashboard della segreteria è **privata** e ascolta solo su `127.0.0.1`: non va
+pubblicata, indicizzata o esposta. Il sito pubblico è un progetto separato, nella
+cartella [`site/`](../site), pensato per far trovare l'autore e il progetto quando
+qualcuno cerca **Ahsen Kurtoski** o **Gina WhatsApp secretary**.
+
+`site/` contiene i template e la configurazione; `site_build.py` genera la cartella
+pronta da pubblicare; `seo_audit.py` è il controllo automatico che blocca una
+pubblicazione con SEO o header di sicurezza mancanti.
+
+## 1. Cosa viene generato
+
+```text
+site/dist/
+├── index.html              # home: prodotto, privacy, autore, FAQ + JSON-LD
+├── privacy.html            # informativa privacy e cookie
+├── 404.html                # pagina noindex
+├── robots.txt              # Allow + Sitemap
+├── sitemap.xml             # home + privacy, lastmod reale
+├── _headers                # security headers per Cloudflare Pages / Netlify
+├── vercel.json             # gli stessi header per Vercel
+├── security.txt            # RFC 9116 (anche in .well-known/security.txt)
+├── site.webmanifest
+└── assets/
+    ├── style.css
+    ├── app.js              # banner consenso, nessun cookie prima dell'accept
+    ├── analytics.js        # GA4 Consent Mode v2 + Cloudflare Web Analytics
+    ├── analytics.config.js # ID generati dal build (mai inventati)
+    ├── favicon.svg
+    ├── og.png              # anteprima social (screenshot reale della dashboard)
+    └── dashboard.png
+```
+
+SEO incluso: title e description per pagina, canonical assoluto, Open Graph,
+Twitter Card, `hreflang` non necessario (sito in italiano), JSON-LD `Person`,
+`SoftwareApplication`, `WebSite` e `FAQPage`, sitemap, robots, immagini con `alt`,
+link esterni con `rel="noopener"`, HTML semantico e un solo `h1` per pagina.
+
+## 2. Configurazione
+
+Modifica [`site/config.json`](../site/config.json):
+
+| Campo | Obbligatorio | Cosa mettere |
+| --- | --- | --- |
+| `base_url` | sì | Il dominio reale, es. `https://ahsenkurtoski.it` (senza slash finale). |
+| `owner_name` | sì | `Ahsen Kurtoski`. |
+| `owner_url` | sì | Profilo GitHub o sito personale. |
+| `repo_url` | sì | Repository pubblico del progetto. |
+| `description` | sì | Descrizione di 50–165 caratteri, usata anche come meta description. |
+| `analytics.ga4_measurement_id` | no | ID GA4 `G-XXXXXXXXXX`. Vuoto = nessun Google Analytics. |
+| `analytics.cloudflare_token` | no | Token di Cloudflare Web Analytics (senza cookie). |
+| `verification.google` | no | Token del tag HTML di Google Search Console. |
+| `verification.bing` | no | Token `msvalidate.01` di Bing Webmaster Tools. |
+| `verification.yandex` | no | Token di Yandex Webmaster. |
+| `security_txt_contact` | no | URL o email per le segnalazioni di sicurezza. |
+
+Il build **si ferma** se un ID è malformato o se `base_url` manca: non pubblica mai
+un tag di verifica sbagliato o un canonical finto. Gli ID vuoti semplicemente non
+producono tag.
+
+### Google Analytics 4
+
+1. Crea la proprietà in [analytics.google.com](https://analytics.google.com) con
+   l'account del titolare.
+2. Copia l'ID di misurazione `G-…` e mettilo in `analytics.ga4_measurement_id`.
+3. Il sito carica GA4 solo dopo il consenso (Consent Mode v2, `analytics_storage`
+   negato di default, IP anonimizzato, segnali pubblicitari disattivati).
+
+### Google Search Console
+
+1. Apri [search.google.com/search-console](https://search.google.com/search-console)
+   e aggiungi la proprietà per dominio o per prefisso URL.
+2. Scegli la verifica con **tag HTML**, copia il valore di `content` e mettilo in
+   `verification.google`.
+3. Fai il build, pubblica e premi **Verifica**.
+4. In **Sitemap** invia `https://tuodominio/sitemap.xml`.
+5. Usa **Controllo URL** sulla home per chiedere l'indicizzazione.
+
+La verifica DNS (record TXT) è un'alternativa valida e non richiede modifiche al
+sito: in quel caso lascia `verification.google` vuoto.
+
+### Bing Webmaster Tools
+
+1. Apri [bing.com/webmasters](https://www.bing.com/webmasters) e aggiungi il sito.
+2. Scegli la verifica con meta tag, copia il valore di `msvalidate.01` e mettilo in
+   `verification.bing`.
+3. Invia la sitemap da **Sitemaps**. Bing può importare anche la proprietà da
+   Google Search Console.
+
+### Yandex Webmaster
+
+Facoltativo per un sito italiano. Aggiungi il sito in
+[yandex.com/webmaster](https://yandex.com/webmaster), copia il token di verifica e
+mettilo in `verification.yandex`.
+
+### Account esterni
+
+Google Analytics, Search Console, Bing Webmaster e Yandex richiedono un account del
+titolare e la verifica del dominio: non possono essere creati dal repository. Il
+codice è completo; servono solo gli ID reali in `site/config.json`.
+
+## 3. Build e audit
+
+```bash
+python3 site_build.py --config site/config.json --out site/dist
+python3 seo_audit.py --dir site/dist
+```
+
+Output atteso:
+
+```text
+SITO OK: 3 pagine in site/dist · base https://tuodominio.it · analytics GA4
+SEO AUDIT OK
+```
+
+L'audit controlla title, description, canonical, un solo `h1`, `lang`, viewport,
+Open Graph, Twitter Card, JSON-LD obbligatorio, `alt` delle immagini, sitemap,
+robots, `security.txt`, `_headers`, `vercel.json` e formato dell'ID GA4. Senza GA4
+produce un avviso esplicito, non un errore.
+
+Per provare in locale senza dominio reale:
+
+```bash
+python3 site_build.py --base-url https://example.com --out /tmp/site-preview
+python3 -m http.server 8080 --directory /tmp/site-preview
+```
+
+## 4. Pubblicazione
+
+Pubblica **solo** `site/dist`, mai la root del repository e mai la dashboard.
+
+### Cloudflare Pages (consigliato)
+
+- Build command: `python3 site_build.py --config site/config.json --out site/dist`
+- Output directory: `site/dist`
+- Cloudflare applica `_headers` e `_redirects`; HTTPS e HSTS sono gestiti dal bordo.
+- Aggiungi il dominio personalizzato e imposta `base_url` sullo stesso dominio.
+
+### Netlify
+
+- Build command e publish directory come sopra; Netlify legge `_headers`.
+
+### Vercel
+
+- Framework preset: **Other**, output directory `site/dist`.
+- `vercel.json` nella cartella pubblicata contiene già gli header di sicurezza.
+- Il progetto Vercel è separato dalla dashboard: non pubblicare mai la porta 8787.
+
+### GitHub Pages
+
+GitHub Pages non permette header HTTP personalizzati. Il sito include una
+Content-Security-Policy via `<meta>` come fallback, ma HSTS e `frame-ancestors`
+richiedono un proxy. Per una configurazione completa usa Cloudflare Pages o metti
+Cloudflare davanti a GitHub Pages.
+
+Dopo la pubblicazione:
+
+```bash
+curl -sSI https://tuodominio.it/ | grep -Ei 'content-security|strict-transport|x-content|x-frame|referrer|permissions'
+```
+
+## 5. Sicurezza del sito
+
+Header applicati da `_headers` e `vercel.json`:
+
+| Header | Valore |
+| --- | --- |
+| `Content-Security-Policy` | solo self + Google Tag Manager + Cloudflare Insights; niente inline script |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` |
+| `X-Content-Type-Options` | `nosniff` |
+| `X-Frame-Options` | `DENY` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Permissions-Policy` | geolocalizzazione, microfono, camera, pagamenti e USB disattivati |
+| `Cross-Origin-Opener-Policy` | `same-origin` |
+| `Cross-Origin-Resource-Policy` | `same-origin` |
+
+In più: `security.txt` conforme a RFC 9116, nessun font o immagine da CDN esterni,
+nessun form, nessun cookie prima del consenso, analytics con IP anonimizzato.
+
+Il repository usa Dependabot, `pip-audit`, Bandit e CodeQL
+([`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml)) per il codice.
+
+## 6. Controlli in CI
+
+```bash
+python3 site_build.py --self-test
+python3 seo_audit.py --self-test
+python3 -m unittest discover -s tests -p 'test_site.py' -v
+```
+
+Se `base_url` è configurato, `scripts/verify.sh` esegue anche build e audit reali.

@@ -105,6 +105,18 @@ class DashboardI18nTests(unittest.TestCase):
         self.assertIn('page.replace("{{I18N_TEXT}}"', dashboard)
         self.assertIn('"i18n.json"', dashboard)
 
+    def test_table_rows_are_not_skipped_by_the_translator(self):
+        source = (ROOT / "dashboard.html").read_text(encoding="utf-8")
+        skip = re.search(r"const I18N_SKIP_TAGS = new Set\(\[([^\]]+)\]\)", source)
+        self.assertIsNotNone(skip)
+        tags = {tag.strip().strip("'\"") for tag in skip.group(1).split(",")}
+        self.assertNotIn("TBODY", tags, "le righe delle tabelle devono essere tradotte")
+        self.assertIn("contacts.empty", source)
+        self.assertIn("role.client", source)
+        self.assertIn("chart.msgShort", source)
+        self.assertIn("/api/contacts?lang=", source)
+        self.assertIn("/api/usage?lang=", source)
+
     def test_language_switch_restores_italian(self):
         source = (ROOT / "dashboard.html").read_text(encoding="utf-8")
         self.assertIn("I18N_ORIGINALS", source)

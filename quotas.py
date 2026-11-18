@@ -157,10 +157,11 @@ def record(provider: str, ok: bool = True, status: int | None = None,
         return entry
 
 
-def status(base: Path | None = None) -> dict:
+def status(base: Path | None = None, lang: str = "it") -> dict:
     data = load(base)
     limits = _limits()
     warn, critical = _thresholds()
+    en = str(lang or "").strip().lower().startswith("en")
     rows = []
     alerts = []
     for name in PROVIDERS:
@@ -188,12 +189,22 @@ def status(base: Path | None = None) -> dict:
         }
         rows.append(row)
         if level == "critical":
-            alerts.append(
-                f"Quota {name} quasi esaurita: {entry['requests']}/{limit} richieste oggi"
-                + (f", {entry['rate_limited']} risposte 429" if entry["rate_limited"] else "")
-            )
+            if en:
+                alerts.append(
+                    f"{name} quota almost exhausted: {entry['requests']}/{limit} requests today"
+                    + (f", {entry['rate_limited']} 429 responses" if entry["rate_limited"] else "")
+                )
+            else:
+                alerts.append(
+                    f"Quota {name} quasi esaurita: {entry['requests']}/{limit} richieste oggi"
+                    + (f", {entry['rate_limited']} risposte 429" if entry["rate_limited"] else "")
+                )
         elif level == "warn":
-            alerts.append(f"Quota {name} all'{int(ratio * 100)}%: {entry['requests']}/{limit} richieste oggi")
+            alerts.append(
+                f"{name} quota at {int(ratio * 100)}%: {entry['requests']}/{limit} requests today"
+                if en else
+                f"Quota {name} all'{int(ratio * 100)}%: {entry['requests']}/{limit} richieste oggi"
+            )
     return {
         "date": data["date"],
         "providers": rows,

@@ -54,6 +54,9 @@ python3 -m unittest discover -s tests -p 'test_remote_access.py' -v
 python3 -m unittest discover -s tests -p 'test_openclaw_compat.py' -v
 python3 -m py_compile *.py google-bridge/*.py scripts/*.py
 python3 scripts/openclaw_compat.py --json
+python3 site_build.py --self-test
+python3 seo_audit.py --self-test
+python3 -m unittest discover -s tests -p 'test_site.py' -v
 bash scripts/install.sh --check-compat
 python3 scripts/smoke_guard.py
 node plugins/secretary-guard/test_guard.js
@@ -66,7 +69,7 @@ python3 ~/.openclaw/secretary/doctor.py --offline
 python3 ~/.openclaw/secretary/healthcheck.py --json
 ```
 
-Expected: `scripts/verify.sh` prints `VERIFICA OK`; 256 unit tests pass, including
+Expected: `scripts/verify.sh` prints `VERIFICA OK`; 282 unit tests pass, including
 the isolated installer, remote-access, OpenClaw compatibility and MCP protocol tests; every self-test prints `SELF-TEST OK`; the guard test
 prints `secretary guard: OK`; on a host with supported OpenClaw, `--check-compat`
 reports `allowed` with the expected fallback flags; the smoke test prints `SMOKE OK` (one model call for six identical
@@ -121,6 +124,8 @@ quote/email from the dashboard, plus one Calendar request. Record the date and r
 | `setup.py` | Business configuration and persona rendering |
 | `scripts/install.sh` | Install/update everything on the machine, including `remote_access.py` |
 | `live.py` | Live pipeline: intent, memory and verified cache behind the `client_brief` MCP tool, plus the plugin ingest endpoints |
+| `approval_mcp.py` | MCP tools: `client_brief`, `remember_fact`, `list_quotes`, `request_quote`, `request_quote_resend`, `request_email`, `request_calendar` (all actions stay approval-gated) |
+| `site/`, `site_build.py`, `seo_audit.py` | Public website: SEO, JSON-LD, GA4 consent, verification tags, security headers and the CI audit. The private dashboard is never published |
 | `gateway_policy.py` | WhatsApp debounce and `collect` queue |
 | `plugins/secretary-guard/` | Inbound burst guard, outbound dedupe and error scrubber |
 | `scripts/openclaw_compat.py` | OpenClaw version and feature probe for the installer |

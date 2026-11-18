@@ -376,7 +376,8 @@ def run_checks(
     else:
         checks.append(_check(
             "mcp_config", "Approvazioni collegate a OpenClaw", "ok",
-            "request_email · request_calendar · request_quote",
+            "client_brief · remember_fact · list_quotes · request_email · "
+            "request_calendar · request_quote · request_quote_resend",
         ))
 
     # 6b. Runtime MCP: la copia installata risponde e genera un PDF.
