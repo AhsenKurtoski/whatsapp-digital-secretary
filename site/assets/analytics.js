@@ -1,63 +1,62 @@
 /* GA4 con Consent Mode v2 e Cloudflare Web Analytics senza cookie.
-   analytics.config.js è generato dal build e contiene gli ID reali. */
+   Nessuna richiesta a terzi parte prima del consenso: i loader vengono creati
+   solo quando l'utente accetta (vedi app.js). analytics.config.js è generato dal
+   build e contiene gli ID reali. */
 (function () {
   "use strict";
 
   var config = window.GINA_ANALYTICS || {};
   var ga = String(config.ga4 || "").trim();
   var cf = String(config.cloudflare || "").trim();
+  var enabled = Boolean(ga || cf);
+  var loaded = false;
 
   window.dataLayer = window.dataLayer || [];
   function gtag() { window.dataLayer.push(arguments); }
   window.gtag = window.gtag || gtag;
 
-  if (ga) {
-    gtag("consent", "default", {
-      ad_storage: "denied",
-      ad_user_data: "denied",
-      ad_personalization: "denied",
-      analytics_storage: "denied",
-      functionality_storage: "granted",
-      security_storage: "granted"
-    });
-    gtag("js", new Date());
-    gtag("config", ga, { anonymize_ip: true, allow_google_signals: false });
+  /* Consent Mode v2: tutto negato finché non arriva una scelta esplicita. */
+  gtag("consent", "default", {
+    ad_storage: "denied",
+    ad_user_data: "denied",
+    ad_personalization: "denied",
+    analytics_storage: "denied",
+    functionality_storage: "granted",
+    security_storage: "granted"
+  });
 
-    var loader = document.createElement("script");
-    loader.async = true;
-    loader.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(ga);
-    document.head.appendChild(loader);
+  function load() {
+    if (!enabled || loaded) return;
+    loaded = true;
+    if (ga) {
+      gtag("js", new Date());
+      gtag("config", ga, {
+        anonymize_ip: true,
+        allow_google_signals: false,
+        allow_ad_personalization_signals: false
+      });
+      var loader = document.createElement("script");
+      loader.async = true;
+      loader.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(ga);
+      document.head.appendChild(loader);
+    }
+    if (cf) {
+      var beacon = document.createElement("script");
+      beacon.defer = true;
+      beacon.src = "https://static.cloudflareinsights.com/beacon.min.js";
+      beacon.setAttribute("data-cf-beacon", JSON.stringify({ token: cf }));
+      document.head.appendChild(beacon);
+    }
   }
 
   window.ginaAnalyticsConsent = function (choice) {
-    if (ga && typeof window.gtag === "function") {
-      window.gtag("consent", "update", {
-        ad_storage: "denied",
-        ad_user_data: "denied",
-        ad_personalization: "denied",
-        analytics_storage: choice === "granted" ? "granted" : "denied"
-      });
-      if (choice === "granted") {
-        window.gtag("event", "page_view", {
-          page_location: window.location.href,
-          page_title: document.title
-        });
-      }
-    }
+    var granted = choice === "granted" && enabled;
+    gtag("consent", "update", {
+      ad_storage: "denied",
+      ad_user_data: "denied",
+      ad_personalization: "denied",
+      analytics_storage: granted ? "granted" : "denied"
+    });
+    if (granted) load();
   };
-
-  if (cf) {
-    var beacon = document.createElement("script");
-    beacon.defer = true;
-    beacon.src = "https://static.cloudflareinsights.com/beacon.min.js";
-    beacon.setAttribute("data-cf-beacon", JSON.stringify({ token: cf }));
-    document.head.appendChild(beacon);
-  }
-
-  try {
-    var choice = window.localStorage.getItem("gina_consent_v1");
-    if (choice) window.ginaAnalyticsConsent(choice);
-  } catch (error) {
-    /* nessun consenso memorizzato */
-  }
 })();

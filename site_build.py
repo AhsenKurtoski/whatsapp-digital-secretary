@@ -31,21 +31,27 @@ CSP = (
     "connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com "
     "https://cloudflareinsights.com; "
     "img-src 'self' data: https://www.google-analytics.com; "
-    "style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; "
+    "style-src 'self'; font-src 'self'; object-src 'none'; media-src 'none'; "
+    "frame-src 'none'; worker-src 'none'; manifest-src 'self'; base-uri 'self'; "
     "form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
 )
 CSP_META = CSP.replace("frame-ancestors 'none'; ", "")
 SECURITY_HEADERS = [
     ("Content-Security-Policy", CSP),
-    ("Strict-Transport-Security", "max-age=31536000; includeSubDomains"),
+    ("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload"),
     ("X-Content-Type-Options", "nosniff"),
     ("X-Frame-Options", "DENY"),
     ("Referrer-Policy", "strict-origin-when-cross-origin"),
-    ("Permissions-Policy", "geolocation=(), microphone=(), camera=(), payment=(), usb=()"),
+    (
+        "Permissions-Policy",
+        "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), "
+        "microphone=(), payment=(), usb=(), display-capture=(), browsing-topics=()",
+    ),
     ("Cross-Origin-Opener-Policy", "same-origin"),
     ("Cross-Origin-Resource-Policy", "same-origin"),
+    ("X-Permitted-Cross-Domain-Policies", "none"),
 ]
-PAGES = ["index.html", "privacy.html", "404.html"]
+PAGES = ["index.html", "privacy.html", "termini.html", "404.html"]
 TEXT_SUFFIXES = {".html", ".css", ".js", ".json", ".txt", ".xml", ".webmanifest"}
 URL_RE = re.compile(r"^https://[A-Za-z0-9.-]+(?::\d{1,5})?(?:/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$")
 TOKEN_RE = re.compile(r"^[A-Za-z0-9._~-]{6,160}$")
@@ -196,7 +202,11 @@ def _vercel_config() -> str:
 
 def _sitemap(base_url: str, today: str) -> str:
     rows = []
-    for page, priority, freq in (("", "1.0", "monthly"), ("/privacy.html", "0.4", "yearly")):
+    for page, priority, freq in (
+        ("", "1.0", "monthly"),
+        ("/privacy.html", "0.5", "yearly"),
+        ("/termini.html", "0.3", "yearly"),
+    ):
         rows.append(
             "  <url>\n"
             f"    <loc>{html.escape(base_url + '/' + page.lstrip('/'))}</loc>\n"
@@ -254,7 +264,7 @@ def build(config_path: Path, out_dir: Path, templates: Path | None = None,
         (out_dir / page).write_text(rendered, encoding="utf-8")
 
     for asset in (
-        "style.css", "app.js", "analytics.js", "favicon.svg",
+        "style.css", "app.js", "analytics.js", "favicon.svg", "og.jpg",
         "dashboard-480.webp", "dashboard-720.webp", "dashboard-1080.webp", "dashboard-1440.webp",
     ):
         source = templates / "assets" / asset
@@ -263,11 +273,6 @@ def build(config_path: Path, out_dir: Path, templates: Path | None = None,
         shutil.copy2(source, out_dir / "assets" / asset)
     shutil.copy2(templates / "manifest.json", out_dir / "manifest.json")
     (out_dir / "assets" / "analytics.config.js").write_text(analytics_js, encoding="utf-8")
-
-    screenshot = ROOT / "docs" / "screenshot-dashboard.png"
-    if not screenshot.is_file():
-        _fail("docs/screenshot-dashboard.png mancante: serve per l'anteprima social")
-    shutil.copy2(screenshot, out_dir / "assets" / "og.png")
 
     today = datetime.now(UTC)
     (out_dir / "sitemap.xml").write_text(_sitemap(base_url, today.date().isoformat()), encoding="utf-8")
@@ -325,7 +330,9 @@ def self_test() -> int:
         assert (root / "dist" / "sitemap.xml").is_file()
         assert "Sitemap: https://example.com/sitemap.xml" in (root / "dist" / "robots.txt").read_text(encoding="utf-8")
         assert "Content-Security-Policy" in (root / "dist" / "_headers").read_text(encoding="utf-8")
-        assert result["pages"] == 3
+        assert (root / "dist" / "termini.html").is_file()
+        assert (root / "dist" / "assets" / "og.jpg").is_file()
+        assert result["pages"] == 4
         print("SITE BUILD SELF-TEST OK")
     return 0
 

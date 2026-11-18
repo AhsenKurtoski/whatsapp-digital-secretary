@@ -8,6 +8,21 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Revocable cookie consent and legal pages on the public site**: the banner is now a
+  real consent gate. `analytics.js` only registers Consent Mode v2 defaults until the
+  visitor accepts; the Google Tag Manager and Cloudflare beacon loaders are created
+  inside `load()` and never contacted before that choice. The footer of every page has
+  a **Cookie** link that reopens the preferences with the current state, so revoking
+  is as easy as accepting, and `privacy.html` documents every cookie and storage key
+  (name, provider, purpose, duration, consent) in a table at `#cookie`. A new
+  `termini.html` covers MIT licence, no-warranty, trademarks, acceptable use, external
+  links, liability and Italian law. Covered by new assertions in `tests/test_site.py`.
+- **Lighthouse CI on the live site** (`.github/workflows/lighthouse.yml`,
+  `lighthouserc.json`): three runs per URL in mobile emulation with simulated mobile
+  throttling, median assertions (Performance ≥ 0,90, Accessibility/Best Practices ≥
+  0,95, SEO = 1,00, LCP ≤ 2,5 s, CLS ≤ 0,10, TBT warning above 200 ms) and HTML
+  reports uploaded as a build artifact. Runs on push to `main`, pull requests, a
+  weekly schedule and manual dispatch.
 - **Memory and quote-recall tools for Gina** (`approval_mcp.py`): `remember_fact`
   stores confirmed, redacted customer facts per WhatsApp number so they survive
   restarts and new chats; `list_quotes` lists only that customer's quotes with number,
@@ -28,6 +43,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `docs/WEBSITE.md`. The dashboard stays local-only and is never published.
 - **CodeQL workflow** for Python and JavaScript on push, pull request and weekly
   schedule, alongside the existing Dependabot, Bandit and `pip-audit` checks.
+
+### Changed
+
+- **Social preview image**: the 843 KiB `docs/screenshot-dashboard.png` was copied to
+  the site as-is for Open Graph. `site/assets/og.jpg` is now a 1200×917 progressive
+  JPEG at 96 KiB (82 % quality, Lanczos resize), declared with `og:image:type` and the
+  real 1200×917 dimensions; the build copies it directly, so Vercel needs no Pillow.
+- **Harder security headers on the public site**: HSTS raised to two years with
+  `includeSubDomains; preload`, `X-Permitted-Cross-Domain-Policies: none`, the
+  `Permissions-Policy` now also blocks accelerometer, gyroscope, magnetometer,
+  display capture and browsing topics, and the CSP denies `frame-src`, `worker-src`
+  and `media-src` on top of the existing `object-src 'none'`.
 
 ### Fixed
 

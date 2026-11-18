@@ -16,13 +16,16 @@
 <meta property="og:title" content="Privacy e cookie — Gina">
 <meta property="og:description" content="Informativa privacy del sito di Gina: analytics solo con consenso e nessun cookie di profilazione.">
 <meta property="og:url" content="{{BASE_URL}}/privacy.html">
-<meta property="og:image" content="{{BASE_URL}}/assets/og.png">
+<meta property="og:image" content="{{BASE_URL}}/assets/og.jpg">
 <meta property="og:image:alt" content="La dashboard privata di Gina">
 <meta property="og:locale" content="{{LOCALE}}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Privacy e cookie — Gina">
 <meta name="twitter:description" content="Analytics solo con consenso e nessun cookie di profilazione.">
-<meta name="twitter:image" content="{{BASE_URL}}/assets/og.png">
+<meta name="twitter:image" content="{{BASE_URL}}/assets/og.jpg">
+<script src="{{BASE_URL}}/assets/analytics.config.js" defer></script>
+<script src="{{BASE_URL}}/assets/analytics.js" defer></script>
+<script src="{{BASE_URL}}/assets/app.js" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">Salta al contenuto</a>
@@ -49,14 +52,25 @@
   <h2>2. Quali dati tratta questo sito</h2>
   <ul>
     <li><strong>Dati tecnici di navigazione</strong> (indirizzo IP, agente utente, pagina richiesta, data e ora) registrati dal provider di hosting per sicurezza e disponibilità del servizio.</li>
-    <li><strong>Analytics</strong> (Google Analytics 4 e, se configurato, Cloudflare Web Analytics) solo dopo il consenso esplicito. Con Google Analytics l'indirizzo IP è anonimizzato e i segnali pubblicitari sono disattivati.</li>
+    <li><strong>Analytics</strong> (Google Analytics 4 e, se configurato, Cloudflare Web Analytics) solo dopo il consenso esplicito. Prima del consenso non viene caricato alcun tag di Google o di Cloudflare e nessuna richiesta parte verso terzi. Con Google Analytics l'indirizzo IP è anonimizzato e i segnali pubblicitari sono disattivati.</li>
     <li><strong>Preferenza di consenso</strong> salvata nel browser nella chiave <code>gina_consent_v1</code>, per non mostrarti il banner a ogni visita.</li>
   </ul>
   <p>Il sito non ha moduli di contatto, non crea account e non richiede dati personali per essere consultato.</p>
 
-  <h2>3. Cookie</h2>
-  <p>Prima del consenso non viene installato alcun cookie di misurazione. Dopo l'accept, Google Analytics può impostare i cookie <code>_ga</code> e <code>_ga_*</code> per misurare le visite in forma aggregata. Cloudflare Web Analytics, quando attivo, è senza cookie. La preferenza di consenso è un dato tecnico salvato in <code>localStorage</code> e non viene inviata a terzi.</p>
-  <p>Puoi cambiare idea in qualsiasi momento cancellando i dati del sito dalle impostazioni del browser: alla visita successiva il banner ricompare.</p>
+  <h2>3. Cookie e storage locale</h2>
+  <p>Prima del consenso non viene installato alcun cookie di misurazione e nessuno script di terze parti viene caricato. Dopo il consenso, Google Analytics può impostare i cookie <code>_ga</code> e <code>_ga_*</code> per misurare le visite in forma aggregata. Cloudflare Web Analytics, quando attivo, è senza cookie. La preferenza di consenso è un dato tecnico salvato in <code>localStorage</code> e non viene inviata a terzi.</p>
+  <table class="cookie-table" id="cookie">
+    <caption>Cookie e storage usati da questo sito</caption>
+    <thead>
+      <tr><th scope="col">Nome</th><th scope="col">Fornitore</th><th scope="col">Finalità</th><th scope="col">Durata</th><th scope="col">Solo con consenso</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>gina_consent_v1</code></td><td>Questo sito (<code>localStorage</code>)</td><td>Ricorda la tua scelta sugli analytics</td><td>Fino a quando svuoti i dati del browser</td><td>No, è tecnico</td></tr>
+      <tr><td><code>_ga</code></td><td>Google Ireland Limited</td><td>Distingue i visitatori in forma aggregata</td><td>2 anni</td><td>Sì</td></tr>
+      <tr><td><code>_ga_&lt;ID&gt;</code></td><td>Google Ireland Limited</td><td>Mantiene lo stato della sessione di misurazione</td><td>2 anni</td><td>Sì</td></tr>
+    </tbody>
+  </table>
+  <p id="revoca">Puoi cambiare idea quando vuoi dal link <strong>Cookie</strong> nel piede di ogni pagina: le preferenze si riaprono e puoi accettare o rifiutare di nuovo. Rifiutare non limita in alcun modo i contenuti e non richiede la cancellazione dei dati del browser. Se preferisci, puoi anche svuotare i dati del sito dalle impostazioni del browser: alla visita successiva il banner ricompare.</p>
 
   <h2>4. Base giuridica e finalità</h2>
   <ul>
@@ -71,10 +85,10 @@
   <p>I dati possono essere trattati dal provider di hosting e, se attivi, da Google Ireland Limited (Google Analytics) e Cloudflare, Inc. (Web Analytics). Questi fornitori possono trattare dati fuori dall'Unione Europea sulla base delle clausole contrattuali standard della Commissione Europea.</p>
 
   <h2>7. I tuoi diritti</h2>
-  <p>Puoi chiedere accesso, rettifica, cancellazione, limitazione, opposizione e portabilità dei dati, e revocare il consenso in qualsiasi momento. Puoi inoltre proporre reclamo al Garante per la protezione dei dati personali (<a href="https://www.garanteprivacy.it" rel="noopener">garanteprivacy.it</a>).</p>
+  <p>Puoi chiedere accesso, rettifica, cancellazione, limitazione, opposizione e portabilità dei dati, e revocare il consenso in qualsiasi momento dal link <strong>Cookie</strong>. Condizioni d'uso del sito: <a href="{{BASE_URL}}/termini.html">termini</a>. Puoi inoltre proporre reclamo al Garante per la protezione dei dati personali (<a href="https://www.garanteprivacy.it" rel="noopener">garanteprivacy.it</a>).</p>
 
   <h2>8. Sicurezza</h2>
-  <p>Il sito è servito in HTTPS e applica header di sicurezza (Content-Security-Policy, HSTS, <code>X-Content-Type-Options</code>, <code>Referrer-Policy</code>, <code>Permissions-Policy</code>). Le vulnerabilità si segnalano in forma privata tramite il <a href="{{SECURITY_CONTACT}}" rel="noopener">canale di sicurezza del repository</a>.</p>
+  <p>Il sito è servito in HTTPS e applica header di sicurezza (Content-Security-Policy, HSTS, <code>X-Content-Type-Options</code>, <code>X-Frame-Options</code>, <code>Referrer-Policy</code>, <code>Permissions-Policy</code>, COOP e CORP). Le vulnerabilità si segnalano in forma privata tramite il <a href="{{SECURITY_CONTACT}}" rel="noopener">canale di sicurezza del repository</a>.</p>
 
   <h2>9. Aggiornamenti</h2>
   <p>Ultimo aggiornamento: {{DATE_IT}}. Le modifiche sostanziali saranno pubblicate su questa pagina.</p>
@@ -86,6 +100,8 @@
   <p>© {{YEAR}} {{OWNER_NAME}} · Gina è un progetto indipendente, non affiliato a WhatsApp o Meta.</p>
   <nav aria-label="Link legali">
     <a href="{{BASE_URL}}/privacy.html">Privacy</a>
+    <a href="{{BASE_URL}}/privacy.html#cookie" data-cookie-settings>Cookie</a>
+    <a href="{{BASE_URL}}/termini.html">Termini</a>
     <a href="{{BASE_URL}}/security.txt">Sicurezza</a>
     <a href="{{REPO_URL}}" rel="noopener">GitHub</a>
   </nav>

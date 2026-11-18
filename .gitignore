@@ -38,6 +38,7 @@ archive/
 
 # Dashboard and email previews
 *.html.tmp
+artifacts/
 preview-*.html
 screenshots/*.png
 !docs/screenshot-dashboard.png

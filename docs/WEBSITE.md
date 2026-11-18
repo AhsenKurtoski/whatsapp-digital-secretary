@@ -14,7 +14,8 @@ pubblicazione con SEO o header di sicurezza mancanti.
 ```text
 site/dist/
 ├── index.html              # home: prodotto, privacy, autore, FAQ + JSON-LD
-├── privacy.html            # informativa privacy e cookie
+├── privacy.html            # informativa privacy e cookie (tabella cookie)
+├── termini.html            # termini d'uso: licenza, garanzie, marchi, foro
 ├── 404.html                # pagina noindex
 ├── robots.txt              # Allow + Sitemap
 ├── sitemap.xml             # home + privacy, lastmod reale
@@ -24,21 +25,28 @@ site/dist/
 ├── manifest.json
 └── assets/
     ├── style.css
-    ├── app.js              # banner consenso, nessun cookie prima dell'accept
-    ├── analytics.js        # GA4 Consent Mode v2 + Cloudflare Web Analytics
+    ├── app.js              # banner consenso + preferenze cookie revocabili
+    ├── analytics.js        # GA4 Consent Mode v2, caricato solo dopo il consenso
     ├── analytics.config.js # ID generati dal build (mai inventati)
     ├── favicon.svg
     ├── dashboard-480.webp  # hero responsive: 480/720/1080/1440 px
     ├── dashboard-720.webp
     ├── dashboard-1080.webp # versione precaricata su mobile
     ├── dashboard-1440.webp
-    └── og.png              # anteprima social (screenshot reale della dashboard)
+    └── og.jpg              # anteprima social 1200×917 JPEG (~96 KiB)
 ```
 
 L'immagine hero è servita in WebP a quattro larghezze con `srcset`/`sizes`,
 `loading="eager"`, `fetchpriority="high"` e un `preload` con `imagesrcset`: è
-l'elemento LCP e senza questi attributi Lighthouse misurava 5,3 s di LCP. Il PNG
-originale resta solo come `og.png` per le anteprime social.
+l'elemento LCP e senza questi attributi Lighthouse misurava 5,3 s di LCP.
+
+La card social è un JPEG da 1200 px (96 KiB) e non più l'843 KiB PNG: le
+anteprime social venivano scaricate intere a ogni condivisione. Per rigenerarla
+dallo screenshot reale:
+
+```bash
+python3 -c "from PIL import Image; im = Image.open('docs/screenshot-dashboard.png').convert('RGB'); w = 1200; im = im.resize((w, round(w * im.height / im.width)), Image.LANCZOS); im.save('site/assets/og.jpg', 'JPEG', quality=82, optimize=True, progressive=True)"
+```
 
 SEO incluso: title e description per pagina, canonical assoluto, Open Graph,
 Twitter Card, `hreflang` non necessario (sito in italiano), JSON-LD `Person`,
@@ -118,7 +126,7 @@ python3 seo_audit.py --dir site/dist
 Output atteso:
 
 ```text
-SITO OK: 3 pagine in site/dist · base https://tuodominio.it · analytics GA4
+SITO OK: 4 pagine in site/dist · base https://tuodominio.it · analytics GA4
 SEO AUDIT OK
 ```
 
@@ -192,17 +200,33 @@ Header applicati da `_headers` e `vercel.json`:
 
 | Header | Valore |
 | --- | --- |
-| `Content-Security-Policy` | solo self + Google Tag Manager + Cloudflare Insights; niente inline script |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` |
+| `Content-Security-Policy` | solo self + Google Tag Manager + Cloudflare Insights; niente inline script; `frame-src`, `worker-src`, `media-src` negati |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` |
 | `X-Content-Type-Options` | `nosniff` |
 | `X-Frame-Options` | `DENY` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
-| `Permissions-Policy` | geolocalizzazione, microfono, camera, pagamenti e USB disattivati |
+| `Permissions-Policy` | accelerometro, camera, geolocalizzazione, giroscopio, magnetometro, microfono, pagamenti, USB, cattura schermo e Topics disattivati |
 | `Cross-Origin-Opener-Policy` | `same-origin` |
 | `Cross-Origin-Resource-Policy` | `same-origin` |
+| `X-Permitted-Cross-Domain-Policies` | `none` |
 
 In più: `security.txt` conforme a RFC 9116, nessun font o immagine da CDN esterni,
 nessun form, nessun cookie prima del consenso, analytics con IP anonimizzato.
+
+### Cookie banner e consenso
+
+Il banner compare solo se `analytics.ga4_measurement_id` o
+`analytics.cloudflare_token` sono impostati: senza analytics non esistono cookie
+non tecnici e un banner sarebbe solo rumore. Con gli ID configurati:
+
+- Prima della scelta **nessuno script di terze parti viene caricato**: `analytics.js`
+  registra solo i default di Consent Mode v2 (`analytics_storage: denied`) e i loader
+  di Google/Cloudflare nascono dentro `load()`, chiamata solo dopo "Accetta".
+- La scelta è salvata in `localStorage` (`gina_consent_v1`, dato tecnico) e il link
+  **Cookie** nel piede di ogni pagina riapre le preferenze: revocare è facile quanto
+  accettare. Su `privacy.html` la tabella `#cookie` elenca nome, fornitore, finalità,
+  durata e se il cookie richiede consenso.
+- "Rifiuta" non riduce nulla: pagine, link e download funzionano identici.
 
 Il repository usa Dependabot, `pip-audit`, Bandit e CodeQL
 ([`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml)) per il codice.
@@ -216,3 +240,31 @@ python3 -m unittest discover -s tests -p 'test_site.py' -v
 ```
 
 Se `base_url` è configurato, `scripts/verify.sh` esegue anche build e audit reali.
+
+## 7. Lighthouse CI (tre esecuzioni, mediana)
+
+[`lighthouserc.json`](../lighthouserc.json) misura il sito **live** in mobile con tre
+run per URL (`/` e `/privacy.html`) e valuta la mediana, così un picco di rete non
+trasforma un numero fortunato in un gate. Soglie bloccanti:
+
+| Controllo | Soglia |
+| --- | --- |
+| Performance | ≥ 0,90 |
+| Accessibility | ≥ 0,95 |
+| Best Practices | ≥ 0,95 |
+| SEO | 1,00 |
+| LCP (mediana) | ≤ 2,5 s |
+| CLS (mediana) | ≤ 0,10 |
+| TBT (mediana) | avviso oltre 200 ms |
+
+In locale, con Chrome installato:
+
+```bash
+npx --yes @lhci/cli@0.16.1 autorun
+```
+
+I report HTML finiscono in `artifacts/lighthouse/`. La stessa configurazione gira
+in [`.github/workflows/lighthouse.yml`](../.github/workflows/lighthouse.yml) a ogni
+push su `main`, sulle pull request, ogni lunedì e su richiesta manuale. Il workflow
+testa l'URL di produzione: se il deploy manuale non è ancora avvenuto, il gate può
+misurare la versione precedente.

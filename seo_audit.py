@@ -18,7 +18,7 @@ import tempfile
 from html.parser import HTMLParser
 from pathlib import Path
 
-PAGES = ("index.html", "privacy.html", "404.html")
+PAGES = ("index.html", "privacy.html", "termini.html", "404.html")
 REQUIRED_HEADERS = (
     "Content-Security-Policy",
     "Strict-Transport-Security",
@@ -211,7 +211,7 @@ def audit(directory: Path) -> dict:
         sitemap_text = sitemap.read_text(encoding="utf-8")
         if base_url and base_url not in sitemap_text:
             report.error("sitemap.xml non contiene il dominio del canonical")
-        for page in ("privacy.html",):
+        for page in ("privacy.html", "termini.html"):
             if page not in sitemap_text:
                 report.error(f"sitemap.xml non contiene {page}")
 

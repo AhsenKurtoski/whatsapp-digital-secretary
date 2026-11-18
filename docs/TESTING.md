@@ -176,21 +176,31 @@ curl -sSI https://YOUR-DOMAIN/ | grep -Ei 'content-security|strict-transport|x-c
       is set.
 - [ ] Google Search Console verifies the property and accepts `sitemap.xml`.
 - [ ] Bing Webmaster Tools verifies the meta tag and imports the sitemap.
+- [ ] No request to `googletagmanager.com` or `cloudflareinsights.com` appears in the
+      network panel before a choice: the banner is the only consent UI, and
+      "Rifiuta" leaves the page identical.
+- [ ] The **Cookie** link in the footer reopens the preferences with the current
+      state, and a second choice is stored (`gina_consent_v1`); no reload is needed.
+- [ ] `/privacy.html#cookie` shows the cookie table (name, provider, purpose, duration,
+      consent required) and `/termini.html` is reachable from every footer.
 - [ ] GA4 receives a page view only after "Accetta"; "Rifiuta" sends no analytics
       cookie and the banner does not reappear (stored preference).
 - [ ] Open Graph/Twitter preview shows the dashboard screenshot and the author's name.
-- [ ] `security.txt`, `robots.txt`, `sitemap.xml` and the security headers are served.
+      The image is `assets/og.jpg` (1200×917, ~96 KiB), not the old 843 KiB PNG.
+- [ ] `security.txt`, `robots.txt`, `sitemap.xml` and the security headers are served,
+      including `X-Permitted-Cross-Domain-Policies: none`.
 - [ ] The private dashboard is still bound to localhost and is not reachable from the
       public domain.
 
-Lighthouse mobile on the live site (Chrome headless):
+Lighthouse mobile on the live site, three runs per URL with median assertions
+(`lighthouserc.json`):
 
 ```bash
-npx lighthouse https://gina-secretary.vercel.app/ --form-factor=mobile \
-  --only-categories=performance,accessibility,best-practices,seo --view
+npx --yes @lhci/cli@0.16.1 autorun
 ```
 
-- [ ] Performance ≥ 90, Accessibility/Best Practices/SEO = 100.
+- [ ] `All assertions passed`: Performance ≥ 0,90, Accessibility/Best Practices ≥ 0,95,
+      SEO = 1,00 on the median of three runs.
 - [ ] LCP < 2,5 s; the hero request is a WebP from `srcset`, not the 843 KiB PNG,
       and has `fetchpriority="high"` without `loading="lazy"`.
 - [ ] Unknown paths return HTTP 404 with the custom page; `canonical`, `sitemap.xml`

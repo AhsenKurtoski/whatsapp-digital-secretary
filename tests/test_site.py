@@ -39,10 +39,13 @@ class SiteBuildTests(unittest.TestCase):
         self.assertIn("Person", index)
         self.assertIn("SoftwareApplication", index)
         self.assertNotIn("{{", index)
-        for name in ("privacy.html", "404.html", "sitemap.xml", "robots.txt", "_headers", "vercel.json"):
+        for name in ("privacy.html", "termini.html", "404.html", "sitemap.xml", "robots.txt",
+                     "_headers", "vercel.json"):
             self.assertTrue((self.out / name).is_file(), name)
         self.assertTrue((self.out / ".well-known" / "security.txt").is_file())
-        self.assertTrue((self.out / "assets" / "og.png").is_file())
+        self.assertTrue((self.out / "assets" / "og.jpg").is_file())
+        sitemap = (self.out / "sitemap.xml").read_text(encoding="utf-8")
+        self.assertIn("https://example.com/termini.html", sitemap)
         for width in (480, 720, 1080, 1440):
             self.assertTrue((self.out / "assets" / f"dashboard-{width}.webp").is_file(), width)
         self.assertFalse((self.out / "assets" / "dashboard.png").exists())
@@ -125,6 +128,59 @@ class SiteBuildTests(unittest.TestCase):
         self.assertIn('rel="preload" as="image"', index)
         self.assertNotIn("/assets/dashboard.png", index)
         self.assertLess((self.out / "assets" / "dashboard-1080.webp").stat().st_size, 120_000)
+
+    def test_social_image_is_a_small_jpeg(self):
+        """The social card was an 843 KiB PNG; it must stay a small JPEG."""
+        site_build.build(self.config, self.out)
+        image = self.out / "assets" / "og.jpg"
+        self.assertLess(image.stat().st_size, 150_000)
+        with image.open("rb") as handle:
+            self.assertEqual(handle.read(3), b"\xff\xd8\xff", "og.jpg deve essere un JPEG")
+        self.assertFalse((self.out / "assets" / "og.png").exists())
+        index = (self.out / "index.html").read_text(encoding="utf-8")
+        self.assertIn('property="og:image" content="https://example.com/assets/og.jpg"', index)
+        self.assertIn('property="og:image:type" content="image/jpeg"', index)
+        self.assertIn('content="1200"', index)
+        self.assertIn('content="917"', index)
+
+    def test_consent_banner_is_revocable_and_nothing_loads_early(self):
+        site_build.build(self.config, self.out)
+        analytics = (self.out / "assets" / "analytics.js").read_text(encoding="utf-8")
+        self.assertIn("function load()", analytics)
+        self.assertLess(
+            analytics.index("function load()"),
+            analytics.index("document.head.appendChild"),
+            "i loader di terze parti devono nascere solo dentro load(), dopo il consenso",
+        )
+        self.assertIn('analytics_storage: "denied"', analytics)
+        app = (self.out / "assets" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("data-cookie-settings", app)
+        self.assertIn("gina_consent_v1", app)
+        for page in ("index.html", "privacy.html", "termini.html"):
+            html = (self.out / page).read_text(encoding="utf-8")
+            self.assertIn("data-cookie-settings", html, page)
+            self.assertIn("analytics.js", html, page)
+        privacy = (self.out / "privacy.html").read_text(encoding="utf-8")
+        self.assertIn('id="cookie"', privacy)
+        self.assertIn("gina_consent_v1", privacy)
+        self.assertIn("<code>_ga</code>", privacy)
+
+    def test_lighthouse_ci_runs_three_times_on_mobile(self):
+        config = json.loads((ROOT / "lighthouserc.json").read_text(encoding="utf-8"))
+        collect = config["ci"]["collect"]
+        self.assertEqual(collect["numberOfRuns"], 3)
+        self.assertEqual(collect["settings"]["formFactor"], "mobile")
+        self.assertTrue(collect["url"])
+        self.assertTrue(all(url.startswith("https://") for url in collect["url"]))
+        assertions = config["ci"]["assert"]["assertions"]
+        for category in ("performance", "accessibility", "best-practices", "seo"):
+            key = f"categories:{category}"
+            self.assertIn(key, assertions)
+            self.assertEqual(assertions[key][1]["aggregationMethod"], "median")
+        self.assertIn("largest-contentful-paint", assertions)
+        workflow = (ROOT / ".github" / "workflows" / "lighthouse.yml").read_text(encoding="utf-8")
+        self.assertIn("@lhci/cli", workflow)
+        self.assertIn("autorun", workflow)
 
     def test_vercel_manifest_matches_the_build(self):
         """The root vercel.json is what Vercel reads; it must not drift."""
