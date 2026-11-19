@@ -144,6 +144,32 @@ class MemoryTests(TempBase):
         self.assertTrue(memory.forget(phone, self.base))
         self.assertFalse(memory.forget(phone, self.base))
 
+    def test_fact_update_and_relevance(self):
+        """Un fatto aggiornato non deve essere scartato al posto di uno vecchio."""
+        phone = "+393334445555"
+        memory.remember(phone, "servizio", "sito web", base=self.base)
+        memory.remember(phone, "budget", "1000 euro", base=self.base)
+        profile = memory.remember(phone, "servizio", "e-commerce", base=self.base)
+        self.assertEqual(list(profile["facts"])[-1], "servizio")
+        self.assertIn("updated_at", profile["fact_meta"]["servizio"])
+
+        ctx = memory.context(phone, base=self.base, query="quanto costa l'e-commerce?")
+        self.assertIn("e-commerce", ctx)
+        self.assertNotIn("sito web", ctx)
+
+        other = "+393336667777"
+        memory.record(other, "user", "Cerco un e-commerce con magazzino", base=self.base)
+        memory.remember(other, "interesse", "e-commerce", base=self.base)
+        hits = memory.search("e-commerce", base=self.base)
+        self.assertEqual({row["phone"] for row in hits}, {phone, other})
+        self.assertTrue(any(row["type"] == "message" for row in hits))
+
+    def test_consecutive_duplicates_are_collapsed(self):
+        phone = "+393338889999"
+        memory.record(phone, "user", "Buongiorno", base=self.base)
+        memory.record(phone, "user", "Buongiorno", base=self.base)
+        self.assertEqual(len(memory.transcript(phone, base=self.base)), 1)
+
 
 class QuotasTests(TempBase):
     def test_usage_thresholds(self):

@@ -109,6 +109,7 @@ def transcript(phone: str, limit: int = MAX_MESSAGES, redact: bool = True,
             "name": profile.get("name", ""),
             "messages": rows,
             "handoff": profile.get("handoff", {}),
+            "facts": profile.get("facts", {}),
             "source": "memory",
         }
     session = matches[0]
@@ -158,6 +159,7 @@ def transcript(phone: str, limit: int = MAX_MESSAGES, redact: bool = True,
         "name": session.get("name") or profile.get("name", ""),
         "messages": messages,
         "handoff": profile.get("handoff", {}),
+        "facts": profile.get("facts", {}),
         "source": "openclaw",
     }
 

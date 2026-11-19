@@ -209,6 +209,8 @@ select option{background:#081420}
   :focus-visible{outline:2px solid var(--sky);outline-offset:2px;border-radius:8px}
   .section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
   .transcript{max-height:440px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:6px}
+  .fact-chips{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 10px;font-size:13px;color:var(--muted)}
+  .fact-chips strong{color:var(--text);font-size:13px}
   .bubble{max-width:82%;padding:9px 12px;border-radius:14px;font-size:13.2px;line-height:1.45;border:1px solid var(--stroke)}
   .bubble.user{align-self:flex-start;background:rgba(18,38,58,.7)}
   .bubble.assistant{align-self:flex-end;background:rgba(94,234,212,.12);border-color:rgba(94,234,212,.3)}
@@ -306,6 +308,7 @@ select option{background:#081420}
             <button class="btn ghost" id="transcriptClose" type="button" data-i18n="conv.close">Chiudi</button>
           </div>
         </div>
+        <div id="transcriptFacts" class="fact-chips" hidden></div>
         <div id="transcriptBox" class="transcript" aria-live="polite" aria-label="Transcript della conversazione"></div>
       </div>
     </section>
@@ -1421,7 +1424,7 @@ const I18N={
     'conv.search':'Cerca nome, numero o messaggio…','conv.col.last':'Ultimo messaggio','conv.col.name':'Nome',
     'conv.col.phone':'Numero','conv.col.count':'Messaggi','conv.col.lang':'Lingua','conv.col.state':'Gestione',
     'conv.col.preview':'Anteprima','conv.take':'Prendi il controllo','conv.release':'Restituisci a Gina','conv.close':'Chiudi',
-    'conv.empty':'Nessuna conversazione','conv.human':'Controllo umano','conv.open':'Apri',
+    'conv.empty':'Nessuna conversazione','conv.memory':'Memoria','conv.human':'Controllo umano','conv.open':'Apri',
     'stats.title':'Statistiche','stats.chart':'Messaggi e lead, ultimi 14 giorni',
     'stats.conversations':'Conversazioni','stats.leads':'Lead','stats.quotes':'Preventivi emessi',
     'stats.approved':'Preventivi approvati','stats.conversion':'Conversione lead','stats.response':'Tempo medio di risposta',
@@ -1494,7 +1497,7 @@ const I18N={
     'conv.search':'Search name, number or message…','conv.col.last':'Last message','conv.col.name':'Name',
     'conv.col.phone':'Number','conv.col.count':'Messages','conv.col.lang':'Language','conv.col.state':'Handling',
     'conv.col.preview':'Preview','conv.take':'Take over','conv.release':'Hand back to Gina','conv.close':'Close',
-    'conv.empty':'No conversations','conv.human':'Human takeover','conv.open':'Open',
+    'conv.empty':'No conversations','conv.memory':'Memory','conv.human':'Human takeover','conv.open':'Open',
     'stats.title':'Analytics','stats.chart':'Messages and leads, last 14 days',
     'stats.conversations':'Conversations','stats.leads':'Leads','stats.quotes':'Quotes issued',
     'stats.approved':'Approved quotes','stats.conversion':'Lead conversion','stats.response':'Average response time',
@@ -1680,6 +1683,12 @@ async function openTranscript(phone){
     state.phone=phone; state.transcript=r.data;
     $('transcriptCard').hidden=false;
     $('transcriptTitle').textContent=(r.data.name?r.data.name+' · ':'')+phone;
+    const memoryFacts=Object.entries(r.data.facts||{});
+    const factsBox=$('transcriptFacts');
+    if(factsBox){
+      factsBox.hidden=!memoryFacts.length;
+      factsBox.innerHTML=memoryFacts.length?`<strong>${esc(t('conv.memory'))}</strong>`+memoryFacts.map(([k,v])=>`<span class="chip">${esc(k)}: ${esc(v)}</span>`).join(''):'';
+    }
     const rows=r.data.messages||[];
     $('transcriptBox').innerHTML=rows.length?rows.map(m=>`<div class="bubble ${m.role==='user'?'user':'assistant'}">
       <div class="bubble-meta">${m.role==='user'?esc(t('role.client')):'Gina'} · ${esc(String(m.ts||'').slice(11,16))}</div>

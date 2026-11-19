@@ -8,6 +8,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Sharper per-customer memory** (`memory.py`, `conversations.py`, dashboard): facts now
+  carry `fact_meta.updated_at`, and updating one moves it to the top so the 40-fact cap
+  drops stale entries instead of recent ones. `context()` ranks facts by overlap with
+  the current message, then by recency, and shows up to ten instead of the first eight.
+  New `memory.search()` (CLI `--search`) searches facts and redacted messages across
+  contacts, and the dashboard transcript panel shows the customer's facts from
+  `/api/conversations/<phone>`. Identical consecutive messages are collapsed to one
+  entry with the latest timestamp. Covered by `test_gina_platform` and the module
+  self-test; documented in `docs/MEMORY.md`.
 - **Informational cookie notice without analytics**: the public site now always shows a
   cookie banner. When no GA4 or Cloudflare ID is configured it is a non-blocking
   **Nessun cookie di profilazione** notice with a single "Ho capito" action: it records

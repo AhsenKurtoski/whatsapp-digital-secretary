@@ -73,6 +73,7 @@ def _empty(phone: str) -> dict:
         "language": "",
         "tone": "",
         "facts": {},
+        "fact_meta": {},
         "first_seen": now,
         "last_seen": now,
         "messages_in": 0,
@@ -100,6 +101,7 @@ def load(phone: str, base: Path | None = None) -> dict:
     profile.update({k: v for k, v in data.items() if k in profile})
     profile.setdefault("handoff", {"active": False, "operator": "", "since": ""})
     profile.setdefault("facts", {})
+    profile.setdefault("fact_meta", {})
     profile.setdefault("transcript", [])
     profile.setdefault("intents", {})
     return profile
@@ -137,7 +139,12 @@ def record(phone: str, role: str, text: str, intent: str | None = None,
             profile["messages_out"] = int(profile.get("messages_out") or 0) + 1
         profile["last_seen"] = _now()
         entries = profile.get("transcript") or []
-        entries.append({"ts": _now(), "role": role, "text": clean})
+        entry = {"ts": _now(), "role": role, "text": clean}
+        if entries and entries[-1].get("role") == role and entries[-1].get("text") == clean:
+            # Un retry o un doppio invio non deve duplicare il contesto.
+            entries[-1]["ts"] = entry["ts"]
+        else:
+            entries.append(entry)
         profile["transcript"] = entries[-MAX_MESSAGES:]
         _save(profile, base)
         return profile
@@ -152,9 +159,17 @@ def remember(phone: str, key: str, value: str, base: Path | None = None) -> dict
     with _LOCK:
         profile = load(phone, base)
         facts = profile.get("facts") or {}
+        meta = profile.get("fact_meta") or {}
         if value:
+            # Un fatto aggiornato torna in cima: senza pop resterebbe nella
+            # vecchia posizione e verrebbe scartato al posto di uno obsoleto.
+            facts.pop(key, None)
             facts[key] = value
-            profile["facts"] = dict(list(facts.items())[-MAX_FACTS:])
+            meta.pop(key, None)
+            meta[key] = {"updated_at": _now()}
+            keep = list(facts)[-MAX_FACTS:]
+            profile["facts"] = {name: facts[name] for name in keep}
+            profile["fact_meta"] = {name: meta[name] for name in keep if name in meta}
             _save(profile, base)
         return profile
 
@@ -190,8 +205,73 @@ def transcript(phone: str, limit: int = 50, redact: bool = True,
     return list(rows)
 
 
-def context(phone: str, max_chars: int = 900, base: Path | None = None) -> str:
-    """Contesto compatto per il prompt: lingua, fatti e ultimi scambi."""
+def _tokens(text: str) -> set[str]:
+    return {word for word in re.findall(r"[a-z\u00e0-\u00ff0-9]{3,}", str(text or "").lower())}
+
+
+def _rank_facts(data: dict, query: str = "") -> list[tuple[str, str]]:
+    """Fatti ordinati per attinenza al messaggio corrente, poi per recenza."""
+    facts = data.get("facts") or {}
+    meta = data.get("fact_meta") or {}
+    words = _tokens(query)
+    if not words:
+        for item in reversed(data.get("transcript") or []):
+            if item.get("role") == "user":
+                words = _tokens(item.get("text"))
+                break
+
+    def rank(item: tuple[str, str]) -> tuple[int, str]:
+        key, value = item
+        overlap = len(words & _tokens(f"{key} {value}"))
+        stamp = str((meta.get(key) or {}).get("updated_at") or "")
+        return (overlap, stamp)
+
+    return sorted(facts.items(), key=rank, reverse=True)
+
+
+def search(text: str, limit: int = 20, base: Path | None = None) -> list[dict]:
+    """Cerca fatti e messaggi in tutte le memorie, con dati personali redatti."""
+    needle = str(text or "").strip().lower()
+    if not needle:
+        raise ValueError("ricerca mancante")
+    rows: list[dict] = []
+    for path in _dir(base).glob("*.json"):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(data, dict) or not data.get("phone"):
+            continue
+        phone = str(data.get("phone"))
+        name = str(data.get("name") or "")
+        meta = data.get("fact_meta") or {}
+        for key, value in (data.get("facts") or {}).items():
+            if needle in f"{key} {value}".lower():
+                rows.append({
+                    "phone": phone,
+                    "name": name,
+                    "type": "fact",
+                    "key": str(key),
+                    "value": lead_intel.redact(str(value))[:200],
+                    "at": str((meta.get(key) or {}).get("updated_at") or data.get("last_seen") or ""),
+                })
+        for item in data.get("transcript") or []:
+            message = str(item.get("text") or "")
+            if needle in message.lower():
+                rows.append({
+                    "phone": phone,
+                    "name": name,
+                    "type": "message",
+                    "role": str(item.get("role") or ""),
+                    "text": lead_intel.redact(message)[:200],
+                    "at": str(item.get("ts") or ""),
+                })
+    rows.sort(key=lambda row: str(row.get("at") or ""), reverse=True)
+    return rows[:max(1, min(int(limit or 20), 200))]
+
+
+def context(phone: str, max_chars: int = 900, base: Path | None = None, query: str = "") -> str:
+    """Contesto compatto per il prompt: lingua, fatti pertinenti e ultimi scambi."""
     data = load(phone, base)
     if not data.get("messages_in") and not data.get("facts"):
         return ""
@@ -202,7 +282,8 @@ def context(phone: str, max_chars: int = 900, base: Path | None = None) -> str:
         lines.append(f"Nome: {data['name']}")
     facts = data.get("facts") or {}
     if facts:
-        lines.append("Fatti: " + "; ".join(f"{k}={v}" for k, v in list(facts.items())[:8]))
+        ranked = _rank_facts(data, query)
+        lines.append("Fatti: " + "; ".join(f"{key}={value}" for key, value in ranked[:10]))
     intents = data.get("intents") or {}
     if intents:
         top = max(intents, key=lambda key: intents[key])
@@ -276,6 +357,17 @@ def self_test() -> None:
         ctx = context(phone, base=base)
         assert "sito web" in ctx and "Lingua" in ctx, ctx
 
+        remember(phone, "servizio", "e-commerce", base=base)
+        ranked = context(phone, base=base, query="quanto costa l'e-commerce")
+        assert "e-commerce" in ranked and "sito web" not in ranked, ranked
+        hits = search("e-commerce", base=base)
+        assert hits and hits[0]["type"] == "fact" and hits[0]["phone"] == phone, hits
+
+        before = len(transcript(phone, base=base))
+        record(phone, "user", "Stessa domanda", base=base)
+        record(phone, "user", "Stessa domanda", base=base)
+        assert len(transcript(phone, base=base)) == before + 1, "i doppioni consecutivi non si duplicano"
+
         record(phone, "user", "Scrivimi a mario@example.com", base=base)
         last = transcript(phone, 1, base=base)[0]
         assert "[email]" in last["text"], last
@@ -297,6 +389,7 @@ def main() -> int:
     parser.add_argument("--profile", default="")
     parser.add_argument("--context", default="")
     parser.add_argument("--list", action="store_true")
+    parser.add_argument("--search", default="")
     parser.add_argument("--forget", default="")
     parser.add_argument("--yes", action="store_true")
     parser.add_argument("--self-test", action="store_true")
@@ -315,6 +408,9 @@ def main() -> int:
         return 0
     if args.context:
         print(context(args.context))
+        return 0
+    if args.search:
+        print(json.dumps(search(args.search), ensure_ascii=False, indent=2))
         return 0
     print(json.dumps(conversations(), ensure_ascii=False, indent=2))
     return 0

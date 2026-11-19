@@ -416,7 +416,7 @@ implementata in codice testato, non è un annuncio:
 | Area | Cosa c'è | Comando / documento |
 |---|---|---|
 | Classificazione e audit | intento, lingua IT/EN, score, segnali di truffa, audit trail senza testo integrale | `python3 lead_intel.py --json --text "..."` |
-| Memoria per cliente | lingua, fatti, intenti, transcript redatto, handoff | `python3 memory.py --profile +39...` |
+| Memoria per cliente | lingua, fatti con data di aggiornamento ordinati per pertinenza, intenti, transcript redatto, handoff | `python3 memory.py --profile +39...` · `python3 memory.py --search "e-commerce"` |
 | Latenza | cache TTL delle risposte frequenti con hit rate | `python3 cache.py --stats` |
 | Modello dinamico | scelta per carico, latenza e 429; applicazione esplicita | `python3 router.py --load 4` |
 | Risposte live | intento, memoria per cliente e cache verificata dietro il tool `client_brief`; il plugin alimenta ogni messaggio reale | `python3 live.py --brief "A che ora aprite?" --json` |
