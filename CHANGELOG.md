@@ -28,9 +28,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
   throttling, median assertions (Performance ≥ 0,90, Accessibility/Best Practices ≥
   0,95, SEO = 1,00, LCP ≤ 2,5 s, CLS ≤ 0,10, TBT warning above 200 ms) and HTML
   reports uploaded as a build artifact. Runs on push to `main`, pull requests, a
-  weekly schedule and manual dispatch. Measured on 18/11/2026: three runs on `/` and
-  three on `/privacy.html`, all assertions passed, 100 Performance / Accessibility /
-  Best Practices / SEO on the median, LCP 0,82 s and 0,80 s, CLS 0.
+  weekly schedule and manual dispatch. `/termini.html` was added to the audited URLs on
+  19/11/2026; the real run then covered nine runs, all assertions passed, 100
+  Performance / Accessibility / Best Practices / SEO on the median of all three URLs,
+  LCP 0,85 s / 0,81 s / 0,81 s, CLS 0.
+- **Automatic Vercel deployments on `main`**: `vercel.json` now declares
+  `git.deploymentEnabled.main: true`. Verified with a real push (`4c71e47`): Vercel
+  created a production deployment four seconds after the push, promoted it to
+  `gina-secretary.vercel.app` and no manual deploy call was needed.
 - **Memory and quote-recall tools for Gina** (`approval_mcp.py`): `remember_fact`
   stores confirmed, redacted customer facts per WhatsApp number so they survive
   restarts and new chats; `list_quotes` lists only that customer's quotes with number,

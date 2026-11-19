@@ -170,8 +170,10 @@ non viene mai inclusa.
   `test_vercel_manifest_matches_the_build` impedisce che i due divergano.
 - `base_url` è `https://gina-secretary.vercel.app`, quindi canonical, sitemap e
   `robots.txt` puntano già al dominio definitivo.
-- Il progetto non ha auto-deploy: dopo un push su `main` rilancia il deployment del
-  progetto Vercel (dashboard o CLI) per rigenerare il sito.
+- Auto-deploy attivo su `main`: `vercel.json` dichiara `git.deploymentEnabled.main:
+  true` e ogni push crea un deployment di produzione promosso su
+  `gina-secretary.vercel.app` (verificato il 19/11/2026 con `4c71e47`, READY e alias
+  assegnato quattro secondi dopo il push).
 - Il progetto Vercel è separato dalla dashboard: non pubblicare mai la porta 8787.
 
 Verifica dopo il deploy:
@@ -272,18 +274,21 @@ npx --yes @lhci/cli@0.16.1 autorun
 
 I report HTML finiscono in `artifacts/lighthouse/`.
 
-Misura reale del 18/11/2026 (Chrome for Testing 158, mobile, throttling simulato,
-sei run totali, tutte le assertion superate):
+Misura reale del 19/11/2026 (Chrome for Testing 158, mobile, throttling simulato,
+nove run totali sul sito live con l'avviso cookie attivo, tutte le assertion
+superate):
 
 | URL | Performance | Accessibility | Best Practices | SEO | LCP (mediana) | CLS | TBT |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `/` | 100 · 100 · 100 | 100 | 100 | 100 | 0,82 s | 0 | 0–13 ms |
-| `/privacy.html` | 100 · 100 · 100 | 100 | 100 | 100 | 0,80 s | 0 | 0 ms |
+| `/` | 100 · 100 · 100 | 100 | 100 | 100 | 0,85 s | 0 | 0–36 ms (mediana 1 ms) |
+| `/privacy.html` | 100 · 100 · 100 | 100 | 100 | 100 | 0,81 s | 0 | 0 ms |
+| `/termini.html` | 100 · 100 · 100 | 100 | 100 | 100 | 0,81 s | 0 | 0 ms |
 
 Se in un container Lighthouse riporta `NO_FCP` solo sulle pagine di testo, mancano i
 font di sistema (la home dipinge comunque l'immagine hero). Non è un problema del
 sito: installa `fonts-dejavu-core` o fornisci un `fonts.conf` al browser. La stessa configurazione gira
 in [`.github/workflows/lighthouse.yml`](../.github/workflows/lighthouse.yml) a ogni
 push su `main`, sulle pull request, ogni lunedì e su richiesta manuale. Il workflow
-testa l'URL di produzione: se il deploy manuale non è ancora avvenuto, il gate può
-misurare la versione precedente.
+testa l'URL di produzione; ogni push su `main` genera un deployment Vercel
+automatico (`vercel.json` dichiara `git.deploymentEnabled.main: true`), quindi il
+gate misura il commit appena pubblicato.
