@@ -44,6 +44,8 @@ class SiteBuildTests(unittest.TestCase):
             self.assertTrue((self.out / name).is_file(), name)
         self.assertTrue((self.out / ".well-known" / "security.txt").is_file())
         self.assertTrue((self.out / "assets" / "og.jpg").is_file())
+        self.assertTrue((self.out / "assets" / "ahsen-studio-og.jpg").is_file(),
+                        "la card social del sito su GitHub Pages è servita da questo deploy")
         sitemap = (self.out / "sitemap.xml").read_text(encoding="utf-8")
         self.assertIn("https://example.com/termini.html", sitemap)
         for width in (480, 720, 1080, 1440):

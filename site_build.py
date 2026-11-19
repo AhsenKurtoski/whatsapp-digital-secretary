@@ -265,7 +265,7 @@ def build(config_path: Path, out_dir: Path, templates: Path | None = None,
         (out_dir / page).write_text(rendered, encoding="utf-8")
 
     for asset in (
-        "style.css", "app.js", "analytics.js", "favicon.svg", "og.jpg",
+        "style.css", "app.js", "analytics.js", "favicon.svg", "og.jpg", "ahsen-studio-og.jpg",
         "dashboard-480.webp", "dashboard-720.webp", "dashboard-1080.webp", "dashboard-1440.webp",
     ):
         source = templates / "assets" / asset
