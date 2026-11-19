@@ -182,6 +182,12 @@ curl -sSI https://YOUR-DOMAIN/ | grep -Ei 'content-security|strict-transport|x-c
 - [ ] No request to `googletagmanager.com` or `cloudflareinsights.com` appears in the
       network panel before a choice: the banner is the only consent UI, and
       "Rifiuta" leaves the page identical.
+- [ ] `python3 demo.py --no-open` serves the dashboard with demo data; under
+      **Conversazioni** the transcript panel shows a **Memoria** row with the
+      customer's facts (e.g. `servizio: manutenzione mensile`), and no
+      "bot non vede i tool" banner appears in demo mode.
+- [ ] `python3 dashboard.py --help` prints usage and exits instead of starting the
+      server.
 - [ ] The **Cookie** link in the footer reopens the preferences with the current
       state, and a second choice is stored (`gina_consent_v1`); no reload is needed.
 - [ ] `/privacy.html#cookie` shows the cookie table (name, provider, purpose, duration,

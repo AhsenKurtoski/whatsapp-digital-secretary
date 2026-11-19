@@ -4,7 +4,8 @@
     python3 demo.py
 
 Crea una cartella temporanea, genera un preventivo con PDF e una richiesta di
-email, poi avvia la dashboard su http://127.0.0.1:8799. Non tocca la tua
+email, popola la memoria di tre clienti (fatti e transcript redatti) e avvia la
+dashboard su http://127.0.0.1:8799. Non tocca la tua
 installazione, non usa WhatsApp, Gmail o chiavi AI e non invia nulla.
 """
 from __future__ import annotations
@@ -49,6 +50,31 @@ def seed(base: Path) -> None:
         }, ensure_ascii=False) + "\n")
 
 
+def seed_memory(base: Path) -> None:
+    """Popola la memoria per cliente: fatti, lingua e transcript redatto."""
+    import memory
+
+    mario = "+393331112233"
+    memory.record(mario, "user", "Buongiorno, vorrei un preventivo per un sito web.",
+                  intent="preventivo", score=85, name="Mario Bianchi", base=base)
+    memory.record(mario, "assistant", "Certo Mario, le preparo una bozza di preventivo.", base=base)
+    memory.remember(mario, "servizio", "sito web", base=base)
+    memory.remember(mario, "budget", "3000 euro", base=base)
+    memory.remember(mario, "email", "mario@example.com", base=base)
+
+    giulia = "+393331112244"
+    memory.record(giulia, "user", "Quanto costa la manutenzione mensile?",
+                  intent="info", score=55, name="Giulia Neri", base=base)
+    memory.remember(giulia, "servizio", "manutenzione mensile", base=base)
+    memory.remember(giulia, "budget", "80 euro al mese", base=base)
+
+    luca = "+393331112255"
+    memory.record(luca, "user", "Potete fissare un appuntamento giovedì?",
+                  intent="call", score=70, name="Luca Verdi", base=base)
+    memory.remember(luca, "preferenza", "giovedì mattina", base=base)
+    memory.remember(luca, "servizio", "consulenza", base=base)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Demo locale della segreteria, senza chiavi e senza invii.")
     parser.add_argument("--port", type=int, default=8799)
@@ -81,6 +107,7 @@ def main() -> int:
         "quote_valid_days": 30,
         "payment_terms": "Pagamento: 50% alla conferma, saldo alla consegna.",
         "dashboard_port": args.port,
+        "demo_mode": True,
     }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     os.environ.update({
@@ -95,6 +122,7 @@ def main() -> int:
     import quote_pdf
 
     seed(base)
+    seed_memory(base)
     quote = quote_pdf.demo_quote()
     quote_request = approval_store.append_request(
         "quote",
@@ -133,7 +161,7 @@ def main() -> int:
         except Exception:
             pass
     try:
-        dashboard.main()
+        dashboard.main([])
     except KeyboardInterrupt:
         print("\nDemo terminata.")
     return 0

@@ -376,6 +376,10 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("/api/quotes/demo/preview", body)
         self.assertIn("nessuna email inviata", body)
 
+    def test_hidden_banners_are_not_forced_visible_by_flex_layout(self):
+        body = (ROOT / "dashboard.html").read_text(encoding="utf-8")
+        self.assertIn("#capabilitiesBanner[hidden]{display:none}", body)
+
     def test_demo_quote_creates_a_downloadable_pdf(self):
         with self.post_json("/api/quotes/demo", {}, dashboard.DASH_TOKEN) as response:
             payload = json.loads(response.read())

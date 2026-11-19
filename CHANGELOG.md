@@ -6,8 +6,24 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Hidden banners were rendered anyway**: `.health-banner` sets `display:flex`, which
+  overrode the browser's `[hidden]{display:none}`. The capabilities banner therefore
+  stayed on screen even after its check passed (the token banner already had an explicit
+  rule). Added `#capabilitiesBanner[hidden]{display:none}` and a regression test.
+- **`python3 dashboard.py --help` hung**: the entrypoint ignored arguments and started
+  the server. It now uses argparse, prints usage and exits, and accepts `--port` for a
+  local alternative port (the bind address stays `127.0.0.1`). Covered by
+  `tests/test_cli_surfaces.py`.
+
 ### Added
 
+- **Demo dashboard that shows memory**: `demo.py` now seeds three customers with
+  facts and redacted transcripts (Mario/website quote, Giulia/maintenance, Luca/Thursday
+  appointment), so the **Memoria** row in the transcript panel has real data. The demo
+  instance sets `demo_mode` and does not show the critical "bot non vede i tool" banner,
+  which would be misleading without OpenClaw installed.
 - **Sharper per-customer memory** (`memory.py`, `conversations.py`, dashboard): facts now
   carry `fact_meta.updated_at`, and updating one moves it to the top so the 40-fact cap
   drops stale entries instead of recent ones. `context()` ranks facts by overlap with

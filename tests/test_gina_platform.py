@@ -164,6 +164,16 @@ class MemoryTests(TempBase):
         self.assertEqual({row["phone"] for row in hits}, {phone, other})
         self.assertTrue(any(row["type"] == "message" for row in hits))
 
+    def test_demo_seed_populates_memory(self):
+        import demo
+
+        demo.seed_memory(self.base)
+        rows = memory.conversations(base=self.base)
+        self.assertEqual(len(rows), 3)
+        mario = memory.profile("+393331112233", self.base)
+        self.assertEqual(mario["facts"]["budget"], "3000 euro")
+        self.assertEqual(mario["name"], "Mario Bianchi")
+
     def test_consecutive_duplicates_are_collapsed(self):
         phone = "+393338889999"
         memory.record(phone, "user", "Buongiorno", base=self.base)

@@ -37,6 +37,12 @@ def run_cli(module_name, *args):
 
 
 class CliTests(unittest.TestCase):
+    def test_dashboard_help_does_not_start_the_server(self):
+        result = run_cli("dashboard", "--help")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("--port", result.stdout)
+        self.assertIn("127.0.0.1", result.stdout)
+
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="cli-test-"))
         os.environ["GINA_CACHE_FILE"] = str(self.tmp / "cache.json")

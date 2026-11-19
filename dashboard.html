@@ -189,7 +189,7 @@ select option{background:#081420}
 .health-banner .health-score{margin-left:auto;text-align:right}
 .health-banner .health-score strong{display:block;font-size:26px;line-height:1}
 .health-banner .health-score small{color:var(--muted);font-size:11px}
-#tokenAlert[hidden],#tokenAlertRenew[hidden],#googleRenewClose[hidden]{display:none}
+#tokenAlert[hidden],#tokenAlertRenew[hidden],#googleRenewClose[hidden],#capabilitiesBanner[hidden]{display:none}
 .tab-alert{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 16px;padding:15px 18px}
 .tab-alert .row{margin-left:auto;gap:8px}
 .tab-alert h2{font-size:17px;margin:0 0 3px}
@@ -1342,7 +1342,7 @@ async function loadCapabilities(){
     const c=r.data||{};
     const box=$('capabilitiesBanner');
     if(!box) return;
-    if(c.ok===false){
+    if(c.ok===false && !c.demo){
       box.hidden=false;
       $('capabilitiesText').textContent=(c.detail||'Tool non disponibili')+' — preventivi ed email restano bloccati.';
     } else box.hidden=true;

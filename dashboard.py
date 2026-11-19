@@ -5,6 +5,7 @@ Gira solo su 127.0.0.1. Richiede un token locale e un cookie HttpOnly.
 """
 from __future__ import annotations
 
+import argparse
 import base64
 import csv
 import hmac
@@ -921,7 +922,13 @@ def bot_capabilities() -> dict:
             f"Server MCP non leggibile: {error or 'file assente'}"
         )
     )
-    return {"ok": ok, "tools": sorted(tools), "missing": missing, "detail": detail}
+    return {
+        "ok": ok,
+        "tools": sorted(tools),
+        "missing": missing,
+        "detail": detail,
+        "demo": bool(CFG.get("demo_mode")),
+    }
 
 
 def quotes_data(limit: int = 60) -> dict:
@@ -2266,9 +2273,18 @@ class Handler(BaseHTTPRequestHandler):
         self._json({"ok": False, "error": "not found"}, 404)
 
 
-def main():
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(
+        description="Dashboard privata di Gina. Ascolta solo su 127.0.0.1 e richiede il token locale.",
+    )
+    parser.add_argument("--port", type=int, default=None,
+                        help="porta locale (default: dashboard_port della configurazione o 8787)")
+    args = parser.parse_args(argv)
+    global PORT
+    if args.port is not None:
+        PORT = max(1024, min(int(args.port), 65535))
     os.makedirs(BASE, exist_ok=True)
-    log("dashboard start")
+    log(f"dashboard start on {HOST}:{PORT}")
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     server.daemon_threads = True
     server.serve_forever()
