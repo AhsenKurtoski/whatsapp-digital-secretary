@@ -132,7 +132,9 @@ with Meta or WhatsApp.
   Cloudflare Web Analytics, Google/Bing/Yandex verification tags and security headers.
   `site_build.py` refuses to publish a fake or malformed ID and `seo_audit.py` is the
   CI gate. The private dashboard is never published. See
-  [docs/WEBSITE.md](docs/WEBSITE.md).
+  [docs/WEBSITE.md](docs/WEBSITE.md). The public face of Ahsen-Studio is the static
+  site at <https://ahsenkurtoski.github.io/ahsen-studio-site/> (GitHub Pages); this
+  build also serves its 1200×630 social card as `assets/ahsen-studio-og.jpg`.
 - **Self-diagnosis** — `doctor.py` checks the installed files, the Preventivi/Contatti
   tabs, the PDF engine, the persona scope rules, the anti-burst policy, the OpenClaw
   minimum version and compatibility features, the MCP tool allowlist, systemd units and

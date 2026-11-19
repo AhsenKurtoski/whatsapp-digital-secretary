@@ -33,7 +33,8 @@ site/dist/
     ├── dashboard-720.webp
     ├── dashboard-1080.webp # versione precaricata su mobile
     ├── dashboard-1440.webp
-    └── og.jpg              # anteprima social 1200×917 JPEG (~96 KiB)
+    ├── og.jpg              # anteprima social 1200×917 JPEG (~96 KiB)
+    └── ahsen-studio-og.jpg # card 1200×630 del sito Segretaria Ahsen su GitHub Pages
 ```
 
 L'immagine hero è servita in WebP a quattro larghezze con `srcset`/`sizes`,
@@ -47,6 +48,11 @@ dallo screenshot reale:
 ```bash
 python3 -c "from PIL import Image; im = Image.open('docs/screenshot-dashboard.png').convert('RGB'); w = 1200; im = im.resize((w, round(w * im.height / im.width)), Image.LANCZOS); im.save('site/assets/og.jpg', 'JPEG', quality=82, optimize=True, progressive=True)"
 ```
+
+Il build pubblica anche `assets/ahsen-studio-og.jpg`, la card 1200×630 usata come
+`og:image` dal sito pubblico di Ahsen-Studio su GitHub Pages: l'API di manutenzione di
+quel repository non accetta binari, quindi l'immagine è servita da questo deployment
+con il content-type corretto.
 
 SEO incluso: title e description per pagina, canonical assoluto, Open Graph,
 Twitter Card, `hreflang` non necessario (sito in italiano), JSON-LD `Person`,

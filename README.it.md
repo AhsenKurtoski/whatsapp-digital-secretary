@@ -131,7 +131,10 @@ Meta o WhatsApp.
   sitemap, robots, `security.txt`, GA4 con Consent Mode v2, Cloudflare Web Analytics
   opzionale, verifica Google/Bing/Yandex e security header. `site_build.py` rifiuta ID
   finti o malformati e `seo_audit.py` è il gate in CI. La dashboard privata non viene
-  mai pubblicata. Vedi [docs/WEBSITE.md](docs/WEBSITE.md).
+  mai pubblicata. Vedi [docs/WEBSITE.md](docs/WEBSITE.md). Il volto pubblico di
+  Ahsen-Studio è il sito statico <https://ahsenkurtoski.github.io/ahsen-studio-site/>
+  (GitHub Pages); questo build serve anche la sua card social 1200×630 come
+  `assets/ahsen-studio-og.jpg`.
 - **Autodiagnosi** — `doctor.py` controlla file installati, schede Preventivi/Contatti,
   motore PDF, regole di perimetro, policy anti-raffica, versione minima e feature di
   OpenClaw, allowlist dei tool MCP, unità systemd e API locali, e stampa il comando
