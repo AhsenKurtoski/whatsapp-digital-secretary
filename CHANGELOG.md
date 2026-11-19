@@ -8,6 +8,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Informational cookie notice without analytics**: the public site now always shows a
+  cookie banner. When no GA4 or Cloudflare ID is configured it is a non-blocking
+  **Nessun cookie di profilazione** notice with a single "Ho capito" action: it records
+  no consent (`gina_consent_v1` stays untouched) and only stores `gina_notice_v1` so it
+  is not repeated. The consent gate remains unchanged when an analytics ID is set, and
+  `privacy.html` documents the new key in its cookie table.
 - **Revocable cookie consent and legal pages on the public site**: the banner is now a
   real consent gate. `analytics.js` only registers Consent Mode v2 defaults until the
   visitor accepts; the Google Tag Manager and Cloudflare beacon loaders are created
@@ -18,7 +24,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `termini.html` covers MIT licence, no-warranty, trademarks, acceptable use, external
   links, liability and Italian law. Covered by new assertions in `tests/test_site.py`.
 - **Lighthouse CI on the live site** (`.github/workflows/lighthouse.yml`,
-  `lighthouserc.json`): three runs per URL in mobile emulation with simulated mobile
+  `lighthouserc.json`): three runs per URL (`/`, `/privacy.html`, `/termini.html`) in mobile emulation with simulated mobile
   throttling, median assertions (Performance ≥ 0,90, Accessibility/Best Practices ≥
   0,95, SEO = 1,00, LCP ≤ 2,5 s, CLS ≤ 0,10, TBT warning above 200 ms) and HTML
   reports uploaded as a build artifact. Runs on push to `main`, pull requests, a

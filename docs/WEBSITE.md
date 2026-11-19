@@ -215,9 +215,16 @@ nessun form, nessun cookie prima del consenso, analytics con IP anonimizzato.
 
 ### Cookie banner e consenso
 
-Il banner compare solo se `analytics.ga4_measurement_id` o
-`analytics.cloudflare_token` sono impostati: senza analytics non esistono cookie
-non tecnici e un banner sarebbe solo rumore. Con gli ID configurati:
+Il sito mostra sempre un avviso cookie, con due comportamenti distinti:
+
+- **Senza analytics configurati** (oggi `analytics.ga4_measurement_id` e
+  `analytics.cloudflare_token` sono vuoti) compare un avviso informativo
+  **non bloccante**: dice che non ci sono cookie di profilazione né analytics attivi,
+  quindi non c'è nulla da accettare, e si chiude con **Ho capito**. Non viene scritto
+  `gina_consent_v1` e non viene registrato alcun consenso: la sola chiave
+  `gina_notice_v1` ricorda che l'avviso è stato chiuso. Così il banner è visibile
+  subito, senza inventare una scelta che non esiste.
+- **Con almeno un ID configurato** compare il banner di consenso vero e proprio:
 
 - Prima della scelta **nessuno script di terze parti viene caricato**: `analytics.js`
   registra solo i default di Consent Mode v2 (`analytics_storage: denied`) e i loader
@@ -244,7 +251,7 @@ Se `base_url` è configurato, `scripts/verify.sh` esegue anche build e audit rea
 ## 7. Lighthouse CI (tre esecuzioni, mediana)
 
 [`lighthouserc.json`](../lighthouserc.json) misura il sito **live** in mobile con tre
-run per URL (`/` e `/privacy.html`) e valuta la mediana, così un picco di rete non
+run per URL (`/`, `/privacy.html` e `/termini.html`) e valuta la mediana, così un picco di rete non
 trasforma un numero fortunato in un gate. Soglie bloccanti:
 
 | Controllo | Soglia |

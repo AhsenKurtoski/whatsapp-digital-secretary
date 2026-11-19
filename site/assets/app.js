@@ -1,10 +1,13 @@
 /* Gina public site: consenso analytics e preferenze cookie.
    Nessuna richiesta a terzi e nessuno storage non tecnico prima del consenso.
+   Senza analytics configurati mostra un avviso informativo non bloccante:
+   non chiede né registra consensi, perché non c'è nulla da consentire.
    Il link "Cookie" nel piede di ogni pagina riapre le preferenze. */
 (function () {
   "use strict";
 
   var STORAGE_KEY = "gina_consent_v1";
+  var NOTICE_KEY = "gina_notice_v1";
   var config = window.GINA_ANALYTICS || {};
   var privacyUrl = config.privacyUrl || "/privacy.html";
   var measurement = Boolean(config.ga4 || config.cloudflare);
@@ -24,6 +27,22 @@
       window.localStorage.setItem(STORAGE_KEY, value);
     } catch (error) {
       /* modalità privata: la scelta vale solo per questa pagina */
+    }
+  }
+
+  function noticeSeen() {
+    try {
+      return window.localStorage.getItem(NOTICE_KEY) === "1";
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function dismissNotice() {
+    try {
+      window.localStorage.setItem(NOTICE_KEY, "1");
+    } catch (error) {
+      /* modalità privata: l'avviso resta chiuso solo per questa pagina */
     }
   }
 
@@ -133,6 +152,35 @@
     );
   }
 
+  /* Nessun analytics configurato: informa senza chiedere una scelta. */
+  function notice() {
+    if (measurement || noticeSeen()) return;
+    close();
+    box = node("aside", {
+      class: "consent notice",
+      role: "region",
+      "aria-label": "Informativa cookie"
+    });
+    var copy = node("div", { class: "consent-copy" });
+    copy.appendChild(node("strong", null, "Nessun cookie di profilazione"));
+    copy.appendChild(details(
+      "Questo sito non ha analytics attivi e non usa cookie pubblicitari: non c'è nulla " +
+        "da accettare o rifiutare."
+    ));
+    box.appendChild(copy);
+
+    var row = node("div", { class: "row" });
+    var closer = button("Ho capito", null, "btn ghost");
+    closer.addEventListener("click", function () {
+      dismissNotice();
+      close();
+    });
+    row.appendChild(closer);
+    box.appendChild(row);
+
+    document.body.appendChild(box);
+  }
+
   function init() {
     var links = document.querySelectorAll("[data-cookie-settings]");
     for (var index = 0; index < links.length; index += 1) {
@@ -143,7 +191,8 @@
     }
     var saved = stored();
     if (saved) apply(saved);
-    banner();
+    if (measurement) banner();
+    else notice();
   }
 
   if (document.readyState === "loading") {

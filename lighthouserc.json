@@ -3,7 +3,8 @@
     "collect": {
       "url": [
         "https://gina-secretary.vercel.app/",
-        "https://gina-secretary.vercel.app/privacy.html"
+        "https://gina-secretary.vercel.app/privacy.html",
+        "https://gina-secretary.vercel.app/termini.html"
       ],
       "numberOfRuns": 3,
       "settings": {

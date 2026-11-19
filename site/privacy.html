@@ -54,11 +54,12 @@
     <li><strong>Dati tecnici di navigazione</strong> (indirizzo IP, agente utente, pagina richiesta, data e ora) registrati dal provider di hosting per sicurezza e disponibilità del servizio.</li>
     <li><strong>Analytics</strong> (Google Analytics 4 e, se configurato, Cloudflare Web Analytics) solo dopo il consenso esplicito. Prima del consenso non viene caricato alcun tag di Google o di Cloudflare e nessuna richiesta parte verso terzi. Con Google Analytics l'indirizzo IP è anonimizzato e i segnali pubblicitari sono disattivati.</li>
     <li><strong>Preferenza di consenso</strong> salvata nel browser nella chiave <code>gina_consent_v1</code>, per non mostrarti il banner a ogni visita.</li>
+    <li><strong>Avviso informativo chiuso</strong> salvato nella chiave <code>gina_notice_v1</code>: quando non ci sono analytics attivi il sito mostra un avviso non bloccante e ricorda solo che lo hai chiuso. Non è un consenso e non viene inviato a nessuno.</li>
   </ul>
   <p>Il sito non ha moduli di contatto, non crea account e non richiede dati personali per essere consultato.</p>
 
   <h2>3. Cookie e storage locale</h2>
-  <p>Prima del consenso non viene installato alcun cookie di misurazione e nessuno script di terze parti viene caricato. Dopo il consenso, Google Analytics può impostare i cookie <code>_ga</code> e <code>_ga_*</code> per misurare le visite in forma aggregata. Cloudflare Web Analytics, quando attivo, è senza cookie. La preferenza di consenso è un dato tecnico salvato in <code>localStorage</code> e non viene inviata a terzi.</p>
+  <p>Prima del consenso non viene installato alcun cookie di misurazione e nessuno script di terze parti viene caricato. Dopo il consenso, Google Analytics può impostare i cookie <code>_ga</code> e <code>_ga_*</code> per misurare le visite in forma aggregata. Cloudflare Web Analytics, quando attivo, è senza cookie. La preferenza di consenso è un dato tecnico salvato in <code>localStorage</code> e non viene inviata a terzi. Se il sito non ha analytics configurati non esiste alcun consenso da chiedere: l'avviso informativo si limita a spiegarlo e salva <code>gina_notice_v1</code> quando lo chiudi.</p>
   <table class="cookie-table" id="cookie">
     <caption>Cookie e storage usati da questo sito</caption>
     <thead>
@@ -66,11 +67,12 @@
     </thead>
     <tbody>
       <tr><td><code>gina_consent_v1</code></td><td>Questo sito (<code>localStorage</code>)</td><td>Ricorda la tua scelta sugli analytics</td><td>Fino a quando svuoti i dati del browser</td><td>No, è tecnico</td></tr>
+      <tr><td><code>gina_notice_v1</code></td><td>Questo sito (<code>localStorage</code>)</td><td>Ricorda che hai chiuso l'avviso informativo quando non ci sono analytics</td><td>Fino a quando svuoti i dati del browser</td><td>No, è tecnico</td></tr>
       <tr><td><code>_ga</code></td><td>Google Ireland Limited</td><td>Distingue i visitatori in forma aggregata</td><td>2 anni</td><td>Sì</td></tr>
       <tr><td><code>_ga_&lt;ID&gt;</code></td><td>Google Ireland Limited</td><td>Mantiene lo stato della sessione di misurazione</td><td>2 anni</td><td>Sì</td></tr>
     </tbody>
   </table>
-  <p id="revoca">Puoi cambiare idea quando vuoi dal link <strong>Cookie</strong> nel piede di ogni pagina: le preferenze si riaprono e puoi accettare o rifiutare di nuovo. Rifiutare non limita in alcun modo i contenuti e non richiede la cancellazione dei dati del browser. Se preferisci, puoi anche svuotare i dati del sito dalle impostazioni del browser: alla visita successiva il banner ricompare.</p>
+  <p id="revoca">Puoi cambiare idea quando vuoi dal link <strong>Cookie</strong> nel piede di ogni pagina: le preferenze si riaprono e puoi accettare o rifiutare di nuovo. Se il sito non ha analytics attivi, lo stesso link spiega che non c'è nulla da accettare o revocare. Rifiutare non limita in alcun modo i contenuti e non richiede la cancellazione dei dati del browser. Se preferisci, puoi anche svuotare i dati del sito dalle impostazioni del browser: alla visita successiva il banner ricompare.</p>
 
   <h2>4. Base giuridica e finalità</h2>
   <ul>

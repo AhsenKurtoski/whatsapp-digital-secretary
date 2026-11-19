@@ -156,6 +156,7 @@ class SiteBuildTests(unittest.TestCase):
         app = (self.out / "assets" / "app.js").read_text(encoding="utf-8")
         self.assertIn("data-cookie-settings", app)
         self.assertIn("gina_consent_v1", app)
+        self.assertIn("gina_notice_v1", app, "l'avviso informativo ha una chiave separata dal consenso")
         for page in ("index.html", "privacy.html", "termini.html"):
             html = (self.out / page).read_text(encoding="utf-8")
             self.assertIn("data-cookie-settings", html, page)
@@ -163,7 +164,22 @@ class SiteBuildTests(unittest.TestCase):
         privacy = (self.out / "privacy.html").read_text(encoding="utf-8")
         self.assertIn('id="cookie"', privacy)
         self.assertIn("gina_consent_v1", privacy)
+        self.assertIn("gina_notice_v1", privacy)
         self.assertIn("<code>_ga</code>", privacy)
+
+    def test_informational_notice_without_analytics_records_no_consent(self):
+        """Senza ID analytics l'avviso informa e basta: non scrive gina_consent_v1."""
+        site_build.build(self.config, self.out)
+        app = (self.out / "assets" / "app.js").read_text(encoding="utf-8")
+        start = app.index("function notice()")
+        body = app[start:app.index("function init()")]
+        self.assertIn("Nessun cookie di profilazione", body)
+        self.assertIn("role: \"region\"", body)
+        self.assertIn("dismissNotice()", body)
+        self.assertNotIn("apply(", body, "un avviso non è un consenso")
+        self.assertIn("gina_notice_v1", app)
+        self.assertIn("if (measurement) banner();", app)
+        self.assertIn("else notice();", app)
 
     def test_lighthouse_ci_runs_three_times_on_mobile(self):
         config = json.loads((ROOT / "lighthouserc.json").read_text(encoding="utf-8"))
@@ -176,6 +192,8 @@ class SiteBuildTests(unittest.TestCase):
         )
         self.assertTrue(collect["url"])
         self.assertTrue(all(url.startswith("https://") for url in collect["url"]))
+        self.assertIn("https://gina-secretary.vercel.app/termini.html", collect["url"])
+        self.assertEqual(len(collect["url"]), 3)
         assertions = config["ci"]["assert"]["assertions"]
         for category in ("performance", "accessibility", "best-practices", "seo"):
             key = f"categories:{category}"
@@ -195,9 +213,12 @@ class SiteBuildTests(unittest.TestCase):
         self.assertEqual(root["outputDirectory"], "public")
         self.assertIn("site_build.py", root["buildCommand"])
         self.assertFalse(root.get("cleanUrls", False))
+        self.assertTrue(root["git"]["deploymentEnabled"]["main"],
+                        "Vercel deve distribuire ogni push su main")
         site_build.build(self.config, self.out)
         built = json.loads((self.out / "vercel.json").read_text(encoding="utf-8"))
         self.assertEqual(built["headers"], root["headers"])
+        self.assertEqual(built["git"], root["git"])
 
 
     def test_cloudflare_analytics_and_default_security_contact(self):

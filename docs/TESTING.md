@@ -176,6 +176,9 @@ curl -sSI https://YOUR-DOMAIN/ | grep -Ei 'content-security|strict-transport|x-c
       is set.
 - [ ] Google Search Console verifies the property and accepts `sitemap.xml`.
 - [ ] Bing Webmaster Tools verifies the meta tag and imports the sitemap.
+- [ ] With no analytics ID configured, every page shows the non-blocking
+      **Nessun cookie di profilazione** notice: it offers only "Ho capito", writes
+      `gina_notice_v1`, and never writes `gina_consent_v1` (there is no consent to give).
 - [ ] No request to `googletagmanager.com` or `cloudflareinsights.com` appears in the
       network panel before a choice: the banner is the only consent UI, and
       "Rifiuta" leaves the page identical.
@@ -192,8 +195,8 @@ curl -sSI https://YOUR-DOMAIN/ | grep -Ei 'content-security|strict-transport|x-c
 - [ ] The private dashboard is still bound to localhost and is not reachable from the
       public domain.
 
-Lighthouse mobile on the live site, three runs per URL with median assertions
-(`lighthouserc.json`):
+Lighthouse mobile on the live site, three runs per URL (`/`, `/privacy.html` and
+`/termini.html`) with median assertions (`lighthouserc.json`):
 
 ```bash
 npx --yes @lhci/cli@0.16.1 autorun
@@ -202,8 +205,8 @@ npx --yes @lhci/cli@0.16.1 autorun
 - [ ] `All assertions passed`: Performance ≥ 0,90, Accessibility/Best Practices ≥ 0,95,
       SEO = 1,00 on the median of three runs. Reference measurement of 18/11/2026:
       100/100/100/100 on `/` and `/privacy.html`, LCP 0,82 s and 0,80 s.
-- [ ] Both URLs complete three runs each: a `NO_FCP` error on a text-only page in a
-      bare container means the browser has no system fonts, not a site bug.
+- [ ] All three URLs complete three runs each: a `NO_FCP` error on a text-only page in
+      a bare container means the browser has no system fonts, not a site bug.
 - [ ] LCP < 2,5 s; the hero request is a WebP from `srcset`, not the 843 KiB PNG,
       and has `fetchpriority="high"` without `loading="lazy"`.
 - [ ] Unknown paths return HTTP 404 with the custom page; `canonical`, `sitemap.xml`
