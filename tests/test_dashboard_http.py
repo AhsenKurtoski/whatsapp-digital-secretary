@@ -1,6 +1,7 @@
 import base64
 import json
 import threading
+import time
 import unittest
 import urllib.error
 import urllib.parse
@@ -16,6 +17,18 @@ import live
 import memory
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+class SessionTests(unittest.TestCase):
+    def test_sessions_expire_and_revoke_every_device(self):
+        dashboard.SESSIONS.clear()
+        sid = dashboard.create_session("owner", "admin")
+        self.assertIn(sid, dashboard._live_sessions())
+        dashboard.SESSIONS[sid]["exp"] = time.time() - 1
+        self.assertNotIn(sid, dashboard._live_sessions())
+        dashboard.create_session("owner", "admin")
+        self.assertEqual(dashboard.revoke_sessions(), 1)
+        self.assertEqual(dashboard.SESSIONS, {})
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):

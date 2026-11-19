@@ -11,6 +11,7 @@ dell'euro sono supportati dai font base-14 senza incorporare file di font.
 """
 from __future__ import annotations
 
+import argparse
 import re
 import unicodedata
 from datetime import date, datetime, timedelta
@@ -732,11 +733,29 @@ def demo_quote(cfg: dict | None = None) -> dict:
     }, cfg)
 
 
-if __name__ == "__main__":
-    import sys
-
+def self_test() -> None:
     sample = demo_quote()
-    path = sys.argv[1] if len(sys.argv) > 1 else "preventivo-demo.pdf"
-    with open(path, "wb") as handle:
+    data = render_quote_pdf(sample)
+    assert data.startswith(b"%PDF-1.4"), "intestazione PDF"
+    assert data.rstrip().endswith(b"%%EOF"), "chiusura PDF"
+    assert sample["totals"]["total"] > 0, sample["totals"]
+    print("SELF-TEST OK")
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Genera il PDF del preventivo demo")
+    parser.add_argument("output", nargs="?", default="preventivo-demo.pdf")
+    parser.add_argument("--self-test", action="store_true")
+    args = parser.parse_args(argv)
+    if args.self_test:
+        self_test()
+        return 0
+    sample = demo_quote()
+    with open(args.output, "wb") as handle:
         handle.write(render_quote_pdf(sample))
-    print(f"{path} ({len(sample['items'])} voci, totale {sample['totals']['total']:.2f})")
+    print(f"{args.output} ({len(sample['items'])} voci, totale {sample['totals']['total']:.2f})")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

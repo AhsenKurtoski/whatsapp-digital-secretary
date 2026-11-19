@@ -408,7 +408,7 @@ widgets (gateway uptime, timers) are unavailable inside the container. Key manag
 and the restart button in the container do not control the host gateway: edit
 `~/.openclaw/secretary/secrets.env` on the host or use the host dashboard.
 
-## Gina platform (v1.3): intelligence, roles, GDPR, backups
+## Gina platform (v1.4): intelligence, roles, GDPR, backups
 
 Everything below is implemented and tested, not a roadmap:
 
@@ -425,11 +425,14 @@ Everything below is implemented and tested, not a roadmap:
 | Conversations | read-only transcripts, redaction, bot→human handoff | dashboard → Conversations |
 | Analytics | KPIs and 14-day series from real data | dashboard → Analytics |
 | GDPR | access, erasure, retention, data inventory | [`docs/GDPR.md`](docs/GDPR.md) · `python3 gdpr.py --report` |
-| Encrypted backup | AES-256-GCM, rotation, restore verified with SHA-256 | [`docs/DISASTER_RECOVERY.md`](docs/DISASTER_RECOVERY.md) |
+| Encrypted backup | AES-256-GCM, rotation, restore verified with SHA-256, optional off-site copy | [`docs/DISASTER_RECOVERY.md`](docs/DISASTER_RECOVERY.md) |
+| Active-data encryption | every contact file (numbers, facts, transcripts) is AES-256-GCM with a 0600 `memory.key`; legacy plaintext is re-encrypted with `--encrypt-all` | [`docs/MEMORY.md`](docs/MEMORY.md) · `python3 memory.py --encrypt-all` |
+| Second factor and sessions | TOTP code, 12-hour server-side sessions, “sign out everywhere” revokes every device and rotates the token | `python3 identity.py --enable-2fa` · dashboard → Sicurezza |
+| Tamper-evident audit | each entry hashes the previous one; changing or removing a line breaks the chain | `python3 identity.py --verify-audit` |
 | WhatsApp ban | operational plan and customer communication | [`docs/WHATSAPP_BAN.md`](docs/WHATSAPP_BAN.md) |
 | Plugins | API, hooks and a runnable example | [`docs/PLUGINS.md`](docs/PLUGINS.md) · `examples/hello-plugin` |
 | Docker | full-stack compose with OpenClaw | [`docs/DOCKER.md`](docs/DOCKER.md) |
-| Quality | ruff, mypy, bandit, pip-audit, 87% coverage (gate 86%) | `bash scripts/coverage.sh` |
+| Quality | ruff, mypy, bandit, pip-audit, 86% coverage (gate 86%) | `bash scripts/coverage.sh` |
 | E2E and video | test accounts, checklist, 60 s storyboard | [`docs/E2E.md`](docs/E2E.md) · [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) |
 
 Guided setup with real checks (AI key, WhatsApp gateway, test email):
@@ -504,12 +507,28 @@ private keys. Never expose port 8787 to the public Internet.
 
 ## Roadmap
 
-- WhatsApp Business Cloud API adapter
-- Telegram and email channels
-- Internal calendar with availability rules
-- CSV export and CRM webhooks
-- Voice-message transcription with a local model
-- Helm chart and a hardened container image
+Ordered by what removes the most risk for a real business:
+
+1. **WhatsApp Business Cloud API adapter** (opt-in; WhatsApp Web stays as the
+   self-hosted fallback) — removes the ban risk, enables templates and delivery
+   receipts, and supports multiple operators.
+2. **Voice messages** — transcription of inbound audio and a voice reply when the
+   customer sends one.
+3. **Inbound email** — read the mailbox, summarise, draft replies, link the thread to
+   the WhatsApp conversation and attach quotes.
+4. **Calendar with availability rules** — free slots, booking, confirmation, moves,
+   cancellations, time zones, double-booking protection and reminders.
+5. **Business knowledge base** — price list, FAQ, menu and brochures with cited sources
+   so the assistant answers without inventing.
+6. **Online quote acceptance** — acceptance link, signature, accepted/rejected tracking
+   and deposit payment link.
+7. **Signed phone approvals** — approve email, events and quotes from WhatsApp or
+   Telegram with an expiring link.
+8. **More channels and CRM** — Telegram, email, site widget, then Sheets/Notion/HubSpot
+   and local models (Ollama).
+
+Already shipped and therefore not on this list: TOTP second factor, short revocable
+sessions, encrypted active memory, tamper-evident audit, off-site backups.
 
 ## Contributing
 

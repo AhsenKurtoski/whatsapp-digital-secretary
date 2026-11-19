@@ -107,3 +107,23 @@ nuovo login WhatsApp, nuova chiave.
 - Messaggi WhatsApp scambiati **dopo** l'ultimo backup (fino a 24 ore).
 - Token OAuth Google scaduti: dopo il ripristino riautorizza con il bridge.
 - Segreti di terze parti non presenti in `secrets.env` (es. token webhook esterni).
+
+## Copia fuori sede
+
+Il backup locale non protegge da un disco perso o da un furto. Configura un comando
+off-site in `config.json` (o in `SECRETARY_BACKUP_OFFSITE_COMMAND`) con il segnaposto
+`{archive}`; il comando non passa dalla shell e viene eseguito solo sul file cifrato:
+
+```json
+{"backup_offsite_command": "rclone copy {archive} remote:gina-backups"}
+```
+
+```bash
+python3 backup.py --create
+python3 backup.py --offsite ~/.openclaw/secretary/backups/gina-....ginabk
+```
+
+`--offsite` restituisce `ok: false` se il comando manca, non contiene `{archive}` o
+esce con errore: nessuna copia viene dichiarata senza prova. `--verify` continua a
+decifrare e confrontare gli hash SHA-256 del manifest, quindi la prova di ripristino
+resta valida anche sul file scaricato dal cloud.

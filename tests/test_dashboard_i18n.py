@@ -19,7 +19,7 @@ IDENTICAL_ALLOWED = {
     "~/.openclaw/secretary/dashboard_token", "⤓ CSV", "No", "Google AI Studio",
     "Groq Console", "Cloudflare", "OAuth locale", "Desktop", "Dashboard uptime",
     "Endpoint", "Gateway", " min", "Email", "Monitor: ", "no",
-    "ok", "Gateway offline", "Bridge", "Transcript", "Handoff",
+    "ok", "Gateway offline", "Bridge", "Transcript", "Handoff", "123456",
 }
 
 

@@ -103,3 +103,26 @@ This project runs on a personal computer or a private VPS. It is designed to pro
 - An OAuth app left in Google "Testing" mode expires refresh tokens after about seven
   days. The Apps Script bridge avoids this; publishing the OAuth app requires a
   verified domain.
+
+## Active data, second factor and sessions
+
+- **Contact memory is encrypted at rest.** Each file under `memory/contacts/` is
+  AES-256-GCM (`GINAENC1` header, random 96-bit nonce) with a key in
+  `memory/memory.key` (0600) or `SECRETARY_MEMORY_KEY`. The filename is a truncated
+  SHA-256 of the phone number. Plaintext files from older versions are re-encrypted on
+  the next write; run `python3 memory.py --encrypt-all` to migrate immediately.
+- **Second factor.** `python3 identity.py --enable-2fa` prints an `otpauth://` URI for
+  any TOTP app. When enabled, `/login` requires the six-digit code in addition to the
+  token; failures count toward the same 10-per-5-minutes lockout. `--disable-2fa`
+  removes it.
+- **Short sessions and revocation.** A successful login stores a random session id in
+  an HttpOnly, SameSite=Strict cookie; sessions live in server memory for 12 hours and
+  the id is not the token. **Sicurezza → Esci da tutti i dispositivi**
+  (`POST /api/sessions/revoke`, admin) clears every session and rotates the token, so
+  other browsers and devices must sign in again.
+- **Tamper-evident audit.** Every `user_audit.jsonl` entry stores `prev` and a
+  SHA-256 `hash` over the previous hash and its fields. `python3 identity.py
+  --verify-audit` recomputes the chain and reports the first broken line.
+- **Off-site backup.** `backup_offsite_command` (or
+  `SECRETARY_BACKUP_OFFSITE_COMMAND`) must contain `{archive}`; the command runs
+  without a shell on the encrypted archive and a non-zero exit is reported as failure.

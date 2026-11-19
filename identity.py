@@ -15,13 +15,16 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import hmac
 import json
 import os
 import secrets
+import struct
 import sys
 import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -44,6 +47,10 @@ def users_path(base: Path | None = None) -> Path:
 
 def audit_path(base: Path | None = None) -> Path:
     return _base(base) / "user_audit.jsonl"
+
+
+def twofactor_path(base: Path | None = None) -> Path:
+    return _base(base) / "twofactor.json"
 
 
 def _hash(token: str) -> str:
@@ -145,6 +152,34 @@ def role_allows(role: str, required: str) -> bool:
     return ROLES.get(str(role or ""), 0) >= ROLES.get(str(required or "viewer"), 99)
 
 
+def _audit_hash(entry: dict, prev: str) -> str:
+    """Hash della voce legato alla precedente: cancellare una riga rompe la catena."""
+    payload = "|".join([
+        prev,
+        str(entry.get("ts") or ""),
+        str(entry.get("user") or ""),
+        str(entry.get("action") or ""),
+        str(entry.get("detail") or ""),
+        "1" if entry.get("ok") else "0",
+    ])
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _last_audit_hash(path: Path) -> str:
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return "genesis"
+    for line in reversed(lines):
+        try:
+            item = json.loads(line)
+        except Exception:
+            continue
+        if isinstance(item, dict) and item.get("hash"):
+            return str(item["hash"])
+    return "genesis"
+
+
 def audit(actor: str, action: str, detail: str = "", ok: bool = True,
           base: Path | None = None) -> dict:
     entry = {
@@ -156,15 +191,111 @@ def audit(actor: str, action: str, detail: str = "", ok: bool = True,
     }
     try:
         path = audit_path(base)
+        prev = _last_audit_hash(path)
+        entry["prev"] = prev
+        entry["hash"] = _audit_hash(entry, prev)
         with open(path, "a", encoding="utf-8") as handle:
             handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
         os.chmod(path, 0o600)
+        # La rotazione deve restare verificabile: il taglio è registrato come voce.
         if path.stat().st_size > 1_000_000:
             lines = path.read_text(encoding="utf-8", errors="replace").splitlines()[-2000:]
             path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     except OSError:
         pass
     return entry
+
+
+def verify_audit(base: Path | None = None) -> dict:
+    """Ricalcola la catena: una riga cancellata o modificata risulta rotta."""
+    path = audit_path(base)
+    try:
+        lines = [ln for ln in path.read_text(encoding="utf-8", errors="replace").splitlines() if ln.strip()]
+    except OSError:
+        return {"ok": True, "entries": 0, "chained": 0, "broken_at": None}
+    prev = "genesis"
+    chained = 0
+    for index, line in enumerate(lines):
+        try:
+            item = json.loads(line)
+        except Exception:
+            return {"ok": False, "entries": len(lines), "chained": chained, "broken_at": index}
+        if not isinstance(item, dict):
+            return {"ok": False, "entries": len(lines), "chained": chained, "broken_at": index}
+        if not item.get("hash"):
+            # Righe precedenti alla catena: ammesse solo come prefisso.
+            continue
+        if str(item.get("prev") or "") != prev:
+            return {"ok": False, "entries": len(lines), "chained": chained, "broken_at": index}
+        expected = _audit_hash(item, prev)
+        if not hmac.compare_digest(str(item.get("hash")), expected):
+            return {"ok": False, "entries": len(lines), "chained": chained, "broken_at": index}
+        prev = expected
+        chained += 1
+    return {"ok": True, "entries": len(lines), "chained": chained, "broken_at": None}
+
+
+def totp_secret() -> str:
+    """Segreto base32 compatibile con le app di autenticazione."""
+    return base64.b32encode(secrets.token_bytes(20)).decode("ascii").rstrip("=")
+
+
+def totp_code(secret: str, at: float | None = None, step: int = 30) -> str:
+    key = base64.b32decode(secret.upper() + "=" * (-len(secret) % 8))
+    counter = int((time.time() if at is None else at) // step)
+    digest = hmac.new(key, struct.pack(">Q", counter), hashlib.sha1).digest()
+    offset = digest[-1] & 0x0F
+    code = struct.unpack(">I", digest[offset:offset + 4])[0] & 0x7FFFFFFF
+    return f"{code % 1_000_000:06d}"
+
+
+def totp_verify(secret: str, code: str, at: float | None = None) -> bool:
+    clean = "".join(ch for ch in str(code or "") if ch.isdigit())
+    if len(clean) != 6:
+        return False
+    moment = time.time() if at is None else at
+    for delta in (-1, 0, 1):
+        if hmac.compare_digest(totp_code(secret, moment + delta * 30), clean):
+            return True
+    return False
+
+
+def totp_status(base: Path | None = None) -> dict:
+    try:
+        data = json.loads(twofactor_path(base).read_text(encoding="utf-8"))
+    except Exception:
+        data = {}
+    return {"enabled": bool(data.get("enabled") and data.get("secret")), "secret_set": bool(data.get("secret"))}
+
+
+def enable_totp(label: str = "Gina dashboard", base: Path | None = None) -> dict:
+    secret = totp_secret()
+    path = twofactor_path(base)
+    path.write_text(json.dumps({"enabled": True, "secret": secret, "created_at": _iso()}) + "\n", encoding="utf-8")
+    os.chmod(path, 0o600)
+    label_enc = str(label or "Gina dashboard").replace(" ", "%20")
+    uri = f"otpauth://totp/{label_enc}?secret={secret}&issuer=Gina&digits=6&period=30"
+    return {"enabled": True, "secret": secret, "otpauth": uri}
+
+
+def disable_totp(base: Path | None = None) -> bool:
+    try:
+        twofactor_path(base).unlink()
+        return True
+    except FileNotFoundError:
+        return False
+
+
+def check_totp(code: str, base: Path | None = None) -> bool:
+    """Verifica il codice se il 2FA è attivo; senza 2FA non blocca il login."""
+    status = totp_status(base)
+    if not status["enabled"]:
+        return True
+    try:
+        secret = json.loads(twofactor_path(base).read_text(encoding="utf-8"))["secret"]
+    except Exception:
+        return False
+    return totp_verify(str(secret), code)
 
 
 def recent_audit(limit: int = 100, base: Path | None = None) -> list[dict]:
@@ -217,8 +348,30 @@ def self_test() -> None:
             pass
 
         audit("Owner", "approve", "apr-1", base=base)
+        audit("Owner", "send", "apr-2", base=base)
         rows = recent_audit(10, base)
-        assert rows[0]["action"] == "approve" and rows[0]["user"] == "Owner", rows
+        assert rows[0]["action"] == "send" and rows[0]["user"] == "Owner", rows
+        chain = verify_audit(base)
+        assert chain["ok"] and chain["chained"] == 2, chain
+
+        secret = totp_secret()
+        assert len(secret) >= 24, secret
+        assert totp_verify(secret, totp_code(secret)), "il codice corrente deve valere"
+        wrong = "000000" if totp_code(secret) != "000000" else "111111"
+        assert not totp_verify(secret, wrong), "un codice sbagliato non deve valere"
+        assert check_totp("", base=base), "senza 2FA il login non chiede il codice"
+        enrolled = enable_totp(base=base)
+        assert totp_status(base)["enabled"] and enrolled["otpauth"].startswith("otpauth://totp/"), enrolled
+        assert check_totp(totp_code(enrolled["secret"]), base=base)
+        assert not check_totp(wrong, base=base), "con 2FA attivo il codice sbagliato deve fallire"
+        assert disable_totp(base) is True and totp_status(base)["enabled"] is False
+
+        broken = audit_path(base)
+        lines = broken.read_text(encoding="utf-8").splitlines()
+        broken.write_text("\n".join(lines[:-1]) + "\n", encoding="utf-8")
+        assert verify_audit(base)["ok"] is True, "togliere la coda non rompe le voci precedenti"
+        broken.write_text("\n".join([lines[0], lines[1].replace("apr-2", "apr-9")]) + "\n", encoding="utf-8")
+        assert verify_audit(base)["ok"] is False, "modificare una voce deve rompere la catena"
 
         assert revoke_user("Lettura", base) is True
         assert authenticate(viewer["token"], base) is None
@@ -232,11 +385,26 @@ def main() -> int:
     parser.add_argument("--add", default="")
     parser.add_argument("--role", default="operator")
     parser.add_argument("--revoke", default="")
+    parser.add_argument("--enable-2fa", action="store_true")
+    parser.add_argument("--disable-2fa", action="store_true")
+    parser.add_argument("--verify-audit", action="store_true")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
         self_test()
         return 0
+    if args.enable_2fa:
+        info = enable_totp()
+        print(json.dumps({"enabled": True, "otpauth": info["otpauth"]}, ensure_ascii=False, indent=2))
+        print("Inquadra il QR dall'URL otpauth e conserva il segreto fuori dal PC.", file=sys.stderr)
+        return 0
+    if args.disable_2fa:
+        print("2FA disattivato" if disable_totp() else "2FA non era attivo")
+        return 0
+    if args.verify_audit:
+        report = verify_audit()
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return 0 if report["ok"] else 1
     try:
         if args.add:
             created = create_user(args.add, args.role)

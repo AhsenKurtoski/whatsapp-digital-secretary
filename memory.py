@@ -15,6 +15,7 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -31,6 +32,8 @@ import lead_intel
 MAX_MESSAGES = 300
 MAX_FACTS = 40
 MAX_TEXT = 1200
+MAGIC = b"GINAENC1\n"
+KEY_ENV = "SECRETARY_MEMORY_KEY"
 _LOCK = threading.Lock()
 
 
@@ -65,6 +68,47 @@ def _path(phone: str, base: Path | None = None) -> Path:
     return _dir(base) / f"{_phone_key(phone)}.json"
 
 
+def _key(base: Path | None = None) -> bytes:
+    """Chiave AES-256 dei dati attivi: da env oppure da `memory.key` (0600)."""
+    env = os.environ.get(KEY_ENV, "").strip()
+    if env:
+        raw = base64.b64decode(env)
+        if len(raw) != 32:
+            raise ValueError("SECRETARY_MEMORY_KEY deve essere base64 di 32 byte")
+        return raw
+    path = _base(base) / "memory.key"
+    try:
+        raw = base64.b64decode(path.read_text(encoding="ascii").strip())
+        if len(raw) != 32:
+            raise ValueError("memory.key non valida")
+        return raw
+    except FileNotFoundError:
+        raw = os.urandom(32)
+        path.write_text(base64.b64encode(raw).decode("ascii") + "\n", encoding="ascii")
+        os.chmod(path, 0o600)
+        return raw
+
+
+def _read_text(path: Path) -> str:
+    """Legge un file di memoria cifrato o, per compatibilità, in chiaro."""
+    data = path.read_bytes()
+    if not data.startswith(MAGIC):
+        return data.decode("utf-8")
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    payload = base64.b64decode(data[len(MAGIC):])
+    nonce, ciphertext = payload[:12], payload[12:]
+    return AESGCM(_key(path.parent.parent)).decrypt(nonce, ciphertext, MAGIC).decode("utf-8")
+
+
+def _write_text(path: Path, text: str) -> None:
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    nonce = os.urandom(12)
+    sealed = AESGCM(_key(path.parent.parent)).encrypt(nonce, text.encode("utf-8"), MAGIC)
+    path.write_bytes(MAGIC + base64.b64encode(nonce + sealed))
+
+
 def _empty(phone: str) -> dict:
     now = _now()
     return {
@@ -92,7 +136,7 @@ def _now() -> str:
 def load(phone: str, base: Path | None = None) -> dict:
     path = _path(phone, base)
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(_read_text(path))
     except Exception:
         data = {}
     if not isinstance(data, dict):
@@ -110,9 +154,26 @@ def load(phone: str, base: Path | None = None) -> dict:
 def _save(profile: dict, base: Path | None = None) -> None:
     path = _path(profile.get("phone", ""), base)
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps(profile, ensure_ascii=False, indent=1), encoding="utf-8")
+    _write_text(tmp, json.dumps(profile, ensure_ascii=False, indent=1))
     os.chmod(tmp, 0o600)
     os.replace(tmp, path)
+
+
+def encrypt_all(base: Path | None = None) -> int:
+    """Cifra le memorie esistenti scritte in chiaro. Idempotente."""
+    changed = 0
+    for path in _dir(base).glob("*.json"):
+        try:
+            if path.read_bytes().startswith(MAGIC):
+                continue
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict) or not data.get("phone"):
+                continue
+        except Exception:
+            continue
+        _save(load(data["phone"], base), base)
+        changed += 1
+    return changed
 
 
 def record(phone: str, role: str, text: str, intent: str | None = None,
@@ -237,7 +298,7 @@ def search(text: str, limit: int = 20, base: Path | None = None) -> list[dict]:
     rows: list[dict] = []
     for path in _dir(base).glob("*.json"):
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            data = json.loads(_read_text(path))
         except Exception:
             continue
         if not isinstance(data, dict) or not data.get("phone"):
@@ -301,7 +362,7 @@ def conversations(limit: int = 100, base: Path | None = None) -> list[dict]:
     rows = []
     for path in folder.glob("*.json"):
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            data = json.loads(_read_text(path))
         except Exception:
             continue
         if not isinstance(data, dict) or not data.get("phone"):
@@ -378,6 +439,16 @@ def self_test() -> None:
 
         assert conversations(base=base)[0]["phone"] == phone
         assert export_contact(phone, base)["phone"] == phone
+
+        raw = _path(phone, base).read_bytes()
+        assert raw.startswith(MAGIC), "la memoria deve essere cifrata"
+        assert phone.encode() not in raw and b"sito web" not in raw, "dati in chiaro sul disco"
+        legacy = _path("+393330000001", base)
+        legacy.write_text(json.dumps({"phone": "+393330000001", "facts": {"x": "y"}}), encoding="utf-8")
+        assert load("+393330000001", base)["facts"]["x"] == "y"
+        assert encrypt_all(base) >= 1
+        assert legacy.read_bytes().startswith(MAGIC), "la migrazione deve cifrare"
+        legacy.unlink()
         assert forget(phone, base) is True
         assert forget(phone, base) is False
         assert conversations(base=base) == []
@@ -390,6 +461,7 @@ def main() -> int:
     parser.add_argument("--context", default="")
     parser.add_argument("--list", action="store_true")
     parser.add_argument("--search", default="")
+    parser.add_argument("--encrypt-all", action="store_true")
     parser.add_argument("--forget", default="")
     parser.add_argument("--yes", action="store_true")
     parser.add_argument("--self-test", action="store_true")
@@ -411,6 +483,9 @@ def main() -> int:
         return 0
     if args.search:
         print(json.dumps(search(args.search), ensure_ascii=False, indent=2))
+        return 0
+    if args.encrypt_all:
+        print(f"cifrate {encrypt_all()} memorie")
         return 0
     print(json.dumps(conversations(), ensure_ascii=False, indent=2))
     return 0

@@ -468,5 +468,11 @@
   "da approvare": "pending approval",
   "inviato": "sent",
   "Duplica": "Duplicate",
-  "Nessun preventivo.": "No quotes."
+  "Nessun preventivo.": "No quotes.",
+  "123456": "123456",
+  "Codice 2FA (solo se attivo)": "2FA code (only if enabled)",
+  "Secondo fattore": "Second factor",
+  "Sessioni attive": "Active sessions",
+  "Esci da tutti i dispositivi": "Sign out everywhere",
+  "Cookie HttpOnly · SameSite Strict · CSRF · CSP · rate limit login · directory 700 · chiavi 600. Le sessioni scadono dopo 12 ore; “Esci da tutti” revoca ogni dispositivo e rigenera il token.": "HttpOnly cookie · SameSite Strict · CSRF · CSP · login rate limit · 700 directory · 600 keys. Sessions expire after 12 hours; “Sign out everywhere” revokes every device and rotates the token."
 }

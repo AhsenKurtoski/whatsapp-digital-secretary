@@ -6,8 +6,29 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+
+- **Encrypted contact memory**: `memory/contacts/*.json` is now AES-256-GCM with a
+  `0600` key (`memory.key` or `SECRETARY_MEMORY_KEY`); legacy plaintext is read
+  transparently and re-encrypted, and `python3 memory.py --encrypt-all` migrates the
+  whole folder. Filenames were already hashed, so neither numbers nor transcripts are
+  readable on disk.
+- **TOTP second factor and short sessions**: `identity.py --enable-2fa` prints an
+  `otpauth://` URI; login then requires the six-digit code. Successful logins receive a
+  random server-side session id (12 hours) instead of the token, and the new
+  **Esci da tutti i dispositivi** button revokes every session and rotates the token.
+- **Tamper-evident audit**: each audit entry stores the previous hash and its own
+  SHA-256; `identity.py --verify-audit` reports the first modified or removed line.
+- **Off-site backups**: `python3 backup.py --offsite <file>` runs a configured,
+  shell-free `{archive}` command (for example rclone) and fails loudly when the copy
+  did not happen.
+
+
 ### Fixed
 
+- **`quote_pdf.py --self-test` wrote a PDF named `--self-test`** into the current
+  directory instead of running a check. It now uses argparse, supports a real
+  self-test and keeps the optional output path; `scripts/coverage.sh` exercises it.
 - **Hidden banners were rendered anyway**: `.health-banner` sets `display:flex`, which
   overrode the browser's `[hidden]{display:none}`. The capabilities banner therefore
   stayed on screen even after its check passed (the token banner already had an explicit

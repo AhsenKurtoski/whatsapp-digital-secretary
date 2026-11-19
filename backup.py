@@ -30,6 +30,8 @@ import io
 import json
 import os
 import secrets
+import shlex
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -294,6 +296,39 @@ def restore(archive: str | Path, target: str | Path, base: Path | None = None) -
     return {"ok": True, "target": str(destination), "files": files}
 
 
+def offsite_command(base: Path | None = None) -> str:
+    """Comando di copia fuori sede (es. rclone) configurato dall'utente."""
+    data = config.load()
+    return str(
+        data.get("backup_offsite_command")
+        or os.environ.get("SECRETARY_BACKUP_OFFSITE_COMMAND")
+        or ""
+    ).strip()
+
+
+def upload_offsite(archive: str | Path, base: Path | None = None) -> dict:
+    """Esegue il comando off-site con `{archive}` sostituito dal file cifrato.
+
+    Il comando non passa dalla shell e deve contenere `{archive}`: un errore di
+    configurazione non può cancellare o sovrascrivere altro.
+    """
+    command = offsite_command(base)
+    if not command:
+        return {"ok": False, "error": "nessun comando off-site configurato (backup_offsite_command)"}
+    if "{archive}" not in command:
+        return {"ok": False, "error": "il comando off-site deve contenere {archive}"}
+    path = Path(archive)
+    if not path.is_file():
+        return {"ok": False, "error": f"backup assente: {path}"}
+    args = shlex.split(command.replace("{archive}", str(path)))
+    try:
+        done = subprocess.run(args, capture_output=True, text=True, timeout=900, check=False)
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)[:200]}
+    output = ((done.stdout or "") + (done.stderr or "")).strip()[-400:]
+    return {"ok": done.returncode == 0, "exit": done.returncode, "output": output}
+
+
 def list_backups(base: Path | None = None) -> list[dict]:
     folder = _base(base) / "backups"
     rows = []
@@ -345,6 +380,20 @@ def self_test() -> None:
         finally:
             os.environ.pop("SECRETARY_BACKUP_PASSPHRASE", None)
 
+        upload = upload_offsite(created["path"], base)
+        assert upload["ok"] is False, "senza comando configurato non deve fingere una copia"
+        remote = root / "offsite"
+        remote.mkdir()
+        os.environ["SECRETARY_BACKUP_OFFSITE_COMMAND"] = f"cp {{archive}} {remote}"
+        try:
+            upload = upload_offsite(created["path"], base)
+            assert upload["ok"] is True, upload
+            assert (remote / Path(created["path"]).name).is_file(), "copia off-site assente"
+            os.environ["SECRETARY_BACKUP_OFFSITE_COMMAND"] = "cp senza segnaposto"
+            assert upload_offsite(created["path"], base)["ok"] is False
+        finally:
+            os.environ.pop("SECRETARY_BACKUP_OFFSITE_COMMAND", None)
+
         for _ in range(3):
             create(base, paths=[source / "config.json"], out_dir=root / "out", keep=2)
         assert len(list((root / "out").glob("gina-*.ginabk"))) == 2, list((root / "out").glob("*"))
@@ -360,6 +409,7 @@ def main() -> int:
     parser.add_argument("--restore", default="")
     parser.add_argument("--target", default="")
     parser.add_argument("--keep", type=int, default=DEFAULT_KEEP)
+    parser.add_argument("--offsite", default="", help="backup da copiare fuori sede")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
@@ -369,6 +419,10 @@ def main() -> int:
         if args.create:
             print(json.dumps(create(keep=args.keep), ensure_ascii=False, indent=2))
             return 0
+        if args.offsite:
+            result = upload_offsite(args.offsite)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0 if result.get("ok") else 1
         if args.verify:
             result = verify(args.verify)
             print(json.dumps(result, ensure_ascii=False, indent=2))

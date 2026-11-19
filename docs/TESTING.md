@@ -188,6 +188,12 @@ curl -sSI https://YOUR-DOMAIN/ | grep -Ei 'content-security|strict-transport|x-c
       "bot non vede i tool" banner appears in demo mode.
 - [ ] `python3 dashboard.py --help` prints usage and exits instead of starting the
       server.
+- [ ] With `python3 identity.py --enable-2fa`, login asks for the six-digit code and
+      rejects a wrong one; without it, the token alone still works.
+- [ ] **Sicurezza → Esci da tutti i dispositivi** logs out the other browser and the
+      token in `dashboard_token` is new; the old token no longer works.
+- [ ] After a few messages, `memory/contacts/*.json` starts with `GINAENC1` and does not
+      contain the phone number or the transcript in plain text.
 - [ ] The **Cookie** link in the footer reopens the preferences with the current
       state, and a second choice is stored (`gina_consent_v1`); no reload is needed.
 - [ ] `/privacy.html#cookie` shows the cookie table (name, provider, purpose, duration,

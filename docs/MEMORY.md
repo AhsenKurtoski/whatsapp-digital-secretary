@@ -72,3 +72,22 @@ python3 -m unittest discover -s tests -p 'test_cli_surfaces.py' -v
 I test coprono: ciclo di vita completo, aggiornamento di un fatto con spostamento in
 cima, pertinenza del contesto rispetto alla domanda, ricerca su più contatti,
 collasso dei doppioni consecutivi, redazione di email e numeri, handoff e oblio.
+
+## Cifratura dei dati attivi
+
+I file sotto `memory/contacts/` non contengono più dati leggibili: ogni file è
+`GINAENC1` + nonce AES-GCM a 96 bit + ciphertext (AES-256-GCM). La chiave sta in
+`memory/memory.key` con permessi `0600`, oppure in `SECRETARY_MEMORY_KEY` (base64 di
+32 byte) per chi usa un gestore di segreti. Perdere la chiave significa perdere le
+memorie: includila nei backup cifrati.
+
+Il nome del file è già lo SHA-256 troncato del numero, quindi il numero non compare
+nemmeno nel filesystem. I file scritti in chiaro dalle versioni precedenti restano
+leggibili e vengono cifrati al primo salvataggio; per migrarli subito:
+
+```bash
+python3 memory.py --encrypt-all
+```
+
+La cifratura è per file: `profile`, `context`, `search`, `conversations` e la
+dashboard decifrano in memoria e non scrivono mai il contenuto in chiaro su disco.

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gina-whatsapp-secretary"
-version = "1.3.0"
+version = "1.4.0"
 description = "Segreteria WhatsApp self-hosted con approvazioni, preventivi PDF e dashboard privata"
 requires-python = ">=3.11"
 readme = "README.md"

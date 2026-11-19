@@ -116,6 +116,9 @@ STATUS_CACHE = {"ts": 0.0, "data": None}
 CHANNEL_CACHE = {"ts": 0.0, "data": None}
 LOGIN_FAILS: dict[str, list[float]] = {}
 ACTION_LIMIT: dict[str, float] = {}
+# Sessioni lato server: il cookie è un id casuale, non il token, e scade.
+SESSIONS: dict[str, dict] = {}
+SESSION_TTL = 12 * 3600
 LAST_LOGIN: str | None = None
 TOKEN_ROTATED_AT: str | None = None
 MAX_POOL_KEYS = 7
@@ -862,8 +865,30 @@ def security_status() -> dict:
         "failed_logins_5m": sum(len(v) for v in LOGIN_FAILS.values()),
         "max_login_fails": 10,
         "lock_window_seconds": 300,
-        "session_days": 7,
+        "session_hours": SESSION_TTL // 3600,
+        "sessions_active": len(_live_sessions()),
+        "two_factor": bool(identity_store is not None and identity_store.totp_status().get("enabled")),
     }
+
+
+def _live_sessions() -> dict[str, dict]:
+    now = time.time()
+    for sid in [key for key, value in SESSIONS.items() if float(value.get("exp") or 0) <= now]:
+        SESSIONS.pop(sid, None)
+    return SESSIONS
+
+
+def create_session(name: str, role: str) -> str:
+    sid = secrets.token_urlsafe(32)
+    _live_sessions()
+    SESSIONS[sid] = {"name": name, "role": role, "exp": time.time() + SESSION_TTL}
+    return sid
+
+
+def revoke_sessions() -> int:
+    count = len(SESSIONS)
+    SESSIONS.clear()
+    return count
 
 
 def rotate_token() -> str:
@@ -1572,6 +1597,9 @@ class Handler(BaseHTTPRequestHandler):
                 val = auth[7:].strip()
         if not val:
             return None
+        session = _live_sessions().get(val)
+        if session:
+            return {"name": str(session.get("name") or "owner"), "role": str(session.get("role") or "viewer")}
         if hmac.compare_digest(val, DASH_TOKEN):
             return {"name": "owner", "role": "admin"}
         if identity_store is not None:
@@ -2003,6 +2031,7 @@ class Handler(BaseHTTPRequestHandler):
             raw = self._body(4096).decode("utf-8", "replace")
             form = parse_qs(raw)
             token = (form.get("token") or [""])[0].strip()
+            code = (form.get("code") or [""])[0].strip()
             ip = self.client_address[0]
             now = time.time()
             fails = [t for t in LOGIN_FAILS.get(ip, []) if now - t < 300]
@@ -2017,17 +2046,26 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception:
                     valid_user = None
             if token and (hmac.compare_digest(token, DASH_TOKEN) or valid_user):
+                if identity_store is not None and not identity_store.check_totp(code):
+                    LOGIN_FAILS[ip].append(now)
+                    log("login failed (2fa)")
+                    if identity_store is not None:
+                        identity_store.audit("owner", "login.2fa", self.client_address[0], False)
+                    self._json({"ok": False, "error": "Codice 2FA non valido."}, 401)
+                    return
                 global LAST_LOGIN
                 LOGIN_FAILS[ip] = []
                 LAST_LOGIN = now_iso()
                 save_security_state()
                 actor = valid_user.get("name") if valid_user else "owner"
+                role = str(valid_user.get("role") if valid_user else "admin")
+                sid = create_session(str(actor), role)
                 if identity_store is not None:
                     identity_store.audit(actor, "login", self.client_address[0], True)
                 log(f"login ok ({actor})")
                 self.send_response(302)
                 self.send_header("Location", "/")
-                self.send_header("Set-Cookie", f"ocdash={token}; Path=/; Max-Age=604800; HttpOnly; SameSite=Strict")
+                self.send_header("Set-Cookie", f"ocdash={sid}; Path=/; Max-Age={SESSION_TTL}; HttpOnly; SameSite=Strict")
                 self.end_headers()
                 return
             LOGIN_FAILS[ip].append(now)
@@ -2140,8 +2178,22 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"ok": True, "data": data})
             return
         if path == "/api/security/rotate":
-            new = rotate_token()
-            self._json({"ok": True, "rotated": True}, 200, [("Set-Cookie", f"ocdash={new}; Path=/; Max-Age=604800; HttpOnly; SameSite=Strict")])
+            rotate_token()
+            revoke_sessions()
+            sid = create_session("owner", "admin")
+            self._json({"ok": True, "rotated": True}, 200, [("Set-Cookie", f"ocdash={sid}; Path=/; Max-Age={SESSION_TTL}; HttpOnly; SameSite=Strict")])
+            return
+        if path == "/api/sessions/revoke":
+            if not self._require("admin"):
+                return
+            count = revoke_sessions()
+            rotate_token()
+            self._audit("sessions.revoke", f"{count} sessioni", True)
+            self._json(
+                {"ok": True, "revoked": count},
+                200,
+                [("Set-Cookie", "ocdash=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict")],
+            )
             return
         if path == "/api/quotes/demo":
             self._json(create_demo_quote())

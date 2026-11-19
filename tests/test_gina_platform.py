@@ -121,6 +121,18 @@ class IdentityTests(TempBase):
 
 
 class MemoryTests(TempBase):
+    def test_contact_file_is_encrypted_at_rest(self):
+        phone = "+393331112299"
+        memory.record(phone, "user", "Vorrei un preventivo per il sito", base=self.base)
+        memory.remember(phone, "budget", "3000 euro", base=self.base)
+        raw = memory._path(phone, self.base).read_bytes()
+        self.assertTrue(raw.startswith(memory.MAGIC), "il file deve essere cifrato")
+        self.assertNotIn(phone.encode(), raw)
+        self.assertNotIn(b"3000 euro", raw)
+        profile = memory.profile(phone, self.base)
+        self.assertEqual(profile["facts"]["budget"], "3000 euro")
+        self.assertEqual(profile["messages_in"], 1)
+
     def test_memory_lifecycle(self):
         phone = "+393331112222"
         memory.record(phone, "user", "Vorrei un preventivo per il sito", intent="quote",
