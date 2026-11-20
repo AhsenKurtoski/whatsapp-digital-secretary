@@ -116,6 +116,22 @@ class SiteBuildTests(unittest.TestCase):
         report = seo_audit.audit(self.out)
         self.assertTrue(report["ok"], report["errors"])
 
+    def test_landing_page_is_a_sales_page_with_real_sections(self):
+        """La home deve vendere: problema, per chi, costi e una sola CTA finale."""
+        site_build.build(self.config, self.out)
+        index = (self.out / "index.html").read_text(encoding="utf-8")
+        for anchor in ('id="problema"', 'id="per-chi"', 'id="funzioni"',
+                       'id="come-funziona"', 'id="privacy"', 'id="costi"',
+                       'id="faq"', 'id="cta-title"'):
+            self.assertIn(anchor, index, anchor)
+        self.assertEqual(index.count("<h1>"), 1)
+        self.assertIn('"@type": "HowTo"', index)
+        self.assertIn("Nessun abbonamento", index)
+        self.assertIn("OpenClaw 2026.4.22", index)
+        # Le FAQ strutturate corrispondono una a una alle domande visibili.
+        self.assertEqual(index.count('"@type": "Question"'), index.count("<summary>"))
+        self.assertGreaterEqual(index.count("<summary>"), 6)
+
     def test_self_tests_are_real(self):
         self.assertEqual(site_build.self_test(), 0)
         self.assertEqual(seo_audit.self_test(), 0)

@@ -14,14 +14,19 @@ business tone, knows your services and prices, collects leads and appointment
 requests, and prepares Gmail/Calendar actions that **you approve** from a local
 dashboard.
 
+Built for **small businesses, professional practices, tradespeople and local
+services** that receive WhatsApp enquiries: it replies immediately, prepares PDF
+quotes, and sends nothing without your go-ahead. Public site:
+<https://gina-secretary.vercel.app>.
+
 > **English** · [Italiano](README.it.md)
 
-![Dashboard](docs/screenshot-dashboard.png)
+![Gina private dashboard with leads, approvals, quotes and gateway health](docs/screenshot-dashboard.png)
 
 <details>
-<summary>Email di preventivo — anteprima</summary>
+<summary>Quote email — preview</summary>
 
-![Email preventivo](docs/email-preview.png)
+![Quote email with summary card, total and attached PDF](docs/email-preview.png)
 
 ![Email preventivo su mobile, 375 px](docs/email-preview-mobile.png)
 </details>
@@ -31,7 +36,7 @@ dashboard.
 | | |
 |---|---|
 | **Latest release** | [v1.1.1](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.1.1) — reliable Google bridge, accurate health with an active bridge |
-| **CI on `main`** | [All checks passing](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml) (last verified 12 Nov 2026): unit tests, every Python self-test, email delivery tests, Apps Script bridge handlers, shell syntax |
+| **CI on `main`** | [All checks passing](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml) (last verified 20 Nov 2026): unit tests, every Python self-test, email delivery tests, Apps Script bridge handlers, shell syntax |
 | **Python** | 3.11, 3.12, 3.13 and 3.14, all covered by CI |
 | **Platform** | Linux or WSL2 with systemd user services; optional Docker dashboard |
 | **License** | MIT |
@@ -46,6 +51,40 @@ event without an explicit approval.
 It is built on top of [OpenClaw](https://openclaw.ai) and the WhatsApp Web client.
 It is independent software, not a WhatsApp Business API product and not affiliated
 with Meta or WhatsApp.
+
+## Who it is for
+
+- **Professional practices** — first contact, data collection and an appointment in the
+  calendar, with the confirmation email sent only after approval.
+- **Tradespeople and installers** — site-visit requests and quotes built from your own
+  price list, with VAT and totals recalculated server-side.
+- **Agencies and consultants** — repetitive questions about services, timelines and
+  packages handled automatically, while commercial proposals stay your decision.
+- **Shops and local services** — consistent hours, area and availability even when
+  nobody can answer WhatsApp.
+
+Gina is not a generic chatbot: it knows the business, remembers the customer and
+prepares real documents. Every action that leaves the business goes through an
+explicit approval.
+
+## Documentation
+
+| Document | What it covers |
+|---|---|
+| [`docs/WEBSITE.md`](docs/WEBSITE.md) | Public site: build, SEO audit, analytics, security headers, deploy |
+| [`docs/TESTING.md`](docs/TESTING.md) | Automated checks plus the manual WhatsApp/dashboard/Google checklist |
+| [`docs/E2E.md`](docs/E2E.md) | End-to-end run with a second phone and test accounts |
+| [`docs/DISASTER_RECOVERY.md`](docs/DISASTER_RECOVERY.md) | Encrypted backups, verified restore, quarterly drill |
+| [`docs/GDPR.md`](docs/GDPR.md) | Roles, retention, data subject rights, breach steps |
+| [`docs/MEMORY.md`](docs/MEMORY.md) | Per-customer memory: facts, search, encryption, erasure |
+| [`docs/PLUGINS.md`](docs/PLUGINS.md) | Guard plugin hooks and how to test a plugin |
+| [`docs/DOCKER.md`](docs/DOCKER.md) | Dashboard-only container and its real limits |
+| [`docs/ALWAYS_ON.md`](docs/ALWAYS_ON.md) | Keeping the secretary online 24/7 on free hardware |
+| [`docs/REMOTE_ACCESS.md`](docs/REMOTE_ACCESS.md) | Tailscale + SSH tunnel, no public port |
+| [`docs/WHATSAPP_BAN.md`](docs/WHATSAPP_BAN.md) | What to do if the number gets restricted |
+| [`docs/PUBLISHING.md`](docs/PUBLISHING.md) | Release checklist and repository settings |
+| [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) | 60-second demo storyboard and recording kit |
+| [`SECURITY.md`](SECURITY.md) | Threat model, hardening, 2FA and sessions, audit chain |
 
 ## Features
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Copertura reale: suite unitaria + self-test dei moduli, poi soglia dell'80%.
+# Copertura reale: suite unitaria + self-test dei moduli, poi soglia dell'86%.
+# La soglia è applicata qui: senza --fail-under lo script misura ma non blocca.
 # Uso: bash scripts/coverage.sh
 set -euo pipefail
 
@@ -34,4 +35,4 @@ for module in lead_intel memory cache identity quotas router webhooks stats \
 done
 
 # shellcheck disable=SC2086
-$COVERAGE report
+$COVERAGE report --fail-under=86

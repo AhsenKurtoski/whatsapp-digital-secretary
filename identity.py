@@ -364,20 +364,27 @@ def check_totp(code: str, base: Path | None = None) -> bool:
 
 
 def recent_audit(limit: int = 100, base: Path | None = None) -> list[dict]:
-    path = audit_path(base)
-    try:
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()[-max(1, int(limit)):]
-    except OSError:
-        return []
-    out = []
-    for line in reversed(lines):
+    """Ultime voci di audit, dalla più recente, anche dentro i segmenti ruotati.
+
+    Il pannello Eventi legge segmenti e file vivo in ordine cronologico: dopo una
+    rotazione la storia non sparisce, si vedono le `limit` voci più recenti.
+    """
+    rows: list[dict] = []
+    for path in audit_segments(base) + [audit_path(base)]:
         try:
-            item = json.loads(line)
-        except Exception:
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
             continue
-        if isinstance(item, dict):
-            out.append(item)
-    return out
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                item = json.loads(line)
+            except Exception:
+                continue
+            if isinstance(item, dict):
+                rows.append(item)
+    return list(reversed(rows[-max(1, int(limit)):]))
 
 
 def self_test() -> None:

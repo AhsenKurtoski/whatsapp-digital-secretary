@@ -152,6 +152,18 @@ class AuditRotationTests(TempBase):
         self.assertEqual(report["chained"], 7)
         self.assertEqual(identity.recent_audit(1, self.base)[0]["action"], "dopo-la-rotazione")
 
+    def test_events_panel_reads_rotated_segments(self):
+        self._write()
+        # Il file vivo può non esistere: la storia sta nei segmenti ruotati.
+        rows = identity.recent_audit(10, self.base)
+        self.assertEqual(
+            [row["action"] for row in rows],
+            [f"azione-{index}" for index in reversed(range(6))],
+        )
+        identity.audit("Owner", "nuova", "z", base=self.base)
+        newest = identity.recent_audit(2, self.base)
+        self.assertEqual([row["action"] for row in newest], ["nuova", "azione-5"])
+
     def test_deleting_a_segment_breaks_the_chain(self):
         self._write()
         segments = identity.audit_segments(self.base)

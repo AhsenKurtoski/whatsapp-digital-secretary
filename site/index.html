@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="{{CSP_META}}">
-<title>Gina, la segreteria digitale WhatsApp di Ahsen Kurtoski</title>
+<title>Gina — Segreteria digitale WhatsApp per aziende</title>
 <meta name="description" content="{{DESCRIPTION}}">
 <meta name="author" content="{{OWNER_NAME}}">
 <meta name="robots" content="index, follow, max-image-preview:large">
@@ -17,7 +17,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{SITE_NAME}}">
 <meta property="og:locale" content="{{LOCALE}}">
-<meta property="og:title" content="Gina, la segreteria digitale WhatsApp di Ahsen Kurtoski">
+<meta property="og:title" content="Gina — Segreteria digitale WhatsApp per aziende">
 <meta property="og:description" content="{{DESCRIPTION}}">
 <meta property="og:url" content="{{BASE_URL}}/">
 <meta property="og:image" content="{{BASE_URL}}/assets/og.jpg">
@@ -26,7 +26,7 @@
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:alt" content="La dashboard privata di Gina con lead, approvazioni e preventivi">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Gina, la segreteria digitale WhatsApp di Ahsen Kurtoski">
+<meta name="twitter:title" content="Gina — Segreteria digitale WhatsApp per aziende">
 <meta name="twitter:description" content="{{DESCRIPTION}}">
 <meta name="twitter:image" content="{{BASE_URL}}/assets/og.jpg">
 {{VERIFICATION}}
@@ -47,21 +47,27 @@
       "@type": "SoftwareApplication",
       "@id": "{{BASE_URL}}/#gina",
       "name": "Gina — WhatsApp Digital Secretary",
+      "alternateName": "Segreteria digitale WhatsApp per aziende",
       "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Digital secretary",
       "operatingSystem": "Linux, WSL2",
       "url": "{{BASE_URL}}/",
       "codeRepository": "{{REPO_URL}}",
       "license": "https://opensource.org/licenses/MIT",
       "description": "{{DESCRIPTION_JSON}}",
       "author": {"@id": "{{BASE_URL}}/#ahsen-kurtoski"},
+      "audience": {
+        "@type": "BusinessAudience",
+        "audienceType": "Piccole e medie imprese, studi professionali, artigiani e servizi locali"
+      },
       "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"},
       "featureList": [
         "Risposte WhatsApp nel tono dell'attività",
-        "Memoria persistente per cliente",
-        "Preventivi in PDF",
+        "Memoria cifrata per cliente",
+        "Preventivi in PDF con IVA e totali ricalcolati",
         "Email e appuntamenti con approvazione umana",
-        "Dashboard privata su localhost",
-        "GDPR, backup e audit locale"
+        "Dashboard privata su localhost con 2FA",
+        "Audit a catena, backup verificati e strumenti GDPR"
       ]
     },
     {
@@ -71,6 +77,44 @@
       "name": "{{SITE_NAME_JSON}}",
       "inLanguage": "it-IT",
       "publisher": {"@id": "{{BASE_URL}}/#ahsen-kurtoski"}
+    },
+    {
+      "@type": "HowTo",
+      "@id": "{{BASE_URL}}/#come-funziona",
+      "name": "Come installare e usare Gina",
+      "description": "Gina si installa su un computer Linux o WSL2, si collega a WhatsApp Web e a Google, e lascia ogni invio all'approvazione del titolare.",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "position": 1,
+          "name": "Prepara la macchina",
+          "text": "Serve Linux o WSL2 con Python 3.11 o superiore, Node.js 22 e OpenClaw, più un numero WhatsApp dedicato all'attività."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 2,
+          "name": "Configura l'attività",
+          "text": "python3 setup.py raccoglie nome, servizi, orari, zona e note sui prezzi e genera la persona del bot sul tuo computer."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 3,
+          "name": "Collega WhatsApp e Google",
+          "text": "Scansiona il QR di WhatsApp Web dal numero dell'attività e autorizza Gmail e Calendar con il bridge Apps Script o con gog."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 4,
+          "name": "Verifica l'installazione",
+          "text": "bash scripts/verify.sh esegue test, self-test e controlli di sicurezza e stampa VERIFICA OK solo se tutto è a posto."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 5,
+          "name": "Approva le azioni",
+          "text": "Gina prepara email, appuntamenti e preventivi; il titolare li approva o li rifiuta dalla dashboard privata su localhost."
+        }
+      ]
     },
     {
       "@type": "FAQPage",
@@ -94,18 +138,34 @@
         },
         {
           "@type": "Question",
-          "name": "Dove finiscono i dati?",
+          "name": "Dove finiscono i dati dei clienti?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "I dati restano sulla macchina del titolare. La dashboard ascolta solo su localhost e le chiavi non vengono mai salvate nel repository."
+            "text": "Restano sulla macchina del titolare. La dashboard ascolta solo su localhost, la memoria per cliente è cifrata e le chiavi non vengono mai salvate nel repository."
           }
         },
         {
           "@type": "Question",
-          "name": "Chi ha creato Gina?",
+          "name": "Quanto costa usare Gina?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Gina è un progetto open source di Ahsen Kurtoski, distribuito con licenza MIT."
+            "text": "Gina è open source con licenza MIT: non c'è un abbonamento. Restano a carico del titolare la macchina su cui gira e le chiavi del provider AI che sceglie."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Quali requisiti servono?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Un computer Linux o WSL2 con Python 3.11 o superiore, Node.js 22, OpenClaw, un numero WhatsApp dedicato e un account Google per email e calendario."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "È un prodotto ufficiale di WhatsApp o Meta?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Gina è un progetto indipendente che usa WhatsApp Web, non è affiliato a WhatsApp o Meta e non è un prodotto della WhatsApp Business API."
           }
         }
       ]
@@ -125,10 +185,11 @@
     <span>Gina<span class="brand-sub"> · digital secretary</span></span>
   </a>
   <nav aria-label="Navigazione principale">
-    <a href="#cos-e">Cos'è</a>
+    <a href="#per-chi">Per chi è</a>
     <a href="#funzioni">Funzioni</a>
-    <a href="#privacy">Privacy</a>
-    <a href="#autore">Autore</a>
+    <a href="#come-funziona">Come funziona</a>
+    <a href="#costi">Costi</a>
+    <a href="#faq">FAQ</a>
     <a class="nav-cta" href="{{REPO_URL}}" rel="noopener">GitHub</a>
   </nav>
 </header>
@@ -136,21 +197,69 @@
 <main id="main">
   <section class="hero" id="cos-e">
     <p class="eyebrow">Open source · self-hosted · licenza MIT</p>
-    <h1>La segreteria digitale WhatsApp che lavora per la tua attività, non per una piattaforma.</h1>
-    <p class="lead">Gina risponde ai clienti con i tuoi servizi, i tuoi orari e i tuoi prezzi. Prepara preventivi in PDF, email e appuntamenti, e lascia a te l'ultima parola: niente parte senza la tua approvazione.</p>
+    <h1>La segreteria digitale WhatsApp per aziende che non consegna i tuoi clienti a una piattaforma.</h1>
+    <p class="lead">Gina risponde ai clienti con i tuoi servizi, i tuoi orari e le tue note sui prezzi. Prepara preventivi in PDF, email e appuntamenti, e lascia a te l'ultima parola: niente parte senza la tua approvazione.</p>
     <div class="actions">
       <a class="btn primary" href="{{REPO_URL}}" rel="noopener">Guarda il progetto su GitHub</a>
-      <a class="btn ghost" href="#funzioni">Scopri cosa fa</a>
+      <a class="btn ghost" href="#come-funziona">Come funziona l'installazione</a>
     </div>
     <ul class="facts" aria-label="In sintesi">
       <li><strong>100%</strong><span>sulla tua macchina</span></li>
-      <li><strong>1</strong><span>dashboard privata</span></li>
+      <li><strong>12 h</strong><span>sessioni dashboard, poi riaccedi</span></li>
       <li><strong>0</strong><span>invii senza approvazione</span></li>
     </ul>
     <figure class="shot">
       <img src="{{BASE_URL}}/assets/dashboard-1080.webp" srcset="{{BASE_URL}}/assets/dashboard-480.webp 480w, {{BASE_URL}}/assets/dashboard-720.webp 720w, {{BASE_URL}}/assets/dashboard-1080.webp 1080w, {{BASE_URL}}/assets/dashboard-1440.webp 1440w" sizes="(max-width: 1120px) calc(100vw - 48px), 1072px" width="1440" height="1100" loading="eager" fetchpriority="high" decoding="async" alt="Dashboard privata di Gina con lead, stato del gateway, approvazioni e preventivi">
       <figcaption>La dashboard privata: lead, salute del sistema, approvazioni e preventivi in un'unica vista.</figcaption>
     </figure>
+  </section>
+
+  <section class="section" id="problema">
+    <div class="section-head">
+      <p class="eyebrow">Il problema</p>
+      <h2>Ogni messaggio non risposto è un cliente che sta scrivendo a qualcun altro</h2>
+      <p>Chi vende su WhatsApp conosce queste tre situazioni. Non servono statistiche: basta la giornata di lavoro.</p>
+    </div>
+    <div class="grid">
+      <article class="card">
+        <h3>Messaggi fuori orario</h3>
+        <p>Un cliente scrive alle 21:30, nessuno risponde, la mattina dopo ha già chiesto a un concorrente. Gina risponde subito con i dati reali dell'attività e tiene il contatto caldo.</p>
+      </article>
+      <article class="card">
+        <h3>Risposte diverse ogni volta</h3>
+        <p>Prezzi e disponibilità raccontati a memoria cambiano da messaggio a messaggio. Servizi, orari e note sui prezzi vivono in un unico file di configurazione, e se un dato manca Gina non lo inventa.</p>
+      </article>
+      <article class="card">
+        <h3>Preventivi rifatti a mano</h3>
+        <p>Voci, quantità, sconto e IVA ricalcolati ogni volta nel foglio di calcolo sbagliano o ritardano. Gina prepara il PDF, tu controlli il totale e approvi l'invio.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" id="per-chi">
+    <div class="section-head">
+      <p class="eyebrow">Per chi è</p>
+      <h2>Pensata per chi vende un servizio, non per chi vuole un chatbot generico</h2>
+      <p>Gina lavora bene dove la conversazione porta a un preventivo, a un appuntamento o a una richiesta di assistenza.</p>
+    </div>
+    <div class="grid">
+      <article class="card">
+        <h3>Studi e professionisti</h3>
+        <p>Primo contatto, raccolta dei dati e appuntamento in agenda, con l'email di conferma che parte solo dopo la tua approvazione.</p>
+      </article>
+      <article class="card">
+        <h3>Artigiani e installatori</h3>
+        <p>Richiesta di sopralluogo, misure e foto descritte a parole: Gina raccoglie le informazioni e prepara un preventivo con le tue voci di listino.</p>
+      </article>
+      <article class="card">
+        <h3>Agenzie e consulenti</h3>
+        <p>Domande ripetute su servizi, tempi e pacchetti gestite in automatico, mentre le proposte commerciali restano una tua decisione.</p>
+      </article>
+      <article class="card">
+        <h3>Negozi e servizi locali</h3>
+        <p>Orari, zona, disponibilità e prezzi sempre coerenti, anche quando il telefono squilla e nessuno può rispondere su WhatsApp.</p>
+      </article>
+    </div>
   </section>
 
   <section class="section" id="funzioni">
@@ -166,7 +275,7 @@
       </article>
       <article class="card">
         <h3>Memoria per cliente</h3>
-        <p>Ogni numero ha la sua memoria: nome, lingua, preferenze e fatti confermati restano disponibili nei messaggi successivi e nelle chat future.</p>
+        <p>Ogni numero ha la sua memoria cifrata: nome, lingua, preferenze e fatti confermati restano disponibili nei messaggi successivi e nelle chat future.</p>
       </article>
       <article class="card">
         <h3>Preventivi in PDF</h3>
@@ -178,35 +287,92 @@
       </article>
       <article class="card">
         <h3>Dashboard privata</h3>
-        <p>Ascolta solo su localhost, con token locale, cookie HttpOnly, protezione CSRF e audit delle azioni. Non è un sito pubblico.</p>
+        <p>Ascolta solo su localhost, con token locale, 2FA opzionale, cookie HttpOnly, protezione CSRF e sessioni che scadono dopo 12 ore.</p>
       </article>
       <article class="card">
         <h3>Privacy e controllo</h3>
-        <p>Redazione dei dati personali nei transcript, diritto all'oblio, export GDPR, backup verificabili e watchdog di ripristino.</p>
+        <p>Dati personali mascherati nei transcript, diritto all'oblio, export GDPR, audit a catena verificabile e backup con ripristino controllato.</p>
       </article>
     </div>
   </section>
 
-  <section class="section split" id="privacy">
+  <section class="section split" id="come-funziona">
     <div>
-      <p class="eyebrow">Privacy by design</p>
-      <h2>I dati del cliente restano a casa tua</h2>
-      <p>Gina non è un SaaS: non c'è un account centrale, non c'è un pannello condiviso e non c'è un database di altri clienti. Le conversazioni, i preventivi e le chiavi restano sulla macchina del titolare.</p>
+      <p class="eyebrow">Come funziona</p>
+      <h2>Si installa sulla tua macchina, non su un account altrui</h2>
+      <p>Non c'è un pannello centrale né un database condiviso: il codice gira dove tieni i dati. L'installazione è guidata e finisce con una verifica automatica, non con un "dovrebbe funzionare".</p>
       <ul class="checks">
-        <li>Dashboard raggiungibile solo da localhost, mai pubblicata su una porta aperta.</li>
-        <li>Email, eventi e preventivi eseguiti solo dopo un'approvazione esplicita.</li>
-        <li>Transcript con email, telefoni e IBAN mascherati nella dashboard.</li>
-        <li>Nessuna chiave, token o sessione WhatsApp nel repository.</li>
+        <li><strong>1. Configura l'attività.</strong> <code>python3 setup.py</code> chiede nome, servizi, orari, zona e note sui prezzi e genera la persona del bot.</li>
+        <li><strong>2. Collega WhatsApp e Google.</strong> QR di WhatsApp Web dal numero dell'attività; Gmail e Calendar con il bridge Apps Script o con <code>gog</code>.</li>
+        <li><strong>3. Verifica.</strong> <code>bash scripts/verify.sh</code> esegue test, self-test e controlli di sicurezza e stampa <code>VERIFICA OK</code> solo se tutto è a posto.</li>
+        <li><strong>4. Lavora in approvazione.</strong> Gina prepara, tu decidi: ogni email, evento o preventivo passa dalla dashboard privata.</li>
       </ul>
     </div>
     <aside class="panel">
-      <h3>Come funziona un preventivo</h3>
-      <ol class="steps">
-        <li><span>1</span>Il cliente chiede un preventivo su WhatsApp.</li>
-        <li><span>2</span>Gina raccoglie voci, quantità ed email confermate.</li>
-        <li><span>3</span>Il sistema genera il PDF e mette la richiesta in coda.</li>
-        <li><span>4</span>Tu controlli e approvi dalla dashboard privata.</li>
-      </ol>
+      <h3>Cosa serve</h3>
+      <ul class="checks">
+        <li>Linux o WSL2 con systemd utente</li>
+        <li>Python 3.11+ e Node.js 22+</li>
+        <li>OpenClaw 2026.4.22 o superiore</li>
+        <li>Un numero WhatsApp dedicato all'attività</li>
+        <li>Un account Google per email e calendario</li>
+        <li>Una chiave del provider AI che preferisci</li>
+      </ul>
+      <p class="note">Requisiti verificati dall'installer: se qualcosa manca, il controllo lo dice prima di iniziare.</p>
+    </aside>
+  </section>
+
+  <section class="section" id="privacy">
+    <div class="section-head">
+      <p class="eyebrow">Privacy e sicurezza</p>
+      <h2>I dati del cliente restano a casa tua</h2>
+      <p>Gina non è un SaaS: non c'è un account centrale, non c'è un pannello condiviso e non c'è un database di altri clienti. Le conversazioni, i preventivi e le chiavi restano sulla macchina del titolare.</p>
+    </div>
+    <div class="grid">
+      <article class="card">
+        <h3>Superficie minima</h3>
+        <p>Dashboard raggiungibile solo da localhost, mai pubblicata su una porta aperta. Accesso remoto opzionale solo via Tailscale e tunnel SSH.</p>
+      </article>
+      <article class="card">
+        <h3>Dati attivi cifrati</h3>
+        <p>La memoria per cliente è AES-256-GCM con chiave locale 0600. I nomi dei file sono già hash del numero: sul disco non si legge né il numero né la conversazione.</p>
+      </article>
+      <article class="card">
+        <h3>Accesso verificabile</h3>
+        <p>2FA TOTP, sessioni server-side da 12 ore, revoca da tutti i dispositivi con rotazione del token e audit a catena di hash controllabile con un comando.</p>
+      </article>
+      <article class="card">
+        <h3>Uscita sotto controllo</h3>
+        <p>Email, eventi e preventivi esistono solo dopo un'approvazione esplicita. Transcript con email, telefoni e IBAN mascherati nella dashboard.</p>
+      </article>
+      <article class="card">
+        <h3>Backup e ripristino</h3>
+        <p>Archivio cifrato con manifest SHA-256, verifica del ripristino e copia fuori sede con un comando configurato da te.</p>
+      </article>
+      <article class="card">
+        <h3>Obblighi GDPR</h3>
+        <p>Inventario dei dati, export, cancellazione su richiesta e retention configurabile: gli strumenti sono nel repository, con la documentazione.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section split" id="costi">
+    <div>
+      <p class="eyebrow">Costi</p>
+      <h2>Nessun abbonamento: paghi quello che usi davvero</h2>
+      <p>Gina è open source con licenza MIT. Non c'è un piano mensile, un limite di conversazioni imposto da noi o un costo per utente: il software è tuo, sul tuo computer.</p>
+      <ul class="checks">
+        <li><strong>Software:</strong> gratuito, codice pubblico e licenza MIT.</li>
+        <li><strong>Macchina:</strong> quella che hai già, oppure un mini PC o un server piccolo.</li>
+        <li><strong>Chiavi AI:</strong> le paghi direttamente al provider che scegli, con il tuo account.</li>
+        <li><strong>Dominio del sito:</strong> solo se vuoi una pagina pubblica su un tuo dominio.</li>
+      </ul>
+      <p class="note">Prezzi dei provider AI e dei server non sono indicati qui perché cambiano: li scegli tu, e restano fuori dal software.</p>
+    </div>
+    <aside class="panel">
+      <h3>Perché non un SaaS</h3>
+      <p>Un servizio centralizzato vede le conversazioni dei tuoi clienti, decide quando aggiornare e può cambiare prezzo. Gina gira sulla tua macchina: i dati non escono, il codice è verificabile e la cronologia delle release è pubblica.</p>
+      <p><a class="btn ghost" href="{{REPO_URL}}/blob/main/SECURITY.md" rel="noopener">Leggi il modello di sicurezza</a></p>
     </aside>
   </section>
 
@@ -229,7 +395,7 @@
   <section class="section faq" id="faq">
     <div class="section-head">
       <p class="eyebrow">Domande frequenti</p>
-      <h2>Le risposte essenziali</h2>
+      <h2>Le risposte essenziali, prima di installare</h2>
     </div>
     <details>
       <summary>Che cos'è Gina?</summary>
@@ -240,13 +406,35 @@
       <p>No. Email, appuntamenti e preventivi restano in una coda di approvazione: vengono eseguiti solo dopo il via libera del titolare dalla dashboard privata.</p>
     </details>
     <details>
-      <summary>Dove finiscono i dati?</summary>
-      <p>Restano sulla macchina del titolare. La dashboard ascolta solo su localhost e le chiavi non vengono mai salvate nel repository.</p>
+      <summary>Dove finiscono i dati dei clienti?</summary>
+      <p>Restano sulla macchina del titolare. La dashboard ascolta solo su localhost, la memoria per cliente è cifrata e le chiavi non vengono mai salvate nel repository.</p>
     </details>
     <details>
-      <summary>Chi ha creato Gina?</summary>
-      <p>Gina è un progetto open source di Ahsen Kurtoski, distribuito con licenza MIT.</p>
+      <summary>Quanto costa usare Gina?</summary>
+      <p>Gina è open source con licenza MIT: non c'è un abbonamento. Restano a carico del titolare la macchina su cui gira e le chiavi del provider AI che sceglie.</p>
     </details>
+    <details>
+      <summary>Quali requisiti servono?</summary>
+      <p>Un computer Linux o WSL2 con Python 3.11 o superiore, Node.js 22, OpenClaw, un numero WhatsApp dedicato e un account Google per email e calendario.</p>
+    </details>
+    <details>
+      <summary>È un prodotto ufficiale di WhatsApp o Meta?</summary>
+      <p>No. Gina è un progetto indipendente che usa WhatsApp Web, non è affiliato a WhatsApp o Meta e non è un prodotto della WhatsApp Business API.</p>
+    </details>
+  </section>
+
+  <section class="section" aria-labelledby="cta-title">
+    <div class="cta-band">
+      <div>
+        <p class="eyebrow">Prossimo passo</p>
+        <h2 id="cta-title">Installalo, esegui la verifica, guarda cosa risponde</h2>
+        <p>Il repository contiene la guida di installazione, la checklist di test manuali e la documentazione di sicurezza. La verifica automatica ti dice subito se l'ambiente è pronto.</p>
+      </div>
+      <div class="actions">
+        <a class="btn primary" href="{{REPO_URL}}" rel="noopener">Apri il repository</a>
+        <a class="btn ghost" href="{{REPO_URL}}/blob/main/docs/TESTING.md" rel="noopener">Checklist di test</a>
+      </div>
+    </div>
   </section>
 </main>
 

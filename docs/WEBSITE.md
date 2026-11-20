@@ -13,7 +13,8 @@ pubblicazione con SEO o header di sicurezza mancanti.
 
 ```text
 site/dist/
-├── index.html              # home: prodotto, privacy, autore, FAQ + JSON-LD
+├── index.html              # landing: problema, per chi, funzioni, installazione,
+│                           # privacy, costi, autore, FAQ, CTA + JSON-LD
 ├── privacy.html            # informativa privacy e cookie (tabella cookie)
 ├── termini.html            # termini d'uso: licenza, garanzie, marchi, foro
 ├── 404.html                # pagina noindex
@@ -56,8 +57,16 @@ con il content-type corretto.
 
 SEO incluso: title e description per pagina, canonical assoluto, Open Graph,
 Twitter Card, `hreflang` non necessario (sito in italiano), JSON-LD `Person`,
-`SoftwareApplication`, `WebSite` e `FAQPage`, sitemap, robots, immagini con `alt`,
-link esterni con `rel="noopener"`, HTML semantico e un solo `h1` per pagina.
+`SoftwareApplication`, `WebSite`, `HowTo` e `FAQPage`, sitemap, robots, immagini con
+`alt`, link esterni con `rel="noopener"`, HTML semantico e un solo `h1` per pagina.
+
+La home è una landing di vendita per aziende, non una pagina manifesto: apre con il
+problema concreto (messaggi fuori orario, risposte incoerenti, preventivi rifatti a
+mano), spiega per chi è il prodotto, elenca le funzioni reali, descrive l'installazione
+con i requisiti verificati dall'installer, separa privacy e sicurezza, dichiara il
+modello di costo (MIT, nessun abbonamento, solo macchina e chiavi AI proprie) e chiude
+con una sola azione. Le sei FAQ visibili corrispondono esattamente alle domande del
+`FAQPage`: nessun contenuto strutturato che non sia anche sulla pagina.
 
 ## 2. Configurazione
 

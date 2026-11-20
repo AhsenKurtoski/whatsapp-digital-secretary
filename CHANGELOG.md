@@ -33,6 +33,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The Events panel lost history after an audit rotation**: `recent_audit()` read only
+  `user_audit.jsonl`, so the newest entries vanished from the dashboard until new events
+  arrived. It now reads the numbered segments plus the live file in chronological order
+  and returns the most recent rows.
+- **`scripts/coverage.sh` measured coverage but never enforced it**: the documentation
+  and CI claimed an 86% gate while the script only printed the report. `coverage report`
+  now runs with `--fail-under=86`, so CI fails below the documented threshold.
 - **`quote_pdf.py --self-test` wrote a PDF named `--self-test`** into the current
   directory instead of running a check. It now uses argparse, supports a real
   self-test and keeps the optional output path; `scripts/coverage.sh` exercises it.
@@ -47,6 +54,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Public landing page built to sell**: the site now explains the problem, who it is
+  for (practices, tradespeople, agencies, local services), how installation works, the
+  real requirements, privacy and security measures and the honest cost model (MIT, no
+  subscription, you pay only your own machine and AI keys). The FAQ grew to six
+  questions mirrored by the `FAQPage` data, and a `HowTo` graph describes the real
+  install steps.
+- **Repository discovery**: `README.md` and `README.it.md` gained a "who it is for"
+  section, descriptive image alt text and a documentation index linking every guide in
+  `docs/`.
 - **Demo dashboard that shows memory**: `demo.py` now seeds three customers with
   facts and redacted transcripts (Mario/website quote, Giulia/maintenance, Luca/Thursday
   appointment), so the **Memoria** row in the transcript panel has real data. The demo
