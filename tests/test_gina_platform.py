@@ -167,17 +167,51 @@ class AuditRotationTests(TempBase):
     def test_events_panel_stops_at_the_limit_instead_of_parsing_everything(self):
         self._write()
         self.assertGreaterEqual(len(identity.audit_segments(self.base)), 2)
-        original = identity.json.loads
         parsed = []
+        real_loads = json.loads
 
         def counting(raw, *args, **kwargs):
             parsed.append(raw)
-            return original(raw, *args, **kwargs)
+            return real_loads(raw, *args, **kwargs)
 
-        with unittest.mock.patch.object(identity.json, "loads", counting):
+        # Sostituisce solo il `json` visto da identity: il modulo globale resta intatto.
+        with unittest.mock.patch.object(identity, "json", unittest.mock.Mock(loads=counting)):
             rows = identity.recent_audit(2, self.base)
         self.assertEqual([row["action"] for row in rows], ["azione-5", "azione-4"])
         self.assertEqual(len(parsed), 2, "deve fermarsi al limite, non leggere tutto l'archivio")
+
+    def test_order_across_multiple_segments_and_an_empty_live_file(self):
+        def add(action: str) -> None:
+            identity.audit("Owner", action, base=self.base)
+
+        add("a0")
+        self.assertIsNotNone(identity.rotate_audit(self.base), "segmento con a0")
+        add("a1")
+        add("a2")
+        self.assertIsNotNone(identity.rotate_audit(self.base), "segmento con a1 e a2")
+        add("a3")
+        add("a4")
+        add("a5")
+        self.assertEqual(len(identity.audit_segments(self.base)), 2)
+        self.assertEqual(
+            [row["action"] for row in identity.recent_audit(10, self.base)],
+            ["a5", "a4", "a3", "a2", "a1", "a0"],
+            "file vivo e poi segmenti dal più recente, con l'ordine interno conservato",
+        )
+        self.assertEqual(
+            [row["action"] for row in identity.recent_audit(4, self.base)],
+            ["a5", "a4", "a3", "a2"],
+            "il limite può cadere a metà di un segmento",
+        )
+        # File vivo vuoto (per esempio dopo un crash): si continua dai segmenti.
+        identity.audit_path(self.base).write_text("", encoding="utf-8")
+        self.assertEqual(
+            [row["action"] for row in identity.recent_audit(3, self.base)],
+            ["a2", "a1", "a0"],
+        )
+        self.assertEqual(
+            [row["action"] for row in identity.recent_audit(1, self.base)], ["a2"],
+        )
 
     def test_deleting_a_segment_breaks_the_chain(self):
         self._write()

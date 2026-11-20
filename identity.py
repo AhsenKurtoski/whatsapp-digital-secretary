@@ -372,9 +372,8 @@ def recent_audit(limit: int = 100, base: Path | None = None) -> list[dict]:
     """
     wanted = max(1, int(limit))
     rows: list[dict] = []
+    # File vivo (il più recente) e poi segmenti dalla numerazione più alta.
     for path in [audit_path(base), *reversed(audit_segments(base))]:
-        if len(rows) >= wanted:
-            break
         try:
             lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError:
@@ -386,11 +385,10 @@ def recent_audit(limit: int = 100, base: Path | None = None) -> list[dict]:
                 item = json.loads(line)
             except Exception:
                 continue
-            if not isinstance(item, dict):
-                continue
-            rows.append(item)
-            if len(rows) >= wanted:
-                break
+            if isinstance(item, dict):
+                rows.append(item)
+                if len(rows) >= wanted:
+                    return rows
     return rows
 
 
