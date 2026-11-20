@@ -35,8 +35,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 - **The Events panel lost history after an audit rotation**: `recent_audit()` read only
   `user_audit.jsonl`, so the newest entries vanished from the dashboard until new events
-  arrived. It now reads the numbered segments plus the live file in chronological order
-  and returns the most recent rows.
+  arrived. It now starts from the live file, walks the numbered segments from newest to
+  oldest and stops at the requested limit instead of parsing the whole archive on every
+  dashboard refresh; a test counts the parsed lines so the early exit cannot regress,
+  and an HTTP test covers `/api/audit/users` right after a rotation.
 - **`scripts/coverage.sh` measured coverage but never enforced it**: the documentation
   and CI claimed an 86% gate while the script only printed the report. `coverage report`
   now runs with `--fail-under=86`, so CI fails below the documented threshold.

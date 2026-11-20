@@ -164,6 +164,21 @@ class AuditRotationTests(TempBase):
         newest = identity.recent_audit(2, self.base)
         self.assertEqual([row["action"] for row in newest], ["nuova", "azione-5"])
 
+    def test_events_panel_stops_at_the_limit_instead_of_parsing_everything(self):
+        self._write()
+        self.assertGreaterEqual(len(identity.audit_segments(self.base)), 2)
+        original = identity.json.loads
+        parsed = []
+
+        def counting(raw, *args, **kwargs):
+            parsed.append(raw)
+            return original(raw, *args, **kwargs)
+
+        with unittest.mock.patch.object(identity.json, "loads", counting):
+            rows = identity.recent_audit(2, self.base)
+        self.assertEqual([row["action"] for row in rows], ["azione-5", "azione-4"])
+        self.assertEqual(len(parsed), 2, "deve fermarsi al limite, non leggere tutto l'archivio")
+
     def test_deleting_a_segment_breaks_the_chain(self):
         self._write()
         segments = identity.audit_segments(self.base)

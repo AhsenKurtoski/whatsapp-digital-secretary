@@ -135,6 +135,15 @@ class DashboardTests(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertTrue(json.loads(response.read())["ok"])
 
+    def test_audit_users_api_reads_rotated_segments(self):
+        identity.audit("owner", "evento-ruotato", "test", True)
+        self.assertIsNotNone(identity.rotate_audit(), "la rotazione deve spostare il log in un segmento")
+        with self.get("/api/audit/users?limit=5", dashboard.DASH_TOKEN) as response:
+            payload = json.loads(response.read())
+        self.assertTrue(payload["ok"])
+        self.assertIn("evento-ruotato", [row["action"] for row in payload["data"]])
+        self.assertTrue(identity.verify_audit()["ok"])
+
     def test_health_endpoint_requires_token(self):
         self.expect_http_error(401, lambda: self.get("/api/health"))
 
