@@ -45,7 +45,7 @@ healthy, not able to send without the owner's approval.
 ```bash
 bash scripts/verify.sh
 python3 -m unittest discover -s tests -v
-bash scripts/coverage.sh          # soglia 86% (suite + self-test, oggi 86%)
+bash scripts/coverage.sh          # soglia 86% (suite + self-test, oggi 87%)
 python3 live.py --self-test
 python3 backup.py --self-test
 python3 gdpr.py --self-test
@@ -53,6 +53,7 @@ python3 -m unittest discover -s tests -p 'test_install.py' -v
 python3 -m unittest discover -s tests -p 'test_remote_access.py' -v
 python3 -m unittest discover -s tests -p 'test_openclaw_compat.py' -v
 python3 -m py_compile *.py google-bridge/*.py scripts/*.py
+python3 link_check.py
 python3 scripts/openclaw_compat.py --json
 python3 site_build.py --self-test
 python3 seo_audit.py --self-test
@@ -69,7 +70,7 @@ python3 ~/.openclaw/secretary/doctor.py --offline
 python3 ~/.openclaw/secretary/healthcheck.py --json
 ```
 
-Expected: `scripts/verify.sh` prints `VERIFICA OK`; 306 unit tests pass, including
+Expected: `scripts/verify.sh` prints `VERIFICA OK`; 313 unit tests pass, including
 the isolated installer, remote-access, OpenClaw compatibility and MCP protocol tests; every self-test prints `SELF-TEST OK`; the guard test
 prints `secretary guard: OK`; on a host with supported OpenClaw, `--check-compat`
 reports `allowed` with the expected fallback flags; the smoke test prints `SMOKE OK` (one model call for six identical
@@ -133,4 +134,5 @@ quote/email from the dashboard, plus one Calendar request. Record the date and r
 | `remote_access.py` | Private Tailscale + SSH tunnel helper, installed as `~/.openclaw/secretary/remote_access.py` |
 | `healthcheck.py` | Live Google, bridge, gateway and queue health |
 | `doctor.py` | Installation diagnosis and safe repairs |
+| `link_check.py` | Relative links in documentation and pages; runs in `verify.sh` and CI |
 | `docs/TESTING.md` | Manual WhatsApp/dashboard/Google checklist |

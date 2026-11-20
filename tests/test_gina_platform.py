@@ -213,6 +213,13 @@ class AuditRotationTests(TempBase):
             [row["action"] for row in identity.recent_audit(1, self.base)], ["a2"],
         )
 
+    def test_events_panel_caps_an_absurd_limit(self):
+        for index in range(5):
+            identity.audit("Owner", f"c{index}", base=self.base)
+        with unittest.mock.patch.object(identity, "MAX_RECENT_AUDIT", 2):
+            rows = identity.recent_audit(10_000, self.base)
+        self.assertEqual([row["action"] for row in rows], ["c4", "c3"])
+
     def test_deleting_a_segment_breaks_the_chain(self):
         self._write()
         segments = identity.audit_segments(self.base)

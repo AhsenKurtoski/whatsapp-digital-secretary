@@ -33,6 +33,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Coverage matrix skipped six self-tests**: `contacts`, `monitor`, `reminders`,
+  `watchdog`, `healthcheck` and `doctor` all support `--self-test` and are run by
+  `verify.sh`, but they were missing from `scripts/coverage.sh`, so their code counted as
+  uncovered. They are measured now, together with `link_check.py`. `docs/TESTING.md` also
+  still claimed 158 tests; it now matches the suite.
+- **`recent_audit` had no upper bound**: `/api/audit/users?limit=1000000000` would walk
+  the whole archive; the limit is capped at `MAX_RECENT_AUDIT` (500 rows).
 - **The Events panel lost history after an audit rotation**: `recent_audit()` read only
   `user_audit.jsonl`, so the newest entries vanished from the dashboard until new events
   arrived. It now starts from the live file, walks the numbered segments from newest to
@@ -56,6 +63,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Relative-link gate**: `link_check.py` scans every Markdown and HTML file (code
+  examples, anchors, absolute URLs and data URIs excluded) and fails with the exact file
+  and missing target instead of letting the install guide 404. It runs in
+  `scripts/verify.sh`, in CI, with a self-test and five unit tests.
+- **Author credit across the public site**: "Ahsen Kurtoski" appears in the hero byline,
+  the closing CTA, the author section and the footer of the homepage, and on the privacy,
+  terms and 404 pages; the structured data now declares `creator`, `copyrightHolder` and
+  `maintainer`, and every indexable page has `hreflang` alternates and
+  `twitter:image:alt`.
 - **Public landing page built to sell**: the site now explains the problem, who it is
   for (practices, tradespeople, agencies, local services), how installation works, the
   real requirements, privacy and security measures and the honest cost model (MIT, no

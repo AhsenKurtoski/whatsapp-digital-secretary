@@ -18,6 +18,7 @@ run() {
 }
 
 run python3 -m py_compile *.py google-bridge/*.py scripts/*.py
+run python3 link_check.py
 run python3 -m unittest discover -s tests
 run python3 scripts/openclaw_compat.py --json
 run python3 google-bridge/test_bridge.py

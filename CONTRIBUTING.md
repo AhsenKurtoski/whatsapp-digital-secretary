@@ -42,6 +42,7 @@ Add or update tests for every behavioural change:
 ```bash
 python3 -m unittest discover -s tests -v
 python3 -m py_compile *.py google-bridge/*.py
+python3 link_check.py
 node google-bridge/test_code_gs.js
 python3 monitor.py --self-test
 python3 watchdog.py --self-test

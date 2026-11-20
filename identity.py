@@ -37,6 +37,8 @@ MAX_USERS = 20
 # La rotazione non deve rompere la catena: ai segmenti numerati si aggiunge il
 # file vivo, e `verify_audit` li controlla in ordine cronologico.
 AUDIT_MAX_BYTES = 1_000_000
+# Il pannello Eventi non deve poter chiedere l'intero archivio con ?limit=10^9.
+MAX_RECENT_AUDIT = 500
 AUDIT_SEGMENT = re.compile(r"^user_audit\.(\d+)\.jsonl$")
 
 
@@ -370,7 +372,7 @@ def recent_audit(limit: int = 100, base: Path | None = None) -> list[dict]:
     voci: il pannello Eventi non rilegge e non ri-analizza tutto l'archivio a ogni
     richiesta. L'ordine restituito è dal più recente al più vecchio.
     """
-    wanted = max(1, int(limit))
+    wanted = max(1, min(int(limit), MAX_RECENT_AUDIT))
     rows: list[dict] = []
     # File vivo (il più recente) e poi segmenti dalla numerazione più alta.
     for path in [audit_path(base), *reversed(audit_segments(base))]:

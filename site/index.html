@@ -10,6 +10,8 @@
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#0b1020">
 <link rel="canonical" href="{{BASE_URL}}/">
+<link rel="alternate" hreflang="it" href="{{BASE_URL}}/">
+<link rel="alternate" hreflang="x-default" href="{{BASE_URL}}/">
 <link rel="icon" href="{{BASE_URL}}/assets/favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="{{BASE_URL}}/manifest.json">
 <link rel="preload" as="image" href="{{BASE_URL}}/assets/dashboard-1080.webp" imagesrcset="{{BASE_URL}}/assets/dashboard-480.webp 480w, {{BASE_URL}}/assets/dashboard-720.webp 720w, {{BASE_URL}}/assets/dashboard-1080.webp 1080w, {{BASE_URL}}/assets/dashboard-1440.webp 1440w" imagesizes="(max-width: 1120px) calc(100vw - 48px), 1072px" fetchpriority="high">
@@ -29,6 +31,7 @@
 <meta name="twitter:title" content="Gina — Segreteria digitale WhatsApp per aziende">
 <meta name="twitter:description" content="{{DESCRIPTION}}">
 <meta name="twitter:image" content="{{BASE_URL}}/assets/og.jpg">
+<meta name="twitter:image:alt" content="La dashboard privata di Gina con lead, approvazioni e preventivi">
 {{VERIFICATION}}
 <script type="application/ld+json">
 {
@@ -56,6 +59,11 @@
       "license": "https://opensource.org/licenses/MIT",
       "description": "{{DESCRIPTION_JSON}}",
       "author": {"@id": "{{BASE_URL}}/#ahsen-kurtoski"},
+      "creator": {"@id": "{{BASE_URL}}/#ahsen-kurtoski"},
+      "copyrightHolder": {"@id": "{{BASE_URL}}/#ahsen-kurtoski"},
+      "maintainer": {"@id": "{{BASE_URL}}/#ahsen-kurtoski"},
+      "inLanguage": "it-IT",
+      "screenshot": "{{BASE_URL}}/assets/dashboard-1080.webp",
       "audience": {
         "@type": "BusinessAudience",
         "audienceType": "Piccole e medie imprese, studi professionali, artigiani e servizi locali"
@@ -76,6 +84,7 @@
       "url": "{{BASE_URL}}/",
       "name": "{{SITE_NAME_JSON}}",
       "inLanguage": "it-IT",
+      "author": {"@id": "{{BASE_URL}}/#ahsen-kurtoski"},
       "publisher": {"@id": "{{BASE_URL}}/#ahsen-kurtoski"}
     },
     {
@@ -199,6 +208,7 @@
     <p class="eyebrow">Open source · self-hosted · licenza MIT</p>
     <h1>La segreteria digitale WhatsApp per aziende che non consegna i tuoi clienti a una piattaforma.</h1>
     <p class="lead">Gina risponde ai clienti con i tuoi servizi, i tuoi orari e le tue note sui prezzi. Prepara preventivi in PDF, email e appuntamenti, e lascia a te l'ultima parola: niente parte senza la tua approvazione.</p>
+    <p class="byline">Un progetto indipendente di <a href="#autore">Ahsen Kurtoski</a> · open source, licenza MIT.</p>
     <div class="actions">
       <a class="btn primary" href="{{REPO_URL}}" rel="noopener">Guarda il progetto su GitHub</a>
       <a class="btn ghost" href="#come-funziona">Come funziona l'installazione</a>
@@ -429,6 +439,7 @@
         <p class="eyebrow">Prossimo passo</p>
         <h2 id="cta-title">Installalo, esegui la verifica, guarda cosa risponde</h2>
         <p>Il repository contiene la guida di installazione, la checklist di test manuali e la documentazione di sicurezza. La verifica automatica ti dice subito se l'ambiente è pronto.</p>
+        <p class="note">Progetto e manutenzione di Ahsen Kurtoski · licenza MIT.</p>
       </div>
       <div class="actions">
         <a class="btn primary" href="{{REPO_URL}}" rel="noopener">Apri il repository</a>

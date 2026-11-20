@@ -132,6 +132,21 @@ class SiteBuildTests(unittest.TestCase):
         self.assertEqual(index.count('"@type": "Question"'), index.count("<summary>"))
         self.assertGreaterEqual(index.count("<summary>"), 6)
 
+    def test_author_is_credited_on_every_page(self):
+        site_build.build(self.config, self.out)
+        index = (self.out / "index.html").read_text(encoding="utf-8")
+        self.assertGreaterEqual(index.count("Ahsen Kurtoski"), 5,
+                                "l'autore deve comparire in più punti della home")
+        self.assertIn('"creator"', index)
+        self.assertIn('"copyrightHolder"', index)
+        self.assertIn('"maintainer"', index)
+        for page in ("index.html", "privacy.html", "termini.html"):
+            html = (self.out / page).read_text(encoding="utf-8")
+            self.assertIn('rel="alternate" hreflang="it"', html, page)
+        for page in ("privacy.html", "termini.html", "404.html"):
+            html = (self.out / page).read_text(encoding="utf-8")
+            self.assertIn("Ahsen Kurtoski", html, page)
+
     def test_self_tests_are_real(self):
         self.assertEqual(site_build.self_test(), 0)
         self.assertEqual(seo_audit.self_test(), 0)

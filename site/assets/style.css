@@ -122,6 +122,8 @@ h2 {
 }
 h3 { margin: 0 0 8px; font-size: 1.1rem; letter-spacing: -.01em; }
 .lead { color: var(--muted); font-size: clamp(1.02rem, 1.6vw, 1.22rem); max-width: 62ch; margin: 20px 0 0; }
+.byline { color: var(--muted); font-size: 15px; margin: 14px 0 0; }
+.byline a { color: var(--cyan); font-weight: 600; }
 
 .actions { display: flex; gap: 12px; flex-wrap: wrap; margin: 26px 0 0; }
 .btn {

@@ -11,6 +11,7 @@ python3 -m unittest discover -s tests -p 'test_install.py' -v
 python3 -m unittest discover -s tests -p 'test_remote_access.py' -v
 python3 -m unittest discover -s tests -p 'test_openclaw_compat.py' -v
 python3 -m py_compile *.py google-bridge/*.py scripts/*.py
+python3 link_check.py
 python3 scripts/openclaw_compat.py --json
 bash scripts/install.sh --check-compat
 python3 scripts/smoke_guard.py
@@ -28,7 +29,7 @@ python3 remote_access.py --self-test
 ```
 
 Expected result: `scripts/verify.sh` prints `VERIFICA OK`, the whole suite passes
-(158 tests at the time of writing), including
+(313 tests at the time of writing), including
 the isolated installer, remote-access and OpenClaw compatibility tests; the compile
 check is silent, Code.gs prints
 `Code.gs handlers: OK`, the guard test prints `secretary guard: OK`, and every

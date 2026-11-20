@@ -398,6 +398,7 @@ python3 -m unittest discover -s tests -v
 python3 -m unittest discover -s tests -p 'test_install.py' -v
 python3 -m unittest discover -s tests -p 'test_remote_access.py' -v
 python3 -m py_compile *.py google-bridge/*.py scripts/*.py
+python3 link_check.py
 python3 site_build.py --self-test
 python3 seo_audit.py --self-test
 python3 -m unittest discover -s tests -p 'test_site.py' -v
@@ -473,7 +474,7 @@ implementata in codice testato, non è un annuncio:
 | Ban WhatsApp | piano operativo e comunicazione ai clienti | [`docs/WHATSAPP_BAN.md`](docs/WHATSAPP_BAN.md) |
 | Plugin | API, hook ed esempio eseguibile | [`docs/PLUGINS.md`](docs/PLUGINS.md) · `examples/hello-plugin` |
 | Docker | compose full-stack con OpenClaw | [`docs/DOCKER.md`](docs/DOCKER.md) |
-| Qualità | ruff, mypy, bandit, pip-audit, coverage 86% (soglia 86%) | `bash scripts/coverage.sh` |
+| Qualità | ruff, mypy, bandit, pip-audit, soglia coverage 86% (oggi 87%) | `bash scripts/coverage.sh` |
 | E2E e video | account di test, checklist, storyboard 60 s | [`docs/E2E.md`](docs/E2E.md) · [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) |
 
 Setup guidato con prove reali (chiave AI, gateway WhatsApp, email di prova):

@@ -399,6 +399,7 @@ python3 -m unittest discover -s tests -v
 python3 -m unittest discover -s tests -p 'test_install.py' -v
 python3 -m unittest discover -s tests -p 'test_remote_access.py' -v
 python3 -m py_compile *.py google-bridge/*.py scripts/*.py
+python3 link_check.py
 python3 site_build.py --self-test
 python3 seo_audit.py --self-test
 python3 -m unittest discover -s tests -p 'test_site.py' -v
@@ -424,7 +425,8 @@ approval storage, email template safety, dashboard authentication/CSRF, watchdog
 status, health scoring/token alerts, automatic model selection, isolated installer
 copies, OpenClaw compatibility planning, private remote-access validation,
 inbound/outbound duplicate suppression, MCP memory/quote tools, bilingual table
-rows and the public site build/SEO audit. Integration with a real WhatsApp number and a real Google account cannot
+rows, relative links in the documentation (no 404 while following the install guide) and
+the public site build/SEO audit. Integration with a real WhatsApp number and a real Google account cannot
 be tested in CI; see [docs/TESTING.md](docs/TESTING.md) for the manual checklist.
 
 ## Docker (dashboard only)
@@ -471,7 +473,7 @@ Everything below is implemented and tested, not a roadmap:
 | WhatsApp ban | operational plan and customer communication | [`docs/WHATSAPP_BAN.md`](docs/WHATSAPP_BAN.md) |
 | Plugins | API, hooks and a runnable example | [`docs/PLUGINS.md`](docs/PLUGINS.md) · `examples/hello-plugin` |
 | Docker | full-stack compose with OpenClaw | [`docs/DOCKER.md`](docs/DOCKER.md) |
-| Quality | ruff, mypy, bandit, pip-audit, 86% coverage (gate 86%) | `bash scripts/coverage.sh` |
+| Quality | ruff, mypy, bandit, pip-audit, coverage gate 86% (currently 87%) | `bash scripts/coverage.sh` |
 | E2E and video | test accounts, checklist, 60 s storyboard | [`docs/E2E.md`](docs/E2E.md) · [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) |
 
 Guided setup with real checks (AI key, WhatsApp gateway, test email):
