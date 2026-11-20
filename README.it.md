@@ -432,7 +432,7 @@ implementata in codice testato, non è un annuncio:
 | Backup cifrato | AES-256-GCM, rotazione, ripristino verificato con SHA-256, copia fuori sede opzionale | [`docs/DISASTER_RECOVERY.md`](docs/DISASTER_RECOVERY.md) |
 | Cifratura dati attivi | ogni file contatto (numeri, fatti, transcript) è AES-256-GCM con `memory.key` 0600; i file in chiaro si migrano con `--encrypt-all` | [`docs/MEMORY.md`](docs/MEMORY.md) · `python3 memory.py --encrypt-all` |
 | Secondo fattore e sessioni | codice TOTP, sessioni lato server di 12 ore, “Esci da tutti i dispositivi” revoca ogni dispositivo e ruota il token | `python3 identity.py --enable-2fa` · dashboard → Sicurezza |
-| Audit a prova di manomissione | ogni voce contiene l'hash della precedente; modificare o togliere una riga rompe la catena | `python3 identity.py --verify-audit` |
+| Audit a prova di manomissione | ogni voce contiene l'hash della precedente; modificare o togliere una riga rompe la catena; la rotazione conserva segmenti numerati senza perdere voci | `python3 identity.py --verify-audit` |
 | Ban WhatsApp | piano operativo e comunicazione ai clienti | [`docs/WHATSAPP_BAN.md`](docs/WHATSAPP_BAN.md) |
 | Plugin | API, hook ed esempio eseguibile | [`docs/PLUGINS.md`](docs/PLUGINS.md) · `examples/hello-plugin` |
 | Docker | compose full-stack con OpenClaw | [`docs/DOCKER.md`](docs/DOCKER.md) |

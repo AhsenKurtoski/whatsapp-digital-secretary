@@ -428,7 +428,7 @@ Everything below is implemented and tested, not a roadmap:
 | Encrypted backup | AES-256-GCM, rotation, restore verified with SHA-256, optional off-site copy | [`docs/DISASTER_RECOVERY.md`](docs/DISASTER_RECOVERY.md) |
 | Active-data encryption | every contact file (numbers, facts, transcripts) is AES-256-GCM with a 0600 `memory.key`; legacy plaintext is re-encrypted with `--encrypt-all` | [`docs/MEMORY.md`](docs/MEMORY.md) · `python3 memory.py --encrypt-all` |
 | Second factor and sessions | TOTP code, 12-hour server-side sessions, “sign out everywhere” revokes every device and rotates the token | `python3 identity.py --enable-2fa` · dashboard → Sicurezza |
-| Tamper-evident audit | each entry hashes the previous one; changing or removing a line breaks the chain | `python3 identity.py --verify-audit` |
+| Tamper-evident audit | each entry hashes the previous one; changing or removing a line breaks the chain; rotation keeps numbered segments so nothing is lost | `python3 identity.py --verify-audit` |
 | WhatsApp ban | operational plan and customer communication | [`docs/WHATSAPP_BAN.md`](docs/WHATSAPP_BAN.md) |
 | Plugins | API, hooks and a runnable example | [`docs/PLUGINS.md`](docs/PLUGINS.md) · `examples/hello-plugin` |
 | Docker | full-stack compose with OpenClaw | [`docs/DOCKER.md`](docs/DOCKER.md) |

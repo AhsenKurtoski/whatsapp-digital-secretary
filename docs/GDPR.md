@@ -46,6 +46,9 @@ per dati molto sensibili disattiva il provider o usa un modello locale.
 - Predefinita: **180 giorni** (`data_retention_days` in `config.json`).
 - I backup cifrati ruotano a 7 copie (configurabile).
 - I log tecnici ruotano a 512 KB / 2000 righe.
+- L'audit della dashboard (`user_audit.jsonl`) ruota a 1 MB in segmenti numerati
+  (`user_audit.0001.jsonl`, …): nessuna voce viene tagliata e la catena di hash resta
+  verificabile con `python3 identity.py --verify-audit`.
 - La memoria per cliente viene eliminata dal job di retention o su richiesta.
 
 ```bash

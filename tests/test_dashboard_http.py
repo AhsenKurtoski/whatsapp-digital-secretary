@@ -13,6 +13,7 @@ import support  # noqa: F401
 
 import approval_store
 import dashboard
+import identity
 import live
 import memory
 
@@ -454,6 +455,104 @@ class DashboardTests(unittest.TestCase):
                 timeout=10,
             ),
         )
+
+    def login(self, token, code=None):
+        opener = urllib.request.build_opener(NoRedirect)
+        payload = {"token": token}
+        if code is not None:
+            payload["code"] = code
+        req = urllib.request.Request(
+            self.base + "/login",
+            data=urllib.parse.urlencode(payload).encode(),
+            method="POST",
+        )
+        return opener.open(req, timeout=10)
+
+    @staticmethod
+    def session_id(error):
+        cookie = error.headers.get("Set-Cookie", "")
+        return cookie.split("=", 1)[1].split(";", 1)[0] if "=" in cookie else ""
+
+    def test_login_with_2fa_requires_the_code_over_http(self):
+        self.addCleanup(identity.disable_totp)
+        self.addCleanup(dashboard.SESSIONS.clear)
+        enrolled = identity.enable_totp()
+        dashboard.SESSIONS.clear()
+
+        error = self.expect_http_error(401, lambda: self.login(dashboard.DASH_TOKEN))
+        self.assertIn("2FA", error.read().decode())
+        self.assertEqual(dashboard.SESSIONS, {})
+
+        wrong = "000000" if identity.totp_code(enrolled["secret"]) != "000000" else "111111"
+        self.expect_http_error(401, lambda: self.login(dashboard.DASH_TOKEN, wrong))
+        self.assertEqual(dashboard.SESSIONS, {})
+
+        error = self.expect_http_error(
+            302, lambda: self.login(dashboard.DASH_TOKEN, identity.totp_code(enrolled["secret"])),
+        )
+        sid = self.session_id(error)
+        self.assertTrue(sid)
+        self.assertIn(sid, dashboard.SESSIONS)
+        self.assertEqual(dashboard.SESSIONS[sid]["role"], "admin")
+        # La sessione nata dal login 2FA vale davvero sulle API.
+        with self.get("/api/leads", sid) as response:
+            self.assertEqual(response.status, 200)
+        actions = [row["action"] for row in identity.recent_audit(20)]
+        self.assertIn("login.2fa", actions)
+        self.assertTrue(identity.verify_audit()["ok"])
+
+    def revoke_request(self, session_id):
+        req = urllib.request.Request(
+            self.base + "/api/sessions/revoke",
+            data=b"{}",
+            method="POST",
+            headers={
+                "X-Requested-With": "dashboard",
+                "Content-Type": "application/json",
+                "Cookie": f"ocdash={session_id}",
+            },
+        )
+        return urllib.request.urlopen(req, timeout=10)
+
+    def test_sessions_revoke_over_http_ends_sessions_and_rotates_the_token(self):
+        self.addCleanup(dashboard.SESSIONS.clear)
+        original_token = dashboard.DASH_TOKEN
+
+        def restore_token():
+            dashboard.DASH_TOKEN = original_token
+            Path(dashboard.TOKEN_FILE).write_text(original_token, encoding="utf-8")
+
+        self.addCleanup(restore_token)
+
+        error = self.expect_http_error(
+            302, lambda: self.login(dashboard.DASH_TOKEN),
+        )
+        sid = self.session_id(error)
+        self.assertIn(sid, dashboard.SESSIONS)
+        with self.get("/api/leads", sid) as response:
+            self.assertEqual(response.status, 200)
+
+        # Solo un admin revoca: un viewer riceve 403 e la sessione resta.
+        viewer_sid = dashboard.create_session("Lettura", "viewer")
+        self.expect_http_error(403, lambda: self.revoke_request(viewer_sid))
+        self.assertIn(viewer_sid, dashboard.SESSIONS)
+
+        with self.revoke_request(sid) as response:
+            payload = json.loads(response.read())
+            cookie = response.headers.get("Set-Cookie", "")
+        self.assertTrue(payload["ok"], payload)
+        self.assertGreaterEqual(payload["revoked"], 2)
+        self.assertIn("ocdash=;", cookie)
+        self.assertIn("Max-Age=0", cookie)
+        self.assertIn("HttpOnly", cookie)
+        self.assertEqual(dashboard.SESSIONS, {})
+        self.expect_http_error(401, lambda: self.get("/api/leads", sid))
+        self.assertNotEqual(dashboard.DASH_TOKEN, original_token)
+        self.expect_http_error(401, lambda: self.get("/api/leads", original_token))
+        with self.get("/api/leads", dashboard.DASH_TOKEN) as response:
+            self.assertEqual(response.status, 200)
+        session_actions = [row["action"] for row in identity.recent_audit(20)]
+        self.assertIn("sessions.revoke", session_actions)
 
 
 if __name__ == "__main__":

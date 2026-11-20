@@ -120,6 +120,58 @@ class IdentityTests(TempBase):
             identity.create_user("X", "root", base=self.base)
 
 
+class AuditRotationTests(TempBase):
+    def _write(self, count: int = 6) -> None:
+        with unittest.mock.patch.object(identity, "AUDIT_MAX_BYTES", 240):
+            for index in range(count):
+                identity.audit("Owner", f"azione-{index}", "x" * 60, base=self.base)
+
+    def test_rotation_keeps_every_entry_and_the_chain(self):
+        self._write()
+        segments = identity.audit_segments(self.base)
+        self.assertGreaterEqual(len(segments), 2, segments)
+        report = identity.verify_audit(self.base)
+        self.assertTrue(report["ok"], report)
+        self.assertEqual(report["entries"], 6)
+        self.assertEqual(report["chained"], 6)
+        self.assertEqual(report["segments"], len(segments))
+        actions = []
+        for path in segments + [identity.audit_path(self.base)]:
+            if not path.exists():
+                continue
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    actions.append(json.loads(line)["action"])
+        self.assertEqual(actions, [f"azione-{index}" for index in range(6)])
+
+    def test_new_entries_continue_the_chain_after_rotation(self):
+        self._write()
+        identity.audit("Owner", "dopo-la-rotazione", "y" * 60, base=self.base)
+        report = identity.verify_audit(self.base)
+        self.assertTrue(report["ok"], report)
+        self.assertEqual(report["chained"], 7)
+        self.assertEqual(identity.recent_audit(1, self.base)[0]["action"], "dopo-la-rotazione")
+
+    def test_deleting_a_segment_breaks_the_chain(self):
+        self._write()
+        segments = identity.audit_segments(self.base)
+        self.assertGreaterEqual(len(segments), 2, segments)
+        segments[0].unlink()
+        report = identity.verify_audit(self.base)
+        self.assertFalse(report["ok"], report)
+        self.assertIsNotNone(report["broken_in"], report)
+
+    def test_edited_entry_in_a_segment_breaks_the_chain(self):
+        self._write()
+        segment = identity.audit_segments(self.base)[0]
+        lines = segment.read_text(encoding="utf-8").splitlines()
+        segment.write_text(
+            "\n".join([lines[0].replace("azione-0", "azione-9")] + lines[1:]) + "\n",
+            encoding="utf-8",
+        )
+        self.assertFalse(identity.verify_audit(self.base)["ok"])
+
+
 class MemoryTests(TempBase):
     def test_contact_file_is_encrypted_at_rest(self):
         phone = "+393331112299"

@@ -121,8 +121,11 @@ This project runs on a personal computer or a private VPS. It is designed to pro
   (`POST /api/sessions/revoke`, admin) clears every session and rotates the token, so
   other browsers and devices must sign in again.
 - **Tamper-evident audit.** Every `user_audit.jsonl` entry stores `prev` and a
-  SHA-256 `hash` over the previous hash and its fields. `python3 identity.py
-  --verify-audit` recomputes the chain and reports the first broken line.
+  SHA-256 `hash` over the previous hash and its fields. At 1 MB the log rotates to a
+  numbered segment (`user_audit.0001.jsonl`, …) without losing entries: the new file
+  continues from the last rotated hash, and `python3 identity.py --verify-audit`
+  recomputes segments and live file in order, reporting the first broken line and the
+  file it is in. Deleting, editing or reordering a segment or a line breaks the chain.
 - **Off-site backup.** `backup_offsite_command` (or
   `SECRETARY_BACKUP_OFFSITE_COMMAND`) must contain `{archive}`; the command runs
   without a shell on the encrypted archive and a non-zero exit is reported as failure.

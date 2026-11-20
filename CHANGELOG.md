@@ -19,6 +19,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
   **Esci da tutti i dispositivi** button revokes every session and rotates the token.
 - **Tamper-evident audit**: each audit entry stores the previous hash and its own
   SHA-256; `identity.py --verify-audit` reports the first modified or removed line.
+  Rotation no longer truncates the file (which used to break the chain): at 1 MB the log
+  moves to a numbered `user_audit.NNNN.jsonl` segment and the new file continues from
+  the last rotated hash, so every entry stays verifiable across segments.
+- **Real HTTP tests for the new auth paths**: 2FA login (missing and wrong code rejected,
+  correct code opens a working session) and `POST /api/sessions/revoke` (viewer gets 403,
+  admin ends every session, clears the cookie and rotates the token) now run against the
+  live test server instead of only the session helpers.
 - **Off-site backups**: `python3 backup.py --offsite <file>` runs a configured,
   shell-free `{archive}` command (for example rclone) and fails loudly when the copy
   did not happen.

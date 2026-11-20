@@ -20,6 +20,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import struct
 import sys
@@ -33,6 +34,10 @@ import config
 ROLES = {"viewer": 1, "operator": 2, "admin": 3}
 ROLE_LABELS = {"viewer": "solo lettura", "operator": "operatore", "admin": "admin"}
 MAX_USERS = 20
+# La rotazione non deve rompere la catena: ai segmenti numerati si aggiunge il
+# file vivo, e `verify_audit` li controlla in ordine cronologico.
+AUDIT_MAX_BYTES = 1_000_000
+AUDIT_SEGMENT = re.compile(r"^user_audit\.(\d+)\.jsonl$")
 
 
 def _base(base: Path | None) -> Path:
@@ -165,11 +170,26 @@ def _audit_hash(entry: dict, prev: str) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def _last_audit_hash(path: Path) -> str:
+def audit_segments(base: Path | None = None) -> list[Path]:
+    """Segmenti ruotati di `user_audit`, dal più vecchio al più recente."""
+    folder = Path(base or config.BASE)
+    try:
+        found = []
+        for path in folder.iterdir():
+            match = AUDIT_SEGMENT.match(path.name)
+            if match:
+                found.append((int(match.group(1)), path))
+    except OSError:
+        return []
+    return [path for _, path in sorted(found)]
+
+
+def _tail_hash(path: Path) -> str:
+    """Ultimo hash del file, oppure stringa vuota se non ce ne sono."""
     try:
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     except OSError:
-        return "genesis"
+        return ""
     for line in reversed(lines):
         try:
             item = json.loads(line)
@@ -177,7 +197,40 @@ def _last_audit_hash(path: Path) -> str:
             continue
         if isinstance(item, dict) and item.get("hash"):
             return str(item["hash"])
+    return ""
+
+
+def _last_audit_hash(path: Path) -> str:
+    """Continua la catena dall'ultimo segmento quando il file vivo è nuovo."""
+    current = _tail_hash(path)
+    if current:
+        return current
+    for segment in reversed(audit_segments(path.parent)):
+        tail = _tail_hash(segment)
+        if tail:
+            return tail
     return "genesis"
+
+
+def rotate_audit(base: Path | None = None) -> Path | None:
+    """Sposta il log corrente in `user_audit.NNNN.jsonl` senza perdere voci.
+
+    Il file nuovo riparte dall'hash dell'ultima voce ruotata, quindi la catena
+    resta continua attraverso i segmenti. Se un segmento viene cancellato la
+    verifica fallisce alla prima voce successiva: il taglio è dimostrabile.
+    """
+    path = audit_path(base)
+    if not _tail_hash(path):
+        return None
+    numbers = []
+    for item in audit_segments(path.parent):
+        match = AUDIT_SEGMENT.match(item.name)
+        if match:
+            numbers.append(int(match.group(1)))
+    target = path.with_name(f"user_audit.{max(numbers, default=0) + 1:04d}.jsonl")
+    os.replace(path, target)
+    os.chmod(target, 0o600)
+    return target
 
 
 def audit(actor: str, action: str, detail: str = "", ok: bool = True,
@@ -197,42 +250,54 @@ def audit(actor: str, action: str, detail: str = "", ok: bool = True,
         with open(path, "a", encoding="utf-8") as handle:
             handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
         os.chmod(path, 0o600)
-        # La rotazione deve restare verificabile: il taglio è registrato come voce.
-        if path.stat().st_size > 1_000_000:
-            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()[-2000:]
-            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        if path.stat().st_size > AUDIT_MAX_BYTES:
+            rotate_audit(path.parent)
     except OSError:
         pass
     return entry
 
 
 def verify_audit(base: Path | None = None) -> dict:
-    """Ricalcola la catena: una riga cancellata o modificata risulta rotta."""
-    path = audit_path(base)
-    try:
-        lines = [ln for ln in path.read_text(encoding="utf-8", errors="replace").splitlines() if ln.strip()]
-    except OSError:
-        return {"ok": True, "entries": 0, "chained": 0, "broken_at": None}
+    """Ricalcola la catena su segmenti ruotati e file vivo, in ordine.
+
+    Una riga cancellata o modificata, un segmento mancante o un file fuori
+    ordine fanno fallire la verifica.
+    """
+    segments = audit_segments(base)
+    report = {"entries": 0, "chained": 0, "broken_at": None, "broken_in": None,
+              "segments": len(segments)}
+
+    def broken(index: int, name: str) -> dict:
+        return {"ok": False, **report, "broken_at": index, "broken_in": name}
+
     prev = "genesis"
-    chained = 0
-    for index, line in enumerate(lines):
+    for path in segments + [audit_path(base)]:
         try:
-            item = json.loads(line)
-        except Exception:
-            return {"ok": False, "entries": len(lines), "chained": chained, "broken_at": index}
-        if not isinstance(item, dict):
-            return {"ok": False, "entries": len(lines), "chained": chained, "broken_at": index}
-        if not item.get("hash"):
-            # Righe precedenti alla catena: ammesse solo come prefisso.
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except FileNotFoundError:
             continue
-        if str(item.get("prev") or "") != prev:
-            return {"ok": False, "entries": len(lines), "chained": chained, "broken_at": index}
-        expected = _audit_hash(item, prev)
-        if not hmac.compare_digest(str(item.get("hash")), expected):
-            return {"ok": False, "entries": len(lines), "chained": chained, "broken_at": index}
-        prev = expected
-        chained += 1
-    return {"ok": True, "entries": len(lines), "chained": chained, "broken_at": None}
+        except OSError:
+            return broken(0, path.name)
+        lines = [line for line in text.splitlines() if line.strip()]
+        for index, line in enumerate(lines):
+            report["entries"] += 1
+            try:
+                item = json.loads(line)
+            except Exception:
+                return broken(index, path.name)
+            if not isinstance(item, dict):
+                return broken(index, path.name)
+            if not item.get("hash"):
+                # Righe precedenti alla catena: ammesse solo come prefisso.
+                continue
+            if str(item.get("prev") or "") != prev:
+                return broken(index, path.name)
+            expected = _audit_hash(item, prev)
+            if not hmac.compare_digest(str(item.get("hash")), expected):
+                return broken(index, path.name)
+            prev = expected
+            report["chained"] += 1
+    return {"ok": True, **report}
 
 
 def totp_secret() -> str:
@@ -365,6 +430,23 @@ def self_test() -> None:
         assert check_totp(totp_code(enrolled["secret"]), base=base)
         assert not check_totp(wrong, base=base), "con 2FA attivo il codice sbagliato deve fallire"
         assert disable_totp(base) is True and totp_status(base)["enabled"] is False
+
+        # Rotazione: segmenti numerati, nessuna voce persa, catena ancora valida.
+        global AUDIT_MAX_BYTES
+        rotation_base = base / "rotazione"
+        rotation_base.mkdir()
+        original_limit = AUDIT_MAX_BYTES
+        AUDIT_MAX_BYTES = 240
+        try:
+            for index in range(6):
+                audit("Owner", f"rot-{index}", "dettaglio " * 8, base=rotation_base)
+        finally:
+            AUDIT_MAX_BYTES = original_limit
+        rotated = verify_audit(rotation_base)
+        assert rotated["ok"] and rotated["entries"] == 6, rotated
+        assert rotated["segments"] >= 2, rotated
+        audit_segments(rotation_base)[0].unlink()
+        assert verify_audit(rotation_base)["ok"] is False, "un segmento mancante rompe la catena"
 
         broken = audit_path(base)
         lines = broken.read_text(encoding="utf-8").splitlines()
