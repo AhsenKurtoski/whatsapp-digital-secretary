@@ -5,7 +5,7 @@
 # La CI esegue gli stessi comandi (vedi .github/workflows/ci.yml).
 ruff>=0.6,<1
 mypy>=1.10,<2
-bandit[toml]>=1.7,<2
+bandit[toml]>=1.9.4,<2
 pip-audit>=2.7,<3
 coverage[toml]>=7.5,<8
 # Dipendenze runtime (cryptography: memoria e backup cifrati AES-256-GCM).
