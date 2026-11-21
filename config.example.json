@@ -24,5 +24,11 @@
   "quote_valid_days": 30,
   "payment_terms": "Pagamento: 50% alla conferma, saldo alla consegna.",
   "reminder_cooldown_hours": 12,
-  "reminder_min_age_minutes": 30
+  "reminder_min_age_minutes": 30,
+  "rate_limit": {
+    "login_max_fails": 10,
+    "login_window_seconds": 300,
+    "action_seconds": 15,
+    "send_seconds": 1
+  }
 }

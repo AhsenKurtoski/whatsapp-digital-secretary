@@ -8,6 +8,26 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Operator replies from the dashboard**: after **Prendi il controllo** the
+  Conversations panel shows a composer; `POST /api/conversations/send` validates the
+  number and text (max 1000 characters, no control characters), refuses to write unless
+  the handoff is active, sends through `openclaw message send --channel whatsapp`, saves
+  the message in the customer memory and writes an audit entry with the number but never
+  the text. In the CLI: `python3 conversations.py --send +39… --text "…"`.
+- **Configurable rate limiting**: `rate_limit` in `config.json` sets
+  `login_max_fails`, `login_window_seconds`, `action_seconds` and `send_seconds`; values
+  are clamped to safe bounds and exposed in `/api/status`.
+- **Accessibility regression tests**: `tests/test_dashboard_a11y.py` checks language,
+  skip link and main landmark, labels on every form field, accessible names on buttons,
+  `alt` on images, unique ids, polite live regions and `aria-controls` on tabs; the five
+  previously unlabelled filters now have `aria-label`.
+- **Non-technical quick start**: [`docs/QUICKSTART.md`](docs/QUICKSTART.md) goes from
+  install to the first reply in 15 minutes, with a table of the most common errors and
+  the one-line fix; it is linked from both READMEs.
+- **10:00–20:00 service window**: [`docs/ALWAYS_ON.md`](docs/ALWAYS_ON.md) gains
+  copy-paste systemd user timers to start and stop the gateway inside opening hours
+  instead of running 24/7.
+
 - **Windows/WSL2 guide and status script**: [`docs/WSL.md`](docs/WSL.md) walks from
   `wsl --install` to a bot that answers, including systemd in WSL, `/mnt/c` pitfalls and
   the 24/7 limits of WSL. `scripts/wsl_status.py` reports distros, repo folder, runtime

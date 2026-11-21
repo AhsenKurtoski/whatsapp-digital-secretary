@@ -14,7 +14,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import time
@@ -27,6 +30,8 @@ import memory
 
 MAX_MESSAGES = 200
 MAX_TEXT = 1500
+MAX_SEND = 1000
+E164 = re.compile(r"\+?[1-9]\d{7,14}")
 
 
 def _db() -> str:
@@ -208,6 +213,86 @@ def set_handoff(phone: str, active: bool, operator: str = "", base: Path | None 
     return {"handoff": profile.get("handoff", {}), "webhook": event}
 
 
+def send_message(
+    phone: str,
+    text: str,
+    operator: str = "",
+    base: Path | None = None,
+    command: str = "",
+) -> dict:
+    """Invia un messaggio WhatsApp come operatore umano.
+
+    Si può scrivere al cliente solo dopo aver preso il controllo (handoff):
+    così Gina non risponde in parallelo e il cliente non riceve due voci.
+    Il testo non viene loggato né salvato in chiaro: la memoria registra la
+    versione redatta, l'audit solo numero e operatore.
+    """
+    digits = "".join(ch for ch in str(phone or "") if ch.isdigit())
+    if not E164.fullmatch("+" + digits) and not E164.fullmatch(digits):
+        raise ValueError("numero non valido: usa il formato +39…")
+    body = str(text or "").strip()
+    if not body:
+        raise ValueError("scrivi un messaggio")
+    if len(body) > MAX_SEND:
+        raise ValueError(f"messaggio troppo lungo (max {MAX_SEND} caratteri)")
+    if any(ord(ch) < 32 and ch not in "\n\t" for ch in body):
+        raise ValueError("il messaggio contiene caratteri non consentiti")
+    target = "+" + digits
+    profile = memory.profile(target, base)
+    if not bool((profile.get("handoff") or {}).get("active")):
+        raise PermissionError("prendi prima il controllo della conversazione")
+
+    cli = command or config.openclaw_cli()
+    argv = [
+        cli, "message", "send",
+        "--channel", "whatsapp",
+        "--target", target,
+        "--message", body,
+        "--json",
+    ]
+    env = dict(os.environ)
+    env.setdefault("OPENCLAW_CONFIG", str(config.OPENCLAW_CONFIG))
+    try:
+        result = subprocess.run(
+            argv, capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=60, env=env, check=False,
+        )
+    except FileNotFoundError:
+        raise RuntimeError("OpenClaw non trovato: impossibile inviare") from None
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("invio non completato entro 60 secondi") from None
+
+    stdout = result.stdout or ""
+    stderr = result.stderr or ""
+    payload: dict = {}
+    start = stdout.find("{")
+    if start >= 0:
+        try:
+            parsed = json.loads(stdout[start:])
+            payload = parsed if isinstance(parsed, dict) else {}
+        except Exception:
+            payload = {}
+    ok = result.returncode == 0 and not payload.get("error")
+    message_id = str(
+        payload.get("messageId") or payload.get("id") or payload.get("message_id") or ""
+    )[:80]
+    if ok:
+        memory.record(target, "assistant", body, base=base)
+        try:
+            import identity
+
+            identity.audit(operator or "operatore", "chat.send", target, True, base=base)
+        except Exception:
+            pass
+    return {
+        "ok": ok,
+        "target": target,
+        "operator": str(operator or "")[:60],
+        "message_id": message_id,
+        "error": "" if ok else (stderr.strip() or stdout.strip() or "invio non riuscito")[-300:],
+    }
+
+
 def self_test() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp)
@@ -246,6 +331,36 @@ def self_test() -> None:
             assert transcript("+393339998888", base=base)["source"] == "memory"
             assert set_handoff("+393331112222", True, "Anna", base=base)["handoff"]["active"] is True
             assert list_conversations(base=base)[0]["handoff"] is True
+
+            # Invio da parte dell'operatore. Il comando vero non viene mai
+            # eseguito nei test: si usa sempre uno stub.
+            stub = base / "openclaw_stub.sh"
+            stub.write_text(
+                "#!/bin/sh\necho '{\"messageId\":\"m1\"}'\nexit 0\n", encoding="ascii"
+            )
+            stub.chmod(0o755)
+
+            # Con l'handoff attivo: validazione del testo prima dell'invio.
+            set_handoff("+393331112222", True, "Anna", base=base)
+            for bad in ("", "   ", "x" * (MAX_SEND + 1), "ciao\x00"):
+                try:
+                    send_message("+393331112222", bad, base=base, command=str(stub))
+                    raise AssertionError("atteso ValueError")
+                except ValueError:
+                    pass
+
+            # Senza handoff non si scrive al cliente.
+            set_handoff("+393331112222", False, base=base)
+            try:
+                send_message("+393331112222", "ciao", base=base, command=str(stub))
+                raise AssertionError("atteso PermissionError senza handoff")
+            except PermissionError:
+                pass
+
+            set_handoff("+393331112222", True, "Anna", base=base)
+            sent = send_message("+393331112222", "Le scrivo io", "Anna", base=base, command=str(stub))
+            assert sent["ok"] is True and sent["message_id"] == "m1", sent
+            assert memory.profile("+393331112222", base=base)["messages_out"] >= 1
         finally:
             config.db_path = old  # type: ignore[assignment]
     print("SELF-TEST OK")
@@ -259,6 +374,8 @@ def main() -> int:
     parser.add_argument("--handoff", default="")
     parser.add_argument("--release", default="")
     parser.add_argument("--operator", default="")
+    parser.add_argument("--send", default="", help="numero a cui scrivere come operatore")
+    parser.add_argument("--text", default="", help="testo del messaggio (con --send)")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
@@ -271,6 +388,14 @@ def main() -> int:
         if args.release:
             print(json.dumps(set_handoff(args.release, False, args.operator), ensure_ascii=False, indent=2))
             return 0
+        if args.send:
+            try:
+                result = send_message(args.send, args.text, args.operator)
+            except PermissionError as exc:
+                print(f"conversations: {exc}", file=sys.stderr)
+                return 2
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0 if result.get("ok") else 1
         if args.transcript:
             print(json.dumps(transcript(args.transcript, redact=not args.no_redact), ensure_ascii=False, indent=2))
             return 0

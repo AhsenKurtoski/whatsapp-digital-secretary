@@ -313,6 +313,15 @@ select option{background:#081420}
         </div>
         <div id="transcriptFacts" class="fact-chips" hidden></div>
         <div id="transcriptBox" class="transcript" aria-live="polite" aria-label="Transcript della conversazione"></div>
+        <form id="convSendForm" class="row" hidden aria-label="Scrivi al cliente come operatore">
+          <label class="sr-only" for="convSendText" data-i18n="conv.message">Messaggio</label>
+          <textarea class="input" id="convSendText" rows="2" maxlength="1000" required
+                    placeholder="Scrivi come operatore…" data-i18n-ph="conv.messagePh"
+                    aria-describedby="convSendHint"></textarea>
+          <button class="btn primary" id="convSendBtn" type="submit" data-i18n="conv.send">Invia</button>
+          <span class="muted" id="convSendHint" data-i18n="conv.sendHint">Puoi scrivere solo dopo aver preso il controllo.</span>
+          <span id="convSendState" role="status" aria-live="polite"></span>
+        </form>
       </div>
     </section>
 
@@ -466,7 +475,7 @@ select option{background:#081420}
             <div class="kv"><span>1. Apri la pagina di consenso</span><a class="btn ghost" id="renewLink" href="#" target="_blank" rel="noopener">Apri Google</a></div>
             <div class="kv"><span>2. Dopo “Consenti” copia l'indirizzo della pagina</span><span class="mono" style="font-size:10.8px">quello con ?code=…</span></div>
             <div class="renew-step">
-              <input class="input" id="renewUrl" placeholder="http://127.0.0.1:…/oauth2/callback?code=…" autocomplete="off" spellcheck="false">
+              <input class="input" id="renewUrl" placeholder="http://127.0.0.1:…/oauth2/callback?code=…" autocomplete="off" spellcheck="false" aria-label="URL di callback OAuth">
               <button class="btn primary" id="renewFinishBtn" type="button">Completa</button>
             </div>
             <p class="hint" style="margin-top:8px">Se la pagina non si apre non è un problema: l'indirizzo nella barra del browser contiene già il codice. Il codice resta sul PC e non viene registrato nei log.</p>
@@ -489,8 +498,8 @@ select option{background:#081420}
           </div>
           <div class="row">
             <button class="btn" id="exportLeadsBtn" type="button">Esporta CSV</button>
-            <input class="input" id="leadSearch" placeholder="Cerca numero o testo…" style="width:240px">
-            <select id="intentFilter" style="width:170px">
+            <input class="input" id="leadSearch" placeholder="Cerca numero o testo…" style="width:240px" aria-label="Cerca lead per numero o testo">
+            <select id="intentFilter" style="width:170px" aria-label="Filtra lead per intento">
               <option value="">Tutte le intenzioni</option>
               <option value="preventivo">Preventivo</option>
               <option value="call">Call</option>
@@ -508,7 +517,7 @@ select option{background:#081420}
       <div class="card">
         <div class="row" style="justify-content:space-between;margin-bottom:14px">
           <div><h2 style="margin:0 0 4px">Alert e sicurezza</h2><div class="sub">Truffe, injection, richieste di call e nuovi contatti.</div></div>
-          <select id="alertFilter" style="width:170px">
+          <select id="alertFilter" style="width:170px" aria-label="Filtra alert per gravità">
             <option value="">Tutti gli alert</option>
             <option value="scam">Truffe</option>
             <option value="hot">Call</option>
@@ -568,7 +577,7 @@ select option{background:#081420}
           </div>
           <div class="chips" id="quoteCounts" style="margin-bottom:12px"></div>
           <div class="row" style="margin-bottom:10px">
-            <input class="input" id="quoteSearch" type="search" placeholder="Cerca per numero, cliente o email…" style="max-width:360px" autocomplete="off">
+            <input class="input" id="quoteSearch" type="search" placeholder="Cerca per numero, cliente o email…" style="max-width:360px" autocomplete="off" aria-label="Cerca preventivi">
           </div>
           <div class="table-wrap"><table><thead><tr><th>Creato</th><th>Numero</th><th>Cliente</th><th>Totale</th><th>Scadenza</th><th>Stato</th><th>Azioni</th></tr></thead><tbody id="quotesBody"></tbody></table></div>
         </div>
@@ -1435,6 +1444,9 @@ const I18N={
     'conv.col.phone':'Numero','conv.col.count':'Messaggi','conv.col.lang':'Lingua','conv.col.state':'Gestione',
     'conv.col.preview':'Anteprima','conv.take':'Prendi il controllo','conv.release':'Restituisci a Gina','conv.close':'Chiudi',
     'conv.empty':'Nessuna conversazione','conv.memory':'Memoria','conv.human':'Controllo umano','conv.open':'Apri',
+    'conv.message':'Messaggio','conv.messagePh':'Scrivi come operatore…','conv.send':'Invia',
+    'conv.sendHint':'Puoi scrivere solo dopo aver preso il controllo.','conv.sent':'Messaggio inviato',
+    'conv.sendError':'Invio non riuscito',
     'stats.title':'Statistiche','stats.chart':'Messaggi e lead, ultimi 14 giorni',
     'stats.conversations':'Conversazioni','stats.leads':'Lead','stats.quotes':'Preventivi emessi',
     'stats.approved':'Preventivi approvati','stats.conversion':'Conversione lead','stats.response':'Tempo medio di risposta',
@@ -1511,6 +1523,9 @@ const I18N={
     'conv.col.phone':'Number','conv.col.count':'Messages','conv.col.lang':'Language','conv.col.state':'Handling',
     'conv.col.preview':'Preview','conv.take':'Take over','conv.release':'Hand back to Gina','conv.close':'Close',
     'conv.empty':'No conversations','conv.memory':'Memory','conv.human':'Human takeover','conv.open':'Open',
+    'conv.message':'Message','conv.messagePh':'Write as the operator…','conv.send':'Send',
+    'conv.sendHint':'You can write only after taking over the conversation.','conv.sent':'Message sent',
+    'conv.sendError':'Sending failed',
     'stats.title':'Analytics','stats.chart':'Messages and leads, last 14 days',
     'stats.conversations':'Conversations','stats.leads':'Leads','stats.quotes':'Quotes issued',
     'stats.approved':'Approved quotes','stats.conversion':'Lead conversion','stats.response':'Average response time',
@@ -1712,8 +1727,28 @@ async function openTranscript(phone){
     const active=!!(r.data.handoff&&r.data.handoff.active);
     if($('handoffBtn')) $('handoffBtn').hidden=active;
     if($('handoffRelease')) $('handoffRelease').hidden=!active;
+    const canWrite=!!(state.me&&state.me.can_write);
+    if($('convSendForm')) $('convSendForm').hidden=!(active&&canWrite);
+    if($('convSendState')) $('convSendState').textContent='';
     $('transcriptBox').scrollTop=$('transcriptBox').scrollHeight;
   }catch(e){ toast(t('lbl.transcript')+': '+e.message,true); }
+}
+async function sendAsOperator(ev){
+  if(ev) ev.preventDefault();
+  const box=$('convSendText');
+  const text=((box&&box.value)||'').trim();
+  if(!state.phone){ toast(t('conv.sendError'),true); return; }
+  if(!text){ if(box) box.focus(); return; }
+  const btn=$('convSendBtn');
+  if(btn) btn.disabled=true;
+  try{
+    const r=await api('/api/conversations/send',{method:'POST',body:JSON.stringify({phone:state.phone,text})});
+    if(!r.ok) throw new Error(r.error||t('conv.sendError'));
+    if(box) box.value='';
+    await openTranscript(state.phone);
+    if($('convSendState')) $('convSendState').textContent=t('conv.sent');
+  }catch(e){ toast(t('conv.sendError')+': '+e.message,true); }
+  finally{ if(btn) btn.disabled=false; }
 }
 async function setHandoff(active){
   if(!state.phone) return;
@@ -1796,6 +1831,7 @@ async function initGina(){
   try{ const me=await api('/api/me'); state.me=me.user; }catch(e){ state.me={role:'viewer',can_write:false}; }
   const canWrite=!!(state.me&&state.me.can_write);
   ['handoffBtn','applyModelBtn'].forEach(id=>{ if($(id)) $(id).hidden=!canWrite; });
+  if($('convSendForm')) $('convSendForm').addEventListener('submit',sendAsOperator);
   if($('handoffBtn')) $('handoffBtn').addEventListener('click',()=>setHandoff(true));
   if($('handoffRelease')) $('handoffRelease').addEventListener('click',()=>setHandoff(false));
   if($('transcriptClose')) $('transcriptClose').addEventListener('click',()=>{$('transcriptCard').hidden=true;});

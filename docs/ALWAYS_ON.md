@@ -74,6 +74,63 @@ powercfg /change hibernate-timeout-ac 0
 `healthcheck.py` controlla già la presenza del task **OpenClaw WSL Gateway** e te la
 segnala nella dashboard (Health) e su WhatsApp.
 
+## Se ti basta la fascia 10:00–20:00
+
+Non tutti hanno bisogno della notte: se la segreteria deve rispondere solo negli orari
+di apertura, puoi spegnere il gateway fuori fascia con due timer systemd utente. Il
+computer resta accesso, ma il bot non consuma AI e non risponde alle 3 di notte.
+
+```bash
+mkdir -p ~/.config/systemd/user
+
+cat > ~/.config/systemd/user/openclaw-hours-on.service <<'EOF'
+[Unit]
+Description=Accendi la segreteria WhatsApp
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl --user start openclaw-gateway.service
+EOF
+
+cat > ~/.config/systemd/user/openclaw-hours-off.service <<'EOF'
+[Unit]
+Description=Spegni la segreteria WhatsApp
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl --user stop openclaw-gateway.service
+EOF
+
+cat > ~/.config/systemd/user/openclaw-hours-on.timer <<'EOF'
+[Unit]
+Description=Finestra di servizio dalle 10:00
+[Timer]
+OnCalendar=*-*-* 10:00:00
+Persistent=false
+[Install]
+WantedBy=timers.target
+EOF
+
+cat > ~/.config/systemd/user/openclaw-hours-off.timer <<'EOF'
+[Unit]
+Description=Fine finestra di servizio alle 20:00
+[Timer]
+OnCalendar=*-*-* 20:00:00
+Persistent=false
+[Install]
+WantedBy=timers.target
+EOF
+
+systemctl --user daemon-reload
+systemctl --user enable --now openclaw-hours-on.timer openclaw-hours-off.timer
+```
+
+Verifica con `systemctl --user list-timers 'openclaw-hours-*'` e controlla che alle 20:00
+`systemctl --user is-active openclaw-gateway` risponda `inactive`.
+
+> I messaggi arrivati a gateway spento restano sul server WhatsApp: alla riaccensione
+> WhatsApp Web li consegna e il bot può rispondere in ritardo. Se non vuoi risposte
+> fuori orario nemmeno al risveglio, tieni la finestra più stretta o rispondi tu dal
+> pannello Conversazioni dopo aver preso il controllo.
+
 ## Alternativa: Oracle Cloud Always Free (24/7 indipendente dal tuo PC)
 
 Serve una carta per la verifica (addebito tipico 0–1 € stornato), **non** un piano a

@@ -7,6 +7,7 @@ import urllib.error
 import urllib.request
 from http.server import HTTPServer
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import support  # noqa: F401
@@ -104,6 +105,41 @@ class GinaEndpointsTests(unittest.TestCase):
         status, data = self.request("/api/conversations/handoff", self.operator["token"], "POST",
                                     {"phone": phone, "active": False})
         self.assertFalse(data["handoff"]["active"])
+
+    def test_chat_send_needs_operator_csrf_and_handoff(self):
+        phone = "+393331119999"
+        memory.record(phone, "user", "Buongiorno", intent="quote")
+
+        status, _ = self.request("/api/conversations/send", self.viewer["token"], "POST",
+                                 {"phone": phone, "text": "ciao"})
+        self.assertEqual(status, 403)
+
+        # Il throttle tra due invii è configurabile: nei test lo azzeriamo per
+        # verificare i codici di errore senza attendere un secondo reale.
+        with mock.patch.object(dashboard, "SEND_SECONDS", 0):
+            status, data = self.request("/api/conversations/send", self.operator["token"], "POST",
+                                        {"phone": phone, "text": "ciao"})
+            self.assertEqual(status, 409)
+            self.assertIn("controllo", data["error"])
+
+            # Testo vuoto: validato prima dell'handoff, risposta 400.
+            status, _ = self.request("/api/conversations/send", self.operator["token"], "POST",
+                                     {"phone": phone, "text": ""})
+            self.assertEqual(status, 400)
+
+        memory.set_handoff(phone, True, "Operatore")
+        sent = {"ok": True, "target": phone, "operator": "Operatore", "message_id": "m1", "error": ""}
+        with mock.patch.object(dashboard, "SEND_SECONDS", 0), mock.patch.object(
+            dashboard.conversations_view, "send_message", return_value=sent
+        ) as fake:
+            status, data = self.request("/api/conversations/send", self.operator["token"], "POST",
+                                        {"phone": phone, "text": "Le scrivo io"})
+        self.assertEqual(status, 200)
+        self.assertTrue(data["ok"])
+        fake.assert_called_once()
+        self.assertEqual(fake.call_args[0][0], phone)
+        self.assertEqual(fake.call_args[0][1], "Le scrivo io")
+        memory.set_handoff(phone, False)
 
     def test_stats_and_usage(self):
         status, data = self.request("/api/stats", self.viewer["token"])

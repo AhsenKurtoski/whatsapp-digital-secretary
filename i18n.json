@@ -477,5 +477,16 @@
   "Cookie HttpOnly · SameSite Strict · CSRF · CSP · rate limit login · directory 700 · chiavi 600. Le sessioni scadono dopo 12 ore; “Esci da tutti” revoca ogni dispositivo e rigenera il token.": "HttpOnly cookie · SameSite Strict · CSRF · CSP · login rate limit · 700 directory · 600 keys. Sessions expire after 12 hours; “Sign out everywhere” revokes every device and rotates the token."
 ,
   "Verifica integrità": "Verify integrity",
-  "La catena di hash è verificabile in locale, senza rete.": "The hash chain can be verified locally, without a network."
+  "La catena di hash è verificabile in locale, senza rete.": "The hash chain can be verified locally, without a network.",
+  "Invia": "Send",
+  "Scrivi come operatore…": "Write as the operator…",
+  "Scrivi al cliente come operatore": "Write to the customer as the operator",
+  "URL di callback OAuth": "OAuth callback URL",
+  "Cerca lead per numero o testo": "Search leads by number or text",
+  "Filtra lead per intento": "Filter leads by intent",
+  "Filtra alert per gravità": "Filter alerts by severity",
+  "Cerca preventivi": "Search quotes",
+  "Puoi scrivere solo dopo aver preso il controllo.": "You can write only after taking over the conversation.",
+  "Messaggio inviato": "Message sent",
+  "Invio non riuscito": "Sending failed"
 }

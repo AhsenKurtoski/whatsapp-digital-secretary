@@ -124,8 +124,29 @@ LAST_LOGIN: str | None = None
 TOKEN_ROTATED_AT: str | None = None
 MAX_POOL_KEYS = 7
 
+# Rate limiting configurabile da config.json ("rate_limit"): i valori fuori
+# scala vengono limitati, così una configurazione sbagliata non disattiva le
+# protezioni né blocca il titolare per un giorno intero.
+RATE_CFG = CFG.get("rate_limit") if isinstance(CFG.get("rate_limit"), dict) else {}
 
-def _throttled(key: str, seconds: float = 15.0) -> bool:
+
+def _rate_value(name: str, default: float, minimum: float, maximum: float) -> float:
+    try:
+        value = float(RATE_CFG.get(name, default))
+    except (TypeError, ValueError):
+        return float(default)
+    return max(float(minimum), min(value, float(maximum)))
+
+
+LOGIN_MAX_FAILS = int(_rate_value("login_max_fails", 10, 1, 1000))
+LOGIN_WINDOW = _rate_value("login_window_seconds", 300, 30, 86400)
+ACTION_SECONDS = _rate_value("action_seconds", 15, 0, 3600)
+SEND_SECONDS = _rate_value("send_seconds", 1, 0, 60)
+
+
+def _throttled(key: str, seconds: float | None = None) -> bool:
+    if seconds is None:
+        seconds = ACTION_SECONDS
     """Limita azioni costose (invii, demo) senza dipendere da servizi esterni."""
     now = time.time()
     if len(ACTION_LIMIT) > 500:
@@ -864,7 +885,8 @@ def security_status() -> dict:
         "last_login": LAST_LOGIN or saved.get("last_login"),
         "token_rotated_at": TOKEN_ROTATED_AT or saved.get("token_rotated_at"),
         "failed_logins_5m": sum(len(v) for v in LOGIN_FAILS.values()),
-        "max_login_fails": 10,
+        "max_login_fails": LOGIN_MAX_FAILS,
+        "login_window_seconds": int(LOGIN_WINDOW),
         "lock_window_seconds": 300,
         "session_hours": SESSION_TTL // 3600,
         "sessions_active": len(_live_sessions()),
@@ -2101,10 +2123,14 @@ class Handler(BaseHTTPRequestHandler):
             code = (form.get("code") or [""])[0].strip()
             ip = self.client_address[0]
             now = time.time()
-            fails = [t for t in LOGIN_FAILS.get(ip, []) if now - t < 300]
+            fails = [t for t in LOGIN_FAILS.get(ip, []) if now - t < LOGIN_WINDOW]
             LOGIN_FAILS[ip] = fails
-            if len(fails) >= 10:
-                self._json({"ok": False, "error": "Troppi tentativi. Riprova tra 5 minuti."}, 429)
+            if len(fails) >= LOGIN_MAX_FAILS:
+                minutes = max(1, int(LOGIN_WINDOW // 60))
+                self._json(
+                    {"ok": False, "error": f"Troppi tentativi. Riprova tra {minutes} minuti."},
+                    429,
+                )
                 return
             valid_user = None
             if token and identity_store is not None:
@@ -2163,7 +2189,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"ok": False, "error": "permesso negato"}, 403)
             return
         if path in {"/api/contacts/summary", "/api/reminders/run", "/api/quotes/demo"}:
-            if _throttled(f"{self.client_address[0]}:{path}", 15.0):
+            if _throttled(f"{self.client_address[0]}:{path}", ACTION_SECONDS):
                 self._json({"ok": False, "error": "Attendi qualche secondo prima di ripetere."}, 429)
                 return
         if path == "/api/restart":
@@ -2295,6 +2321,34 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._audit("handoff", f"{phone} active={active}")
             self._json({"ok": True, **result})
+            return
+        if path == "/api/conversations/send":
+            data = self._json_body()
+            phone = str(data.get("phone") or "").strip()
+            text = str(data.get("text") or "")
+            if conversations_view is None:
+                self._json({"ok": False, "error": "modulo conversazioni non disponibile"}, 503)
+                return
+            if _throttled(f"{self.client_address[0]}:chat-send", SEND_SECONDS):
+                self._json({"ok": False, "error": "Attendi prima di inviare un altro messaggio."}, 429)
+                return
+            try:
+                result = conversations_view.send_message(
+                    phone, text, str(getattr(self, "actor", "") or "operatore")
+                )
+            except PermissionError as exc:
+                self._json({"ok": False, "error": str(exc), "handoff": False}, 409)
+                return
+            except ValueError as exc:
+                self._json({"ok": False, "error": str(exc)}, 400)
+                return
+            except Exception as exc:
+                self._json({"ok": False, "error": str(exc)[:200]}, 502)
+                return
+            # Il testo del messaggio non finisce nei log: solo numero ed esito.
+            self._audit("chat.send", phone, bool(result.get("ok")))
+            log(f"chat.send {phone}: {'ok' if result.get('ok') else 'failed'}")
+            self._json(result, 200 if result.get("ok") else 502)
             return
         if path == "/api/users":
             data = self._json_body()

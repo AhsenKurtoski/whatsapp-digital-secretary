@@ -73,6 +73,7 @@ explicit approval.
 
 | Document | What it covers |
 |---|---|
+| [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | Plain-language quick start for non-technical users: first install to first reply in 15 minutes (Italian) |
 | [`docs/WEBSITE.md`](docs/WEBSITE.md) | Public site: build, SEO audit, analytics, security headers, deploy |
 | [`docs/TESTING.md`](docs/TESTING.md) | Automated checks plus the manual WhatsApp/dashboard/Google checklist |
 | [`docs/E2E.md`](docs/E2E.md) | End-to-end run with a second phone and test accounts |
@@ -333,6 +334,7 @@ All business data lives in `~/.config/digital-secretary/config.json`. Start from
 | `whatsapp_number` | Bot number, for display only |
 | `quote_prefix` | Prefix for quote numbers (default `PREV`) |
 | `vat_rate` | Default VAT percentage, e.g. `22` |
+| `rate_limit` | Anti-abuse limits: `login_max_fails`, `login_window_seconds`, `action_seconds`, `send_seconds` (out-of-range values are clamped) |
 | `quote_valid_days` | Quote validity in days (default `30`) |
 | `payment_terms` | Payment terms printed on every quote |
 | `reminder_min_age_minutes` | How long an approval may wait before a reminder |
@@ -385,7 +387,10 @@ locally when the request is created and is attached only after approval.
 - Token comparison is constant-time; the cookie is `HttpOnly` + `SameSite=Strict`.
 - POST requests require `X-Requested-With: dashboard` and a same-origin `Origin`.
 - Security headers: CSP, `X-Frame-Options: DENY`, `nosniff`, referrer policy.
-- Login rate limiting and token rotation from the Security tab.
+- Configurable rate limiting (`rate_limit` in `config.json`) for login, actions and
+  outgoing messages, plus token rotation from the Security tab.
+- From the Conversations panel you can take over a chat and reply yourself as the
+  operator: Gina stays silent until you hand the conversation back.
 - Secrets are stored in `600` files outside the repository.
 - Tool profile is `minimal`; code mode is disabled; only the three approval MCP tools
   (email, calendar, quote) are exposed to the model.
@@ -454,7 +459,7 @@ Everything below is implemented and tested, not a roadmap:
 | AI quotas | requests, tokens, 429s, thresholds and alerts | `python3 quotas.py --json` |
 | Users and roles | admin / operator / viewer, hashed tokens, per-user audit | `python3 identity.py --add "Anna" --role operator` |
 | Webhooks | HMAC-signed events to Zapier/Make/HubSpot | `python3 webhooks.py --list` |
-| Conversations | read-only transcripts, redaction, bot→human handoff | dashboard → Conversations |
+| Conversations | transcripts with redaction, bot→human handoff and operator replies from the dashboard | dashboard → Conversations |
 | Analytics | KPIs and 14-day series from real data | dashboard → Analytics |
 | GDPR | access, erasure, retention, data inventory | [`docs/GDPR.md`](docs/GDPR.md) · `python3 gdpr.py --report` |
 | Encrypted backup | AES-256-GCM, rotation, restore verified with SHA-256, optional off-site copy | [`docs/DISASTER_RECOVERY.md`](docs/DISASTER_RECOVERY.md) |

@@ -68,6 +68,7 @@ documenti veri. Ogni azione che esce dall'azienda passa da un'approvazione espli
 
 | Documento | Cosa spiega |
 |---|---|
+| [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | Guida rapida per chi non è tecnico: dalla prima installazione alla prima risposta, in 15 minuti |
 | [`docs/WEBSITE.md`](docs/WEBSITE.md) | Sito pubblico: build, audit SEO, analytics, header di sicurezza, deploy |
 | [`docs/TESTING.md`](docs/TESTING.md) | Controlli automatici e checklist manuale WhatsApp/dashboard/Google |
 | [`docs/E2E.md`](docs/E2E.md) | Prova end-to-end con un secondo telefono e account di test |
@@ -329,6 +330,7 @@ Tutti i dati dell'attività vivono in `~/.config/digital-secretary/config.json`.
 | `whatsapp_number` | Numero del bot, solo per visualizzazione |
 | `quote_prefix` | Prefisso dei numeri preventivo (default `PREV`) |
 | `vat_rate` | IVA percentuale predefinita, es. `22` |
+| `rate_limit` | Limiti anti-abuso: `login_max_fails`, `login_window_seconds`, `action_seconds`, `send_seconds` (valori fuori scala vengono limitati dal sistema) |
 | `quote_valid_days` | Validità del preventivo in giorni (default `30`) |
 | `payment_terms` | Condizioni di pagamento stampate sul preventivo |
 | `reminder_min_age_minutes` | Attesa prima del promemoria su un'approvazione |
@@ -382,7 +384,10 @@ approvazione; la dashboard esegue l'azione approvata.
 - Il confronto del token è constant-time; il cookie è `HttpOnly` + `SameSite=Strict`.
 - Le POST richiedono `X-Requested-With: dashboard` e un `Origin` same-origin.
 - Header di sicurezza: CSP, `X-Frame-Options: DENY`, `nosniff`, referrer policy.
-- Rate limiting sul login e rotazione del token dalla scheda Sicurezza.
+- Rate limiting configurabile (`rate_limit` in `config.json`) su login, azioni e invio
+  messaggi, più rotazione del token dalla scheda Sicurezza.
+- Dal pannello Conversazioni puoi prendere il controllo di una chat e rispondere tu
+  come operatore: Gina resta in silenzio finché non restituisci la conversazione.
 - I segreti stanno in file `600` fuori dal repository.
 - Profilo tool `minimal`; code mode disattivato; al modello sono esposti solo i tre
   tool MCP di approvazione (email, calendario, preventivo).
@@ -454,7 +459,7 @@ implementata in codice testato, non è un annuncio:
 | Quote AI | richieste, token, 429, soglie e alert | `python3 quotas.py --json` |
 | Utenti e ruoli | admin / operatore / solo lettura, token hash, audit per utente | `python3 identity.py --add "Anna" --role operator` |
 | Webhook | eventi firmati HMAC verso Zapier/Make/HubSpot | `python3 webhooks.py --list` |
-| Conversazioni | transcript in sola lettura, redazione, handoff bot→umano | dashboard → Conversazioni |
+| Conversazioni | transcript con redazione, handoff bot→umano e invio dei messaggi come operatore dalla dashboard | dashboard → Conversazioni |
 | Statistiche | KPI e serie 14 giorni sui dati reali | dashboard → Statistiche |
 | GDPR | accesso, cancellazione, retention, inventario dati | [`docs/GDPR.md`](docs/GDPR.md) · `python3 gdpr.py --report` |
 | Backup cifrato | AES-256-GCM, rotazione, ripristino verificato con SHA-256, copia fuori sede opzionale | [`docs/DISASTER_RECOVERY.md`](docs/DISASTER_RECOVERY.md) |
