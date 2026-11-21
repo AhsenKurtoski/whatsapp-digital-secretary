@@ -211,8 +211,9 @@ customer data is sent to a third-party dashboard service.
 ## Requirements
 
 - Linux or WSL2 with systemd user services
-- Python **3.11+**, tested in CI on 3.11, 3.12, 3.13 and 3.14 (standard library only; on
-  native Windows install `tzdata` for the full IANA timezone database)
+- Python **3.11+**, tested in CI on 3.11, 3.12, 3.13 and 3.14 (standard library plus
+  `cryptography`, used for memory and backup encryption: `python3 -m pip install -r requirements.txt`; on
+  native Windows also install `tzdata` for the full IANA timezone database)
 - Node.js **22+** and [OpenClaw](https://openclaw.ai) **2026.4.22+** installed globally
   (the inbound burst guard uses `before_dispatch`; the installer rejects versions below
   **2026.4.22**, detects the optional `--accept-capabilities` and
@@ -245,6 +246,9 @@ your real installation is not touched.
 ```bash
 git clone https://github.com/AhsenKurtoski/whatsapp-digital-secretary.git
 cd whatsapp-digital-secretary
+
+# 0. Runtime dependency (client memory and backups, AES-256-GCM)
+python3 -m pip install -r requirements.txt
 
 # 1. Create the business configuration and the persona
 python3 setup.py

@@ -209,8 +209,9 @@ Nessun dato dei clienti viene inviato a un servizio dashboard di terze parti.
 ## Requisiti
 
 - Linux o WSL2 con systemd utente
-- Python **3.11+**, testato in CI su 3.11, 3.12, 3.13 e 3.14 (solo standard library; su
-  Windows nativo installa `tzdata` per il database completo dei fusi orari IANA)
+- Python **3.11+**, testato in CI su 3.11, 3.12, 3.13 e 3.14 (standard library più
+  `cryptography`, usata per memoria e backup cifrati: `python3 -m pip install -r requirements.txt`; su
+  Windows nativo installa anche `tzdata` per il database completo dei fusi orari IANA)
 - Node.js **22+** e [OpenClaw](https://openclaw.ai) **2026.4.22+** installato globalmente
   (la guardia anti-raffica in ingresso usa `before_dispatch`; l'installer rifiuta le
   versioni precedenti alla **2026.4.22**, rileva `--accept-capabilities` e
@@ -242,6 +243,9 @@ inviato nulla e la tua installazione reale non viene toccata.
 ```bash
 git clone https://github.com/AhsenKurtoski/whatsapp-digital-secretary.git
 cd whatsapp-digital-secretary
+
+# 0. Dipendenza runtime (memoria clienti e backup cifrati AES-256-GCM)
+python3 -m pip install -r requirements.txt
 
 # 1. Crea la configurazione dell'attività e la persona del bot
 python3 setup.py

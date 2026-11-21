@@ -1,0 +1,9 @@
+# Gina — WhatsApp Digital Secretary
+#
+# Dipendenze runtime. Il resto del progetto usa solo la standard library.
+#   python3 -m pip install -r requirements.txt
+#
+# `cryptography` serve a:
+#   - memory.py: memoria clienti cifrata a riposo (AES-256-GCM)
+#   - backup.py: archivi di backup cifrati (AES-256-GCM, chiave da scrypt)
+cryptography>=42,<51

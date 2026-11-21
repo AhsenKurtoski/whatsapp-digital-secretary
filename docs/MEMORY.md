@@ -76,7 +76,10 @@ collasso dei doppioni consecutivi, redazione di email e numeri, handoff e oblio.
 ## Cifratura dei dati attivi
 
 I file sotto `memory/contacts/` non contengono più dati leggibili: ogni file è
-`GINAENC1` + nonce AES-GCM a 96 bit + ciphertext (AES-256-GCM). La chiave sta in
+`GINAENC1` + nonce AES-GCM a 96 bit + ciphertext (AES-256-GCM). Serve `cryptography`
+(`python3 -m pip install -r requirements.txt`): senza il pacchetto ogni lettura o
+scrittura di memoria fallisce con `ModuleNotFoundError`, non scrive mai in chiaro.
+La chiave sta in
 `memory/memory.key` con permessi `0600`, oppure in `SECRETARY_MEMORY_KEY` (base64 di
 32 byte) per chi usa un gestore di segreti. Perdere la chiave significa perdere le
 memorie: includila nei backup cifrati.

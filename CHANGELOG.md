@@ -54,6 +54,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **CI stayed red: the test job had no runtime dependency installed**: `memory.py`
+  (client memory encrypted at rest) and `backup.py` import `cryptography`, but the
+  `Tests (Python 3.11–3.14)` jobs installed nothing, so all four failed in
+  **Run unit tests** with 30 `ModuleNotFoundError: No module named 'cryptography'`
+  errors. The dependency is now declared in `requirements.txt` (referenced by
+  `requirements-dev.txt`) and installed by the test job before the suite, so the
+  encryption paths are actually exercised in CI. `README.md`, `README.it.md` and
+  `docs/MEMORY.md` no longer claim a standard-library-only install.
 - **CI was red on every push: `mypy` rejected `verify_audit()`**: the report dict mixed
   `int` and `None`, so mypy inferred `int | None` values and refused
   `report["entries"] += 1` (two errors in `identity.py`). The counters are now local
