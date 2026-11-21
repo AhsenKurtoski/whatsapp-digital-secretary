@@ -266,11 +266,17 @@ def verify_audit(base: Path | None = None) -> dict:
     ordine fanno fallire la verifica.
     """
     segments = audit_segments(base)
-    report = {"entries": 0, "chained": 0, "broken_at": None, "broken_in": None,
-              "segments": len(segments)}
+    # Contatori locali: un dict misto int/None rendeva il tipo dei valori
+    # ``int | None`` e mypy rifiutava ``report["entries"] += 1``.
+    entries = 0
+    chained = 0
+
+    def report(broken_at: int | None = None, broken_in: str | None = None) -> dict:
+        return {"ok": broken_at is None, "entries": entries, "chained": chained,
+                "broken_at": broken_at, "broken_in": broken_in, "segments": len(segments)}
 
     def broken(index: int, name: str) -> dict:
-        return {"ok": False, **report, "broken_at": index, "broken_in": name}
+        return report(index, name)
 
     prev = "genesis"
     for path in segments + [audit_path(base)]:
@@ -282,7 +288,7 @@ def verify_audit(base: Path | None = None) -> dict:
             return broken(0, path.name)
         lines = [line for line in text.splitlines() if line.strip()]
         for index, line in enumerate(lines):
-            report["entries"] += 1
+            entries += 1
             try:
                 item = json.loads(line)
             except Exception:
@@ -298,8 +304,8 @@ def verify_audit(base: Path | None = None) -> dict:
             if not hmac.compare_digest(str(item.get("hash")), expected):
                 return broken(index, path.name)
             prev = expected
-            report["chained"] += 1
-    return {"ok": True, **report}
+            chained += 1
+    return report()
 
 
 def totp_secret() -> str:

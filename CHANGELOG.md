@@ -54,6 +54,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **CI was red on every push: `mypy` rejected `verify_audit()`**: the report dict mixed
+  `int` and `None`, so mypy inferred `int | None` values and refused
+  `report["entries"] += 1` (two errors in `identity.py`). The counters are now local
+  integers and the dict is built by one helper, with the same keys and behaviour.
 - **A non-ASCII token crashed the login page**: `hmac.compare_digest` accepts `str`
   only when it is ASCII, so a request with `token=città` (or a cookie with non-ASCII
   bytes) raised `TypeError` and produced a 500 instead of a 401. Both the login handler

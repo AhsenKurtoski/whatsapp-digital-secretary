@@ -110,7 +110,7 @@ jobs:
           python seo_audit.py --self-test
           python -m unittest discover -s tests -p 'test_site.py' -v
 
-      - name: Coverage (soglia 80%)
+      - name: Coverage (soglia 86%)
         run: bash scripts/coverage.sh
 
   shell:
