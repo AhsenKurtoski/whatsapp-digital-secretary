@@ -7,6 +7,6 @@ ruff>=0.6,<1
 mypy>=1.10,<2
 bandit[toml]>=1.7,<2
 pip-audit>=2.7,<3
-coverage[toml]>=7.5,<8
+coverage[toml]>=7.17.3,<8
 # Dipendenze runtime (cryptography: memoria e backup cifrati AES-256-GCM).
 -r requirements.txt
