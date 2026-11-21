@@ -29,7 +29,7 @@ python3 remote_access.py --self-test
 ```
 
 Expected result: `scripts/verify.sh` prints `VERIFICA OK`, the whole suite passes
-(322 tests at the time of writing), including
+(330 tests at the time of writing), including
 the isolated installer, remote-access and OpenClaw compatibility tests; the compile
 check is silent, Code.gs prints
 `Code.gs handlers: OK`, the guard test prints `secretary guard: OK`, and every
@@ -43,7 +43,11 @@ report PASS/WARN/FAIL controlla le dipendenze Python (`deps`: senza `cryptograph
 memoria e backup cifrati non funzionano, e l'azione rimanda a `requirements.txt`), i
 file installati, le schede Preventivi/Contatti, il
 motore PDF, le regole della persona, la policy anti-raffica, la versione minima e le
-feature di OpenClaw, l'allowlist MCP, le unità systemd e le API locali. Ogni criticità stampa il comando che la risolve. Lo stesso
+feature di OpenClaw, l'allowlist MCP, le unità systemd e le API locali. Con i servizi
+attivi esegue anche `openclaw mcp probe secretary` e riporta in **Tool visibili al gateway**
+i tool che il bot ha davvero: se manca `request_quote` il cliente si sentirebbe dire che
+il preventivo non è disponibile, quindi è un `FAIL` con il comando per rimediare. Ogni
+criticità stampa il comando che la risolve. Lo stesso
 report è in dashboard (Sistema → Diagnosi) e `install.sh` lo esegue automaticamente.
 
 Verifica anche il percorso manuale: **Preventivi → Nuovo preventivo**, compila una voce

@@ -593,7 +593,7 @@ def connector_status() -> dict:
         raw = json.loads(out[out.find("{"):])
         server = (raw.get("servers") or {}).get(MCP_SERVER) or {}
         mcp_ok = bool(server) and not (server.get("error") or "")
-        mcp_tools = [str(x).split("__", 1)[-1] for x in (raw.get("tools") or [])]
+        mcp_tools = [str(x).rsplit("__", 1)[-1] for x in (raw.get("tools") or [])]
     except Exception:
         mcp_error = (err or out or "probe MCP fallito")[:180]
     cfg = read_json(CONFIG, {})

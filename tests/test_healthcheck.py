@@ -130,6 +130,21 @@ class HealthcheckTests(unittest.TestCase):
         self.assertFalse(result[1]["expired"])
         self.assertGreater(result[1]["days_left"], 2)
 
+    def test_check_mcp_accepts_both_tool_namespaces(self):
+        server = healthcheck.MCP_SERVER
+        payload = json.dumps({
+            "servers": {server: {"status": "connected"}},
+            "tools": [f"mcp__{server}__gmail_search", f"{server}__calendar_list"],
+        })
+        original = healthcheck._run
+        healthcheck._run = lambda cmd, **kw: (0, payload, "")
+        try:
+            check = healthcheck.check_mcp()
+        finally:
+            healthcheck._run = original
+        self.assertEqual(check["status"], "ok")
+        self.assertEqual(check["meta"]["tools"], 2)
+
     def test_systemctl_next_parses_json_microseconds(self):
         payload = json.dumps([{"unit": "openclaw-secretary-health.timer", "next": 1793622558821633}])
         original = healthcheck._run

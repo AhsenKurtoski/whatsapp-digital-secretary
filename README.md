@@ -533,6 +533,7 @@ private keys. Never expose port 8787 to the public Internet.
 | Gmail fails | Re-authorize `gog` or activate the Apps Script bridge; check the dashboard Connectors tab |
 | Dashboard is slow | The status endpoint reads the watchdog snapshot; run `watchdog.py` once and check `watchdog_state.json` |
 | Gateway startup is slow | Large session stores and first-run maintenance can take minutes; keep the service running and avoid restart loops |
+| The bot says it cannot generate the PDF | The gateway does not see the tools: `openclaw mcp probe secretary --json` must list `request_quote`. Then `python3 ~/.openclaw/secretary/doctor.py --short` (check **Tool visibili al gateway**) and `systemctl --user restart openclaw-gateway` |
 
 ## Roadmap
 

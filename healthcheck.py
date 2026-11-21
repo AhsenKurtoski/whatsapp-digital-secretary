@@ -958,7 +958,7 @@ def check_mcp() -> dict:
     )
     data = _json_from(out)
     server = (data.get("servers") or {}).get(MCP_SERVER) or {}
-    tools = [str(x).split("__", 1)[-1] for x in (data.get("tools") or [])]
+    tools = [str(x).rsplit("__", 1)[-1] for x in (data.get("tools") or [])]
     ok = bool(server) and not (server.get("error") or "")
     if ok:
         return _check(

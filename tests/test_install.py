@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import stat
@@ -134,6 +135,63 @@ class InstallerTests(unittest.TestCase):
             self.assertIn("cryptography", result.stderr)
             self.assertIn("requirements.txt", result.stderr)
             self.assertFalse((home / ".openclaw" / "secretary").exists())
+
+    def test_installer_reports_the_tools_the_gateway_exposes(self):
+        with tempfile.TemporaryDirectory(prefix="secretary-install-tools-") as tmp:
+            tmp_path = Path(tmp)
+            env, home, bin_dir = _base_environment(tmp_path)
+            probe = bin_dir / "openclaw"
+            payload = json.dumps({
+                "servers": {"secretary": {}},
+                "tools": ["secretary__request_quote", "mcp__secretary__request_email"],
+            })
+            probe.write_text(
+                "#!/bin/sh\n"
+                "case \"$*\" in\n"
+                "  *'mcp probe'*) printf '%s\\n' '" + payload + "'; exit 0;;\n"
+                "esac\n"
+                "exit 127\n",
+                encoding="ascii",
+            )
+            probe.chmod(0o755)
+            result = subprocess.run(
+                [self.bash, str(ROOT / "scripts" / "install.sh")],
+                env=env,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=120,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("bot tools: request_email,request_quote", result.stdout)
+
+    def test_installer_fails_when_gateway_restart_fails(self):
+        with tempfile.TemporaryDirectory(prefix="secretary-install-restart-") as tmp:
+            tmp_path = Path(tmp)
+            env, home, bin_dir = _base_environment(tmp_path)
+            # systemctl fallisce solo sul riavvio del gateway: l'installazione
+            # non deve dichiararsi riuscita con il bot senza tool.
+            systemctl = bin_dir / "systemctl"
+            systemctl.write_text(
+                "#!/bin/sh\ncase \"$*\" in *openclaw-gateway.service*) exit 1;; esac\nexit 0\n",
+                encoding="ascii",
+            )
+            systemctl.chmod(0o755)
+            result = subprocess.run(
+                [self.bash, str(ROOT / "scripts" / "install.sh")],
+                env=env,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=120,
+                check=False,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("openclaw-gateway.service", result.stderr)
+            self.assertIn("systemctl --user status", result.stderr)
 
     def test_installer_fails_when_remote_access_source_is_missing(self):
         with tempfile.TemporaryDirectory(prefix="secretary-install-missing-") as tmp:

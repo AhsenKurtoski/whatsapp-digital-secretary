@@ -534,6 +534,7 @@ WhatsApp e le chiavi private. Non esporre mai la porta 8787 su Internet.
 | Gmail non funziona | Ri-autorizza `gog` o attiva il bridge Apps Script; controlla la scheda Connettori |
 | Dashboard lenta | Lo stato WhatsApp arriva dallo snapshot del watchdog; esegui `watchdog.py` e controlla `watchdog_state.json` |
 | Avvio gateway lento | Store di sessioni grandi e manutenzione al primo avvio possono richiedere minuti; lascia il servizio attivo ed evita riavvii a raffica |
+| Il bot dice di non poter generare il PDF | Il gateway non vede i tool: `openclaw mcp probe secretary --json` deve elencare `request_quote`. Poi `python3 ~/.openclaw/secretary/doctor.py --short` (controllo **Tool visibili al gateway**) e `systemctl --user restart openclaw-gateway` |
 
 ## Roadmap
 

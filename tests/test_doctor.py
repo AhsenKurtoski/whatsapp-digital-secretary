@@ -164,6 +164,49 @@ class DoctorTests(unittest.TestCase):
              "plugins.entries.secretary-guard.hooks.allowConversationAccess", "true"],
         )
 
+    def test_gateway_tools_ok_lists_tools(self):
+        check = doctor._gateway_tools_check({
+            "available": True, "ok": True, "error": "",
+            "tools": ["request_quote", "request_email", "request_calendar"],
+        })
+        self.assertEqual(check["status"], "ok")
+        self.assertIn("request_quote", check["detail"])
+
+    def test_gateway_tools_missing_quote_fails_with_restart_hint(self):
+        check = doctor._gateway_tools_check({
+            "available": True, "ok": False, "error": "", "tools": ["request_email"],
+        })
+        self.assertEqual(check["status"], "fail")
+        self.assertIn("request_quote", check["detail"])
+        self.assertIn("openclaw-gateway", check["action"])
+
+    def test_gateway_tools_server_error_is_reported(self):
+        check = doctor._gateway_tools_check({
+            "available": True, "ok": False, "error": "boom", "tools": [],
+        })
+        self.assertEqual(check["status"], "fail")
+        self.assertIn("boom", check["detail"])
+
+    def test_gateway_tools_probe_unavailable_is_a_warning(self):
+        check = doctor._gateway_tools_check({
+            "available": False, "ok": False, "error": "openclaw non trovato", "tools": [],
+        })
+        self.assertEqual(check["status"], "warn")
+        self.assertIn("openclaw mcp probe", check["action"])
+
+    def test_probe_gateway_tools_parses_namespaced_names(self):
+        payload = json.dumps({
+            "servers": {"secretary": {"error": ""}},
+            "tools": ["secretary__request_quote", "mcp__secretary__request_email"],
+        })
+        with patch.object(doctor.shutil, "which", return_value="/usr/bin/openclaw"), \
+                patch.object(doctor.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, payload, "")):
+            probe = doctor._probe_gateway_tools()
+        self.assertTrue(probe["available"])
+        self.assertIn("request_quote", probe["tools"])
+        self.assertIn("request_email", probe["tools"])
+        self.assertFalse(probe["ok"])  # mancano resend e calendar
+
     def test_linger_state_detects_disabled_boot_start(self):
         with patch.object(doctor.shutil, "which", return_value="/usr/bin/loginctl"), \
                 patch.dict(doctor.os.environ, {"USER": "tester"}):

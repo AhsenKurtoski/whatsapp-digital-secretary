@@ -74,12 +74,13 @@ python3 ~/.openclaw/secretary/doctor.py --offline
 python3 ~/.openclaw/secretary/healthcheck.py --json
 ```
 
-Expected: `scripts/verify.sh` prints `VERIFICA OK`; 322 unit tests pass, including
+Expected: `scripts/verify.sh` prints `VERIFICA OK`; 330 unit tests pass, including
 the isolated installer, remote-access, OpenClaw compatibility and MCP protocol tests; every self-test prints `SELF-TEST OK`; the guard test
 prints `secretary guard: OK`; on a host with supported OpenClaw, `--check-compat`
 reports `allowed` with the expected fallback flags; the smoke test prints `SMOKE OK` (one model call for six identical
 messages, then two calls for the failed/retried pair);   `doctor.py` has no `FAIL` and
-reports the OpenClaw version, the MCP runtime (`mcp_runtime`) and feature checks; and `healthcheck.py` reports
+reports the OpenClaw version, the MCP runtime (`mcp_runtime`), the tools the gateway exposes
+(`gateway_tools`, from `openclaw mcp probe secretary`) and feature checks; and `healthcheck.py` reports
 `google_oauth` as `ok` or `info` and `google_bridge` as `ok` when the bridge is
 configured. Then send a real test message from a second phone and approve a real demo
 quote/email from the dashboard, plus one Calendar request. Record the date and result.

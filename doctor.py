@@ -119,6 +119,17 @@ RUNTIME_DEPENDENCIES = {
     "cryptography": "memoria clienti e backup cifrati (AES-256-GCM)",
 }
 
+MCP_SERVER_NAME = "secretary"
+# Tool che il gateway deve vedere perché il bot possa preparare preventivi,
+# email e appuntamenti. Senza request_quote il bot dice al cliente che il
+# comando per il PDF non esiste, anche se il file installato è corretto.
+GATEWAY_REQUIRED_TOOLS = (
+    "request_quote",
+    "request_quote_resend",
+    "request_email",
+    "request_calendar",
+)
+
 
 def _missing_dependencies() -> list[str]:
     """Moduli runtime che l'interprete della diagnosi non riesce a importare.
@@ -216,6 +227,81 @@ def _probe_openclaw(command: str = "openclaw", timeout: float = 8.0) -> dict:
         except Exception:
             info["probe_errors"].append(key)
     return info
+
+
+def _probe_gateway_tools(timeout: float = 40.0) -> dict:
+    """Chiede al gateway quali tool MCP espone davvero.
+
+    È la verifica autorevole: ``openclaw mcp probe`` avvia il server MCP
+    configurato e ne legge l'elenco, quindi dice se il bot può creare un
+    preventivo adesso (configurazione valida, gateway riavviato, server sano).
+    """
+    info = {"available": False, "ok": False, "tools": [], "error": ""}
+    command = shutil.which("openclaw")
+    if not command:
+        info["error"] = "comando openclaw non trovato"
+        return info
+    try:
+        result = subprocess.run(
+            _openclaw_argv(command, ["mcp", "probe", MCP_SERVER_NAME, "--json"]),
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=timeout,
+        )
+    except Exception as exc:
+        info["error"] = f"probe MCP non eseguibile: {str(exc)[:140]}"
+        return info
+    raw = (result.stdout or "") + "\n" + (result.stderr or "")
+    start = raw.find("{")
+    try:
+        data = json.loads(raw[start:]) if start >= 0 else {}
+    except Exception:
+        info["error"] = "risposta del probe MCP non leggibile"
+        return info
+    if not isinstance(data, dict) or not data:
+        info["error"] = "nessuna risposta dal probe MCP"
+        return info
+    servers = data.get("servers") if isinstance(data.get("servers"), dict) else {}
+    server = servers.get(MCP_SERVER_NAME) if isinstance(servers.get(MCP_SERVER_NAME), dict) else {}
+    info["available"] = True
+    # OpenClaw espone i tool come `secretary__x` oppure `mcp__secretary__x`:
+    # il nome utile è sempre l'ultimo segmento, non tutto ciò che segue il primo.
+    info["tools"] = sorted(
+        str(name).rsplit("__", 1)[-1] for name in (data.get("tools") or [])
+    )
+    info["error"] = str(server.get("error") or "")
+    info["ok"] = not info["error"] and all(
+        name in info["tools"] for name in GATEWAY_REQUIRED_TOOLS
+    )
+    return info
+
+
+def _gateway_tools_check(probe: dict) -> dict:
+    """Trasforma l'esito del probe MCP in un controllo leggibile."""
+    if not probe.get("available"):
+        return _check(
+            "gateway_tools", "Tool visibili al gateway", "warn",
+            probe.get("error") or "Probe MCP non disponibile.",
+            "Aggiorna OpenClaw (>= " + OPENCLAW_MINIMUM
+            + ") e verifica: openclaw mcp probe secretary --json",
+        )
+    tools = list(probe.get("tools") or [])
+    if probe.get("ok"):
+        return _check(
+            "gateway_tools", "Tool visibili al gateway", "ok",
+            f"{len(tools)} tool: " + ", ".join(tools),
+        )
+    missing = [name for name in GATEWAY_REQUIRED_TOOLS if name not in tools]
+    if probe.get("error"):
+        detail = "Il server MCP secretary non parte: " + str(probe["error"])[:140]
+    elif missing:
+        detail = "Il gateway non espone: " + ", ".join(missing)
+    else:
+        detail = "Il gateway non espone i tool di approvazione."
+    return _check(
+        "gateway_tools", "Tool visibili al gateway", "fail", detail,
+        "python3 ~/.openclaw/secretary/approval_setup.py && "
+        "systemctl --user restart openclaw-gateway.service",
+    )
 
 
 def _http(url: str, token: str = "", timeout: float = 4.0) -> tuple[int, bytes]:
@@ -459,6 +545,11 @@ def run_checks(
                 f"Self-test MCP non eseguibile: {str(exc)[:160]}",
                 "git pull && bash scripts/install.sh",
             ))
+
+    # 6c. Tool davvero visibili al gateway: è la verifica autorevole, perché il
+    # bot parla con il gateway, non con il file di configurazione.
+    if services:
+        checks.append(_gateway_tools_check(_probe_gateway_tools()))
 
     # 7. Motore PDF: genera davvero un documento
     try:

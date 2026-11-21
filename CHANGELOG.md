@@ -63,6 +63,22 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The installer no longer hides a failed gateway restart**: the final
+  `systemctl --user restart openclaw-gateway.service` used to end with
+  `2>/dev/null || true`, so an install whose gateway did not come back still looked
+  successful — and the bot kept answering customers that the PDF command did not exist.
+  The restart is now fatal with the status command to run, and right after it
+  `openclaw mcp probe secretary --json` prints the tools the gateway really exposes.
+- **Prefixed MCP tool names were truncated**: `openclaw mcp probe` returns
+  `secretary__request_quote` on some versions and `mcp__secretary__request_quote` on
+  others, but `dashboard.py`, `healthcheck.py`, `doctor.py` and `install.sh` all split on
+  the first `__`, so the second form became `secretary__request_quote` and looked like a
+  missing tool. They now take the last segment, with tests for both namespaces.
+- **`doctor.py` checks the tools the gateway sees**, not just the file on disk: the new
+  `gateway_tools` check runs `openclaw mcp probe secretary` and fails with the names of
+  the missing tools (`request_quote` first) plus the `approval_setup.py` + restart fix,
+  so "the bot says it cannot generate the PDF" has one diagnosis instead of five guesses.
+  The Troubleshooting table in both READMEs points at it.
 - **A missing runtime dependency is now caught before it bites**: `doctor.py` has a
   `deps` check and `scripts/install.sh` stops with a clear message when
   `cryptography` is not importable by the interpreter that runs the services, pointing

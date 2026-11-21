@@ -209,9 +209,50 @@ if [ "$OC_INSTALL_ALLOWED" = 1 ]; then
   fi
 fi
 
-# Riavvia il gateway per caricare i drop-in; è normale che WhatsApp impieghi
-# qualche decina di secondi a riconnettersi.
-systemctl --user restart openclaw-gateway.service 2>/dev/null || true
+# Riavvia il gateway per caricare i drop-in e la nuova allowlist dei tool; è
+# normale che WhatsApp impieghi qualche decina di secondi a riconnettersi.
+# Un riavvio fallito NON va ignorato: il bot resterebbe in esecuzione con la
+# lista dei tool vecchia e direbbe al cliente che il preventivo non esiste.
+if ! systemctl --user restart openclaw-gateway.service; then
+  echo "errore: riavvio di openclaw-gateway.service non riuscito." >&2
+  echo "Il bot resterebbe senza i tool di approvazione (niente preventivi PDF)." >&2
+  echo "Controlla: systemctl --user status openclaw-gateway.service --no-pager" >&2
+  echo "Poi riprova: systemctl --user restart openclaw-gateway.service" >&2
+  exit 1
+fi
+
+# Verifica autorevole: il gateway rilegge la configurazione e dice quali tool
+# MCP espone davvero. Se request_quote non c'è, il bot non può creare il PDF.
+gateway_tools="$(openclaw mcp probe secretary --json 2>/dev/null | "$PYTHON" -c '
+import json, sys
+raw = sys.stdin.read()
+start = raw.find("{")
+try:
+    data = json.loads(raw[start:]) if start >= 0 else {}
+except Exception:
+    raise SystemExit(0)
+server = ((data.get("servers") or {}).get("secretary") or {}) if isinstance(data, dict) else {}
+names = sorted({str(x).rsplit("__", 1)[-1] for x in (data.get("tools") or [])})
+error = str(server.get("error") or "")
+print(("ERRORE: " + error) if error else ",".join(names))
+' 2>/dev/null || true)"
+case "$gateway_tools" in
+  "")
+    echo "warning: non ho potuto interrogare il gateway (openclaw mcp probe)." >&2
+    echo "warning: verifica a mano con: openclaw mcp probe secretary --json" >&2
+    ;;
+  ERRORE:*)
+    echo "errore: il gateway non riesce ad avviare il server MCP secretary: ${gateway_tools#ERRORE: }" >&2
+    echo "Il bot non può creare preventivi. Rilancia: bash scripts/install.sh; poi: systemctl --user restart openclaw-gateway.service" >&2
+    ;;
+  *request_quote*)
+    echo "bot tools: $gateway_tools"
+    ;;
+  *)
+    echo "errore: il gateway non espone request_quote (tool visti: $gateway_tools)." >&2
+    echo "Il bot direbbe al cliente che il preventivo non è disponibile. Correggi con: python3 $BASE/approval_setup.py && systemctl --user restart openclaw-gateway.service" >&2
+    ;;
+esac
 
 for _ in $(seq 1 30); do
   if curl -fsS -o /dev/null "http://127.0.0.1:$DASHBOARD_PORT/" 2>/dev/null; then break; fi
