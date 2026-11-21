@@ -69,6 +69,7 @@ documenti veri. Ogni azione che esce dall'azienda passa da un'approvazione espli
 | Documento | Cosa spiega |
 |---|---|
 | [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | Guida rapida per chi non è tecnico: dalla prima installazione alla prima risposta, in 15 minuti |
+| [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md) | Macchine leggere: RAM misurata, profilo `low_memory`, zram e swap, nessun Docker |
 | [`docs/WEBSITE.md`](docs/WEBSITE.md) | Sito pubblico: build, audit SEO, analytics, header di sicurezza, deploy |
 | [`docs/TESTING.md`](docs/TESTING.md) | Controlli automatici e checklist manuale WhatsApp/dashboard/Google |
 | [`docs/E2E.md`](docs/E2E.md) | Prova end-to-end con un secondo telefono e account di test |
@@ -209,7 +210,11 @@ Nessun dato dei clienti viene inviato a un servizio dashboard di terze parti.
 
 ## Requisiti
 
-- Linux o WSL2 con systemd utente
+- Linux o WSL2 con systemd utente, **senza Docker**
+- **RAM**: 1 GB con swap come minimo tecnico, **2 GB consigliati** (Raspberry Pi 4/5,
+  mini-PC usati), 4 GB comodi. Sotto i 4 GB il profilo `low_memory` si attiva da solo
+  e systemd limita dashboard e processi periodici: numeri misurati in
+  [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md)
 - Python **3.11+**, testato in CI su 3.11, 3.12, 3.13 e 3.14 (standard library più
   `cryptography`, usata per memoria e backup cifrati: `python3 -m pip install -r requirements.txt`,
   vedi la nota venv/PEP 668 per Debian/Ubuntu nell'Avvio rapido). Su **Windows** serve

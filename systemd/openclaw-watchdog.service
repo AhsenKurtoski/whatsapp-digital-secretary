@@ -9,3 +9,4 @@ ExecStart=/usr/bin/python3 %h/.openclaw/secretary/watchdog.py
 Nice=10
 NoNewPrivileges=yes
 PrivateTmp=yes
+MemoryMax=256M

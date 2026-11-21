@@ -29,7 +29,9 @@ from pathlib import Path
 import config
 import lead_intel
 
-MAX_MESSAGES = 300
+# Con poca RAM lo storico per contatto resta più corto: meno JSON da leggere e
+# riscrivere a ogni messaggio, stesso contesto utile per la risposta.
+MAX_MESSAGES = 120 if config.low_memory() else 300
 MAX_FACTS = 40
 MAX_TEXT = 1200
 MAGIC = b"GINAENC1\n"

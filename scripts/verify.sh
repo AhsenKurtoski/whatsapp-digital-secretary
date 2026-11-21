@@ -27,6 +27,7 @@ run node plugins/secretary-guard/test_guard.js
 run python3 quote_pdf.py /tmp/preventivo-verifica.pdf
 run python3 site_build.py --self-test
 run python3 seo_audit.py --self-test
+run python3 scripts/footprint.py --self-test
 
 # Sito pubblico reale: solo se il dominio è configurato, così non si pubblica
 # mai un canonical finto.

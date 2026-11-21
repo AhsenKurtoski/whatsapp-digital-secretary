@@ -149,6 +149,19 @@ done
 install -m 644 "$HERE/systemd/gateway-secrets.conf" "$DROPIN/secretary.conf"
 install -m 644 "$HERE/systemd/dns.conf" "$DROPIN/20-dns.conf"
 
+# Macchine leggere (< 4 GB o `low_memory` esplicito): il gateway Node riceve un
+# limite morbido, così il sistema resta reattivo senza rischiare un OOM kill del
+# bot. MemoryHigh rallenta e fa recuperare memoria, non uccide il processo.
+if ( cd "$HERE" && "$PYTHON" -c 'import config, sys; sys.exit(0 if config.low_memory() else 1)' ); then
+  cat > "$DROPIN/30-low-memory.conf" <<'EOF'
+[Service]
+MemoryHigh=1200M
+EOF
+  echo "profilo low_memory attivo: limite morbido di 1200 MB per il gateway"
+else
+  rm -f "$DROPIN/30-low-memory.conf"
+fi
+
 cat > "$DROPIN/timeout.conf" <<'EOF'
 [Service]
 TimeoutStartSec=180

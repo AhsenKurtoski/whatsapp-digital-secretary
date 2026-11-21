@@ -74,6 +74,7 @@ explicit approval.
 | Document | What it covers |
 |---|---|
 | [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | Plain-language quick start for non-technical users: first install to first reply in 15 minutes (Italian) |
+| [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md) | Light machines: measured RAM, `low_memory` profile, zram and swap, no Docker (Italian) |
 | [`docs/WEBSITE.md`](docs/WEBSITE.md) | Public site: build, SEO audit, analytics, security headers, deploy |
 | [`docs/TESTING.md`](docs/TESTING.md) | Automated checks plus the manual WhatsApp/dashboard/Google checklist |
 | [`docs/E2E.md`](docs/E2E.md) | End-to-end run with a second phone and test accounts |
@@ -212,7 +213,11 @@ customer data is sent to a third-party dashboard service.
 
 ## Requirements
 
-- Linux or WSL2 with systemd user services
+- Linux or WSL2 with systemd user services, **no Docker**
+- **RAM**: 1 GB with swap as the technical minimum, **2 GB recommended** (Raspberry
+  Pi 4/5, used mini-PCs), 4 GB comfortable. Below 4 GB the `low_memory` profile turns
+  itself on and systemd caps the dashboard and periodic jobs: measured numbers in
+  [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md) (Italian)
 - Python **3.11+**, tested in CI on 3.11, 3.12, 3.13 and 3.14 (standard library plus
   `cryptography`, used for memory and backup encryption: `python3 -m pip install -r requirements.txt`,
   see the venv/PEP 668 note for Debian/Ubuntu in Quick start). **Windows** needs WSL2

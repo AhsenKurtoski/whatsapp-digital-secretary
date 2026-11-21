@@ -28,7 +28,7 @@ import contacts as contacts_history
 import lead_intel
 import memory
 
-MAX_MESSAGES = 200
+MAX_MESSAGES = 80 if config.low_memory() else 200
 MAX_TEXT = 1500
 MAX_SEND = 1000
 E164 = re.compile(r"\+?[1-9]\d{7,14}")

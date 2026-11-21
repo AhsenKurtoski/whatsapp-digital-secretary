@@ -12,6 +12,11 @@ RestartSec=3
 Environment=PYTHONUNBUFFERED=1
 NoNewPrivileges=yes
 PrivateTmp=yes
+# La dashboard misurata usa ~32 MB: il tetto protegge le macchine da 2 GB
+# senza mai toccare il funzionamento normale.
+MemoryHigh=160M
+MemoryMax=256M
+TasksMax=64
 
 [Install]
 WantedBy=default.target

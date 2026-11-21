@@ -47,6 +47,19 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Performance
 
+- **Runs on light machines (< 8 GB, no Docker)**: `low_memory` turns itself on below
+  4 GB of RAM (or on request) and then caps parallel AI calls at 2, shortens the stored
+  history per contact (300 → 120 messages, transcript 200 → 80) and gives the Node
+  gateway a soft `MemoryHigh=1200M` limit, with no OOM kill. systemd now caps the
+  dashboard (`MemoryHigh=160M`, `MemoryMax=256M`) and every periodic job (`MemoryMax=256M`).
+- **Measured footprint, not claims**: `scripts/footprint.py` reports the real RSS of the
+  dashboard, gateway and Node children plus system RAM and swap, exits non-zero over
+  budget and runs in `verify.sh`; `healthcheck.py` gained a **Memoria RAM** check that
+  warns under 400 MB and goes critical under 200 MB with the remedy. On this machine the
+  dashboard idles at 31.5 MB and each short-lived Python job peaks at 18–22 MB.
+- **`docs/LOW_SPEC.md`**: measured table, 1/2/4/8 GB verdicts, zram, swappiness, swapfile,
+  journald caps, WSL2 `.wslconfig` limits and Raspberry Pi microSD advice.
+
 - **The dashboard is compressed and rendered once**: pages are gzipped when the browser
   accepts it (162 KiB → 44 KiB, 3.7×) and the rendered page is cached by file signature
   (1.18 ms → 0.011 ms), rebuilt automatically when `dashboard.html`, `i18n.json` or the

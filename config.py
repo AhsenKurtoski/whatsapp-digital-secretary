@@ -40,6 +40,9 @@ DEFAULTS: dict[str, object] = {
     "hours": "Lun–Ven 9:00–18:00",
     "pricing_note": "I prezzi e le condizioni li conferma il titolare.",
     "dashboard_port": 8787,
+    # Su macchine con poca RAM riduce parallellismo e storico in memoria.
+    # None = automatico (attivo sotto i 4 GB); True/False = scelta esplicita.
+    "low_memory": None,
     "max_concurrent": 3,
     "max_reply_lines": 6,
     "whatsapp_number": "",
@@ -94,9 +97,52 @@ def load() -> dict:
         data["dashboard_port"] = int(data.get("dashboard_port") or 8787)
     except (TypeError, ValueError):
         data["dashboard_port"] = 8787
+    if low_memory():
+        try:
+            data["max_concurrent"] = max(1, min(int(data.get("max_concurrent") or 3), 2))
+        except (TypeError, ValueError):
+            data["max_concurrent"] = 2
     if not str(data.get("owner_number") or "").strip():
         data["owner_number"] = ""
     return data
+
+
+def total_ram_mb(path: str = "/proc/meminfo") -> int:
+    """RAM totale in MB da /proc/meminfo; 0 se non leggibile (es. macOS)."""
+    try:
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                if line.startswith("MemTotal:"):
+                    return int(line.split()[1]) // 1024
+    except Exception:
+        return 0
+    return 0
+
+
+def _as_bool(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().lower() in {"1", "true", "yes", "si", "on"}
+
+
+def low_memory() -> bool:
+    """Profilo a basso consumo per macchine con meno di 8 GB di RAM.
+
+    Ordine di precedenza: variabile `SECRETARY_LOW_MEMORY`, poi `low_memory`
+    nel file di configurazione, poi rilevamento automatico (sotto i 4 GB).
+    Non richiama `load()` per evitare ricorsione.
+    """
+    env = os.environ.get("SECRETARY_LOW_MEMORY")
+    if env is not None and str(env).strip() != "":
+        return _as_bool(env)
+    try:
+        raw = _read_file().get("low_memory")
+    except SystemExit:
+        raw = None
+    if raw is not None and str(raw).strip() != "":
+        return _as_bool(raw)
+    total = total_ram_mb()
+    return 0 < total < 4096
 
 
 def get(key: str, default=None):

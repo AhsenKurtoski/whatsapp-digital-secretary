@@ -678,6 +678,58 @@ def check_disk() -> dict:
     )
 
 
+def check_ram(path: str = "/proc/meminfo") -> dict:
+    """RAM disponibile: sulle macchine leggere è il primo limite reale."""
+    try:
+        text = Path(path).read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return _check("ram", "Memoria RAM", "info", "Non disponibile su questo sistema.")
+    values: dict[str, int] = {}
+    for line in text.splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and parts[0].endswith(":"):
+            try:
+                values[parts[0].rstrip(":")] = int(parts[1]) // 1024
+            except ValueError:
+                continue
+    total = values.get("MemTotal", 0)
+    available = values.get("MemAvailable", values.get("MemFree", 0))
+    swap_total = values.get("SwapTotal", 0)
+    swap_used = max(0, swap_total - values.get("SwapFree", 0))
+    if not total:
+        return _check("ram", "Memoria RAM", "info", "Valore non leggibile in /proc/meminfo.")
+    percent = round(available * 100 / total)
+    detail = f"{available} MB disponibili su {total} MB ({percent}%)."
+    if swap_total:
+        detail += f" Swap: {swap_used} MB usati."
+    low_profile = config.low_memory()
+    if available < 200:
+        status = "critical"
+    elif available < 400 or (total < 4096 and percent < 12):
+        status = "warn"
+    else:
+        status = "ok"
+    action = ""
+    if status != "ok":
+        action = (
+            "Chiudi i programmi inutili e imposta \"low_memory\": true in config.json; "
+            "su Linux aggiungi 1 GB di swap o zram (vedi docs/LOW_SPEC.md)."
+        )
+    return _check(
+        "ram",
+        "Memoria RAM",
+        status,
+        detail,
+        action,
+        meta={
+            "available_mb": available,
+            "total_mb": total,
+            "swap_used_mb": swap_used,
+            "low_memory": low_profile,
+        },
+    )
+
+
 def check_logs() -> dict:
     tracebacks = 0
     errors = 0
@@ -1070,6 +1122,7 @@ def collect() -> dict:
         _safe_check(check_timers),
         _safe_check(check_approvals),
         _safe_check(check_disk),
+        _safe_check(check_ram),
         _safe_check(check_logs),
         _safe_check(check_runtime),
         _safe_check(check_ai),
