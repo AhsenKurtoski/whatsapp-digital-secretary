@@ -8,6 +8,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Windows/WSL2 guide and status script**: [`docs/WSL.md`](docs/WSL.md) walks from
+  `wsl --install` to a bot that answers, including systemd in WSL, `/mnt/c` pitfalls and
+  the 24/7 limits of WSL. `scripts/wsl_status.py` reports distros, repo folder, runtime
+  dependencies, install directory, gateway state and the tools the bot really sees, then
+  prints the single next command (`wsl --install`, `git clone`, `setup.py`,
+  `install.sh`, gateway restart or `approval_setup.py`). It runs from Windows PowerShell
+  through `wsl.exe` and inside WSL, with `--json`, `--distro` and `--self-test`.
 - **Public author page**: `site/autore.html` collects the real, published facts about
   Ahsen Kurtoski (student and software developer between Feltre and Belluno, the stack he
   declares, six projects with their links) and exposes a `ProfilePage` plus a `Person`

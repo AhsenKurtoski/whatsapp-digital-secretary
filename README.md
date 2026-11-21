@@ -80,6 +80,7 @@ explicit approval.
 | [`docs/GDPR.md`](docs/GDPR.md) | Roles, retention, data subject rights, breach steps |
 | [`docs/MEMORY.md`](docs/MEMORY.md) | Per-customer memory: facts, search, encryption, erasure |
 | [`docs/PLUGINS.md`](docs/PLUGINS.md) | Guard plugin hooks and how to test a plugin |
+| [`docs/WSL.md`](docs/WSL.md) | Installing on Windows with WSL2, step by step, plus a status check |
 | [`docs/ALWAYS_ON.md`](docs/ALWAYS_ON.md) | Keeping the secretary online 24/7 on free hardware |
 | [`docs/REMOTE_ACCESS.md`](docs/REMOTE_ACCESS.md) | Tailscale + SSH tunnel, no public port |
 | [`docs/WHATSAPP_BAN.md`](docs/WHATSAPP_BAN.md) | What to do if the number gets restricted |
@@ -213,8 +214,9 @@ customer data is sent to a third-party dashboard service.
 - Linux or WSL2 with systemd user services
 - Python **3.11+**, tested in CI on 3.11, 3.12, 3.13 and 3.14 (standard library plus
   `cryptography`, used for memory and backup encryption: `python3 -m pip install -r requirements.txt`,
-  see the venv/PEP 668 note for Debian/Ubuntu in Quick start; on native Windows also
-  install `tzdata` for the full IANA timezone database)
+  see the venv/PEP 668 note for Debian/Ubuntu in Quick start). **Windows** needs WSL2
+  with Ubuntu: follow [`docs/WSL.md`](docs/WSL.md), which starts from `python3
+  scripts/wsl_status.py` to tell you whether an installation already exists
 - Node.js **22+** and [OpenClaw](https://openclaw.ai) **2026.4.22+** installed globally
   (the inbound burst guard uses `before_dispatch`; the installer rejects versions below
   **2026.4.22**, detects the optional `--accept-capabilities` and

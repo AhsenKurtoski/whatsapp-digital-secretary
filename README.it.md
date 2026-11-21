@@ -75,6 +75,7 @@ documenti veri. Ogni azione che esce dall'azienda passa da un'approvazione espli
 | [`docs/GDPR.md`](docs/GDPR.md) | Ruoli, retention, diritti dell'interessato, violazioni |
 | [`docs/MEMORY.md`](docs/MEMORY.md) | Memoria per cliente: fatti, ricerca, cifratura, cancellazione |
 | [`docs/PLUGINS.md`](docs/PLUGINS.md) | Hook del plugin di guardia e come testare un plugin |
+| [`docs/WSL.md`](docs/WSL.md) | Installazione su Windows con WSL2, passo per passo, e diagnosi dello stato |
 | [`docs/ALWAYS_ON.md`](docs/ALWAYS_ON.md) | Tenere la segreteria online 24/7 con hardware gratuito |
 | [`docs/REMOTE_ACCESS.md`](docs/REMOTE_ACCESS.md) | Tailscale + tunnel SSH, nessuna porta pubblica |
 | [`docs/WHATSAPP_BAN.md`](docs/WHATSAPP_BAN.md) | Cosa fare se il numero viene limitato |
@@ -210,8 +211,9 @@ Nessun dato dei clienti viene inviato a un servizio dashboard di terze parti.
 - Linux o WSL2 con systemd utente
 - Python **3.11+**, testato in CI su 3.11, 3.12, 3.13 e 3.14 (standard library più
   `cryptography`, usata per memoria e backup cifrati: `python3 -m pip install -r requirements.txt`,
-  vedi la nota venv/PEP 668 per Debian/Ubuntu nell'Avvio rapido; su Windows nativo
-  installa anche `tzdata` per il database completo dei fusi orari IANA)
+  vedi la nota venv/PEP 668 per Debian/Ubuntu nell'Avvio rapido). Su **Windows** serve
+  WSL2 con Ubuntu: segui [`docs/WSL.md`](docs/WSL.md), che parte da `python3
+  scripts/wsl_status.py` per capire se un'installazione esiste già)
 - Node.js **22+** e [OpenClaw](https://openclaw.ai) **2026.4.22+** installato globalmente
   (la guardia anti-raffica in ingresso usa `before_dispatch`; l'installer rifiuta le
   versioni precedenti alla **2026.4.22**, rileva `--accept-capabilities` e

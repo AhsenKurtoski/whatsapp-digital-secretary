@@ -74,7 +74,7 @@ python3 ~/.openclaw/secretary/doctor.py --offline
 python3 ~/.openclaw/secretary/healthcheck.py --json
 ```
 
-Expected: `scripts/verify.sh` prints `VERIFICA OK`; 330 unit tests pass, including
+Expected: `scripts/verify.sh` prints `VERIFICA OK`; 350 unit tests pass, including
 the isolated installer, remote-access, OpenClaw compatibility and MCP protocol tests; every self-test prints `SELF-TEST OK`; the guard test
 prints `secretary guard: OK`; on a host with supported OpenClaw, `--check-compat`
 reports `allowed` with the expected fallback flags; the smoke test prints `SMOKE OK` (one model call for six identical
@@ -140,4 +140,5 @@ quote/email from the dashboard, plus one Calendar request. Record the date and r
 | `healthcheck.py` | Live Google, bridge, gateway and queue health |
 | `doctor.py` | Installation diagnosis and safe repairs |
 | `link_check.py` | Relative links in documentation and pages; runs in `verify.sh` and CI |
+| `scripts/wsl_status.py` | Windows/WSL2 status: distros, repo folder, install, gateway, tools and the next command (`docs/WSL.md`) |
 | `docs/TESTING.md` | Manual WhatsApp/dashboard/Google checklist |
