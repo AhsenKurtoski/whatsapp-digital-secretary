@@ -108,6 +108,33 @@ class InstallerTests(unittest.TestCase):
             self.assertEqual(self_check.returncode, 0, self_check.stderr)
             self.assertIn("SELF-TEST OK", self_check.stdout)
 
+    def test_installer_stops_when_cryptography_is_missing(self):
+        with tempfile.TemporaryDirectory(prefix="secretary-install-deps-") as tmp:
+            tmp_path = Path(tmp)
+            env, home, _ = _base_environment(tmp_path)
+            # Un pacchetto che solleva ImportError simula la dipendenza assente
+            # senza dover installare un secondo interprete.
+            blocked = tmp_path / "blocked"
+            (blocked / "cryptography").mkdir(parents=True)
+            (blocked / "cryptography" / "__init__.py").write_text(
+                "raise ImportError('cryptography assente')\n", encoding="utf-8"
+            )
+            env["PYTHONPATH"] = _as_posix(blocked)
+            result = subprocess.run(
+                [self.bash, str(ROOT / "scripts" / "install.sh")],
+                env=env,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=60,
+                check=False,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("cryptography", result.stderr)
+            self.assertIn("requirements.txt", result.stderr)
+            self.assertFalse((home / ".openclaw" / "secretary").exists())
+
     def test_installer_fails_when_remote_access_source_is_missing(self):
         with tempfile.TemporaryDirectory(prefix="secretary-install-missing-") as tmp:
             tmp_path = Path(tmp)

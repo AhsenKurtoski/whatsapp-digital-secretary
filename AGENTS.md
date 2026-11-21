@@ -20,24 +20,28 @@ healthy, not able to send without the owner's approval.
    the installer probes `--accept-capabilities` and `allowConversationAccess` and
    reports a burst-only fallback when the retry hook is unavailable) and the bot
    WhatsApp number.
-2. Run `python3 setup.py` and ask the user only for business data (name, owner number,
+2. Install the runtime dependency: `python3 -m pip install -r requirements.txt`
+   (`cryptography`, needed by memory and encrypted backups; on Debian/Ubuntu the
+   system Python is externally managed — see the venv/PEP 668 note in the README).
+   `scripts/install.sh` and `doctor.py` refuse to go on without it.
+3. Run `python3 setup.py` and ask the user only for business data (name, owner number,
    services, prices, hours, timezone). Keep secrets out of `config.json`.
-3. Create the private environment file:
+4. Create the private environment file:
    `install -m 600 secrets.env.example ~/.openclaw/secretary/secrets.env`, then let the
    user fill in the AI keys. Never print, commit or paste a key into a chat.
-4. Connect Google **before** calling the installation complete:
+5. Connect Google **before** calling the installation complete:
    - Preferred: the Apps Script bridge in [`google-bridge/README.md`](google-bridge/README.md).
      Run `bash ~/.openclaw/secretary/google-bridge/installa-bridge.sh`, have the user
      approve Gmail and Calendar in the browser, then verify the bridge.
    - Alternative: `gog-secretary auth add <account> --services gmail,calendar --gmail-scope read-send --manual`.
      OAuth apps in Testing expire after 7 days; the bridge avoids that expiry.
-5. Run `bash scripts/install.sh`. It installs the dashboard, the guard plugin, the
+6. Run `bash scripts/install.sh`. It installs the dashboard, the guard plugin, the
    timers, the WhatsApp debounce/queue policy and `remote_access.py` into
    `~/.openclaw/secretary`. The installer stops with a clear error if a required
    source file (including `remote_access.py`) is missing.
-6. Connect WhatsApp: open the OpenClaw control UI, run the WhatsApp login and have the
+7. Connect WhatsApp: open the OpenClaw control UI, run the WhatsApp login and have the
    user scan the QR with the bot phone.
-7. Run the verification commands below. Fix every `FAIL`; report every remaining `WARN`
+8. Run the verification commands below. Fix every `FAIL`; report every remaining `WARN`
    with its remedy. Only then tell the user the installation is ready.
 
 ## Verification commands
@@ -70,7 +74,7 @@ python3 ~/.openclaw/secretary/doctor.py --offline
 python3 ~/.openclaw/secretary/healthcheck.py --json
 ```
 
-Expected: `scripts/verify.sh` prints `VERIFICA OK`; 319 unit tests pass, including
+Expected: `scripts/verify.sh` prints `VERIFICA OK`; 322 unit tests pass, including
 the isolated installer, remote-access, OpenClaw compatibility and MCP protocol tests; every self-test prints `SELF-TEST OK`; the guard test
 prints `secretary guard: OK`; on a host with supported OpenClaw, `--check-compat`
 reports `allowed` with the expected fallback flags; the smoke test prints `SMOKE OK` (one model call for six identical

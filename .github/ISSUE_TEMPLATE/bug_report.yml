@@ -47,7 +47,6 @@ body:
         - Linux
         - WSL2
         - VPS
-        - Docker
         - Other
     validations:
       required: true

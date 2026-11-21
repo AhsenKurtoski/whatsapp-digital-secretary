@@ -29,7 +29,7 @@ python3 remote_access.py --self-test
 ```
 
 Expected result: `scripts/verify.sh` prints `VERIFICA OK`, the whole suite passes
-(319 tests at the time of writing), including
+(322 tests at the time of writing), including
 the isolated installer, remote-access and OpenClaw compatibility tests; the compile
 check is silent, Code.gs prints
 `Code.gs handlers: OK`, the guard test prints `secretary guard: OK`, and every
@@ -39,7 +39,9 @@ Python 3.11, 3.12, 3.13 and 3.14.
 ## Installazione reale
 
 Dopo `bash scripts/install.sh`, esegui `python3 ~/.openclaw/secretary/doctor.py`: il
-report PASS/WARN/FAIL controlla i file installati, le schede Preventivi/Contatti, il
+report PASS/WARN/FAIL controlla le dipendenze Python (`deps`: senza `cryptography`
+memoria e backup cifrati non funzionano, e l'azione rimanda a `requirements.txt`), i
+file installati, le schede Preventivi/Contatti, il
 motore PDF, le regole della persona, la policy anti-raffica, la versione minima e le
 feature di OpenClaw, l'allowlist MCP, le unità systemd e le API locali. Ogni criticità stampa il comando che la risolve. Lo stesso
 report è in dashboard (Sistema → Diagnosi) e `install.sh` lo esegue automaticamente.

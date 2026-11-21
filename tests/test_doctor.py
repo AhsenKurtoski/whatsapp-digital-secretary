@@ -106,6 +106,20 @@ class DoctorTests(unittest.TestCase):
         self.assertEqual(hook["status"], "warn")
         self.assertIn("burst-only", hook["detail"])
 
+    def test_missing_cryptography_is_reported_with_requirements_hint(self):
+        with patch.object(doctor.importlib.util, "find_spec", return_value=None):
+            checks = self.run_checks()
+        deps = next(c for c in checks if c["id"] == "deps")
+        self.assertEqual(deps["status"], "fail")
+        self.assertIn("cryptography", deps["detail"])
+        self.assertIn("AES-256-GCM", deps["detail"])
+        self.assertIn("requirements.txt", deps["action"])
+
+    def test_present_cryptography_is_reported_ok(self):
+        deps = next(c for c in self.run_checks() if c["id"] == "deps")
+        self.assertEqual(deps["status"], "ok")
+        self.assertIn("cryptography", deps["detail"])
+
     def test_old_dashboard_is_reported_with_remedy(self):
         (self.base / "dashboard.html").write_text("vecchia dashboard", encoding="utf-8")
         checks = self.run_checks()

@@ -27,6 +27,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `Cache-Control: public, max-age=31536000, immutable` in both `_headers` and
   `vercel.json`.
 
+### Removed
+
+- **Docker support**: the dashboard container, `docker-compose.yml`,
+  `docker-compose.full.yml`, `docker/`, `docker-entrypoint.sh`, `.env.example` and
+  `docs/DOCKER.md` are gone. The project runs on the host with systemd user services
+  only, which is what the units, the installer and `doctor.py` already assumed; the
+  README no longer offers a second deployment path that lacked systemd widgets and
+  could not control the host gateway.
+
 ### Security
 
 - **Encrypted contact memory**: `memory/contacts/*.json` is now AES-256-GCM with a
@@ -54,6 +63,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **A missing runtime dependency is now caught before it bites**: `doctor.py` has a
+  `deps` check and `scripts/install.sh` stops with a clear message when
+  `cryptography` is not importable by the interpreter that runs the services, pointing
+  to `requirements.txt`. Both have tests, so a host (or a CI job) without the package
+  fails loudly instead of raising `ModuleNotFoundError` deep inside memory or backup.
 - **CI stayed red: the test job had no runtime dependency installed**: `memory.py`
   (client memory encrypted at rest) and `backup.py` import `cryptography`, but the
   `Tests (Python 3.11–3.14)` jobs installed nothing, so all four failed in

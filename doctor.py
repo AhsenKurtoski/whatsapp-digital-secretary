@@ -22,6 +22,7 @@ non interattivo.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import re
@@ -111,12 +112,32 @@ def _read_json(path: Path) -> dict:
 
 OPENCLAW_MINIMUM = "2026.4.22"
 
+# Dipendenze runtime oltre alla standard library. Senza questi moduli la
+# memoria clienti e i backup cifrati (AES-256-GCM) falliscono con
+# ModuleNotFoundError: il controllo deve fermarsi subito, con la via d'uscita.
+RUNTIME_DEPENDENCIES = {
+    "cryptography": "memoria clienti e backup cifrati (AES-256-GCM)",
+}
+
+
+def _missing_dependencies() -> list[str]:
+    """Moduli runtime non importabili dall'interprete che esegue la diagnosi."""
+    missing: list[str] = []
+    for module in RUNTIME_DEPENDENCIES:
+        try:
+            found = importlib.util.find_spec(module) is not None
+        except (ImportError, ValueError):
+            found = False
+        if not found:
+            missing.append(module)
+    return missing
+
 
 def _linger_state() -> bool | None:
     """Lingering utente: senza di esso i servizi non partono al boot.
 
     Restituisce True/False quando `loginctl` è utilizzabile, None quando lo
-    stato non è verificabile (Windows, Docker, sessione senza systemd).
+    stato non è verificabile (Windows o sessione senza systemd).
     """
     loginctl = shutil.which("loginctl")
     if not loginctl:
@@ -236,6 +257,23 @@ def run_checks(
         ))
     else:
         checks.append(_check("files", "File installati", "ok", f"{len(REQUIRED_FILES)} file presenti."))
+
+    # 1b. Dipendenze Python: senza cryptography memoria e backup cifrati
+    # falliscono a runtime, quindi il blocco va segnalato prima di tutto il resto.
+    missing_deps = _missing_dependencies()
+    if missing_deps:
+        checks.append(_check(
+            "deps", "Dipendenze Python", "fail",
+            "Manca " + ", ".join(missing_deps) + ": "
+            + "; ".join(RUNTIME_DEPENDENCIES[name] for name in missing_deps)
+            + " non funzionano (ModuleNotFoundError).",
+            "python3 -m pip install -r requirements.txt (Debian/Ubuntu: nota venv/PEP 668 nel README)",
+        ))
+    else:
+        checks.append(_check(
+            "deps", "Dipendenze Python", "ok",
+            "cryptography presente: memoria clienti e backup cifrati attivi.",
+        ))
 
     # 2. Scheda Preventivi/Contatti davvero installata
     html = _read(base / "dashboard.html")
@@ -589,7 +627,7 @@ def run_checks(
             except Exception:
                 checks.append(_check(
                     "services", "Servizi systemd", "info",
-                    "systemd non disponibile in questo ambiente (Docker/Windows).",
+                    "systemd non disponibile in questo ambiente (Windows o sistema senza systemd).",
                 ))
                 break
             if state == "active":

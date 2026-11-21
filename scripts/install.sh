@@ -24,8 +24,18 @@ if [ "${1:-}" = "--check-compat" ]; then
   exec "$PYTHON" "$HERE/scripts/openclaw_compat.py" --install-plan
 fi
 
+# Dipendenza runtime: senza cryptography la memoria clienti e i backup cifrati
+# (AES-256-GCM) falliscono con ModuleNotFoundError. requirements.txt è la fonte
+# unica di verità; l'interprete controllato è lo stesso usato dai servizi.
+if ! "$PYTHON" -c 'import cryptography' >/dev/null 2>&1; then
+  echo "Dipendenze Python mancanti: cryptography (memoria clienti e backup cifrati AES-256-GCM)." >&2
+  echo "Installa con: $PYTHON -m pip install -r \"$HERE/requirements.txt\"" >&2
+  echo "Debian/Ubuntu: Python è externally managed (PEP 668), vedi la nota venv nel README." >&2
+  exit 1
+fi
+
 if ! command -v systemctl >/dev/null 2>&1; then
-  echo "systemd non disponibile: usa Docker o avvia i processi manualmente." >&2
+  echo "systemd non disponibile: avvia i processi manualmente o usa una macchina con systemd utente (Linux/WSL2)." >&2
   exit 1
 fi
 if [ ! -f "$CONFIG" ]; then

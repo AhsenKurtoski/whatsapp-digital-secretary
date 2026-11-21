@@ -125,7 +125,7 @@ jobs:
 
       - name: Check shell scripts
         run: |
-          for file in scripts/*.sh docker-entrypoint.sh google-bridge/*.sh; do
+          for file in scripts/*.sh google-bridge/*.sh; do
             bash -n "$file"
           done
 

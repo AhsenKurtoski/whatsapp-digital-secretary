@@ -36,7 +36,7 @@ senza il tuo via libera. Sito pubblico: <https://gina-secretary.vercel.app>.
 | **Ultima release** | [v1.1.1](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.1.1) — bridge Google affidabile, salute corretta con bridge attivo |
 | **CI su `main`** | [Tutti i controlli verdi](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml) (ultima verifica 20 nov 2026): test unitari, tutti i self-test Python, test di consegna email, handler del bridge Apps Script, sintassi degli script shell |
 | **Python** | 3.11, 3.12, 3.13 e 3.14, tutte coperte dalla CI |
-| **Piattaforme** | Linux o WSL2 con systemd utente; dashboard Docker opzionale |
+| **Piattaforme** | Linux o WSL2 con systemd utente (nessun Docker richiesto) |
 | **Licenza** | MIT |
 
 ## Perché questo progetto
@@ -75,7 +75,6 @@ documenti veri. Ogni azione che esce dall'azienda passa da un'approvazione espli
 | [`docs/GDPR.md`](docs/GDPR.md) | Ruoli, retention, diritti dell'interessato, violazioni |
 | [`docs/MEMORY.md`](docs/MEMORY.md) | Memoria per cliente: fatti, ricerca, cifratura, cancellazione |
 | [`docs/PLUGINS.md`](docs/PLUGINS.md) | Hook del plugin di guardia e come testare un plugin |
-| [`docs/DOCKER.md`](docs/DOCKER.md) | Container della sola dashboard e limiti reali |
 | [`docs/ALWAYS_ON.md`](docs/ALWAYS_ON.md) | Tenere la segreteria online 24/7 con hardware gratuito |
 | [`docs/REMOTE_ACCESS.md`](docs/REMOTE_ACCESS.md) | Tailscale + tunnel SSH, nessuna porta pubblica |
 | [`docs/WHATSAPP_BAN.md`](docs/WHATSAPP_BAN.md) | Cosa fare se il numero viene limitato |
@@ -146,8 +145,8 @@ documenti veri. Ogni azione che esce dall'azienda passa da un'approvazione espli
 - **Dashboard privata** — solo localhost, login con token, cookie HttpOnly, CSRF,
   rate limiting, header di sicurezza, audit log, gestione pool di chiavi, coda di
   approvazione e anteprima email.
-- **Operatività** — servizi systemd utente, watchdog, riepilogo giornaliero, dashboard
-  Docker opzionale e procedura di primo avvio guidata.
+- **Operatività** — servizi systemd utente, watchdog, riepilogo giornaliero e
+  procedura di primo avvio guidata.
 - **Verifica dei tool del bot** — la dashboard controlla che il bot veda davvero i
   sette tool della segreteria e mostra un banner al titolare se non li vede, invece di
   lasciare che sia il cliente a sentirsi dire “non ho il tool”. `doctor.py` esegue il
@@ -210,8 +209,9 @@ Nessun dato dei clienti viene inviato a un servizio dashboard di terze parti.
 
 - Linux o WSL2 con systemd utente
 - Python **3.11+**, testato in CI su 3.11, 3.12, 3.13 e 3.14 (standard library più
-  `cryptography`, usata per memoria e backup cifrati: `python3 -m pip install -r requirements.txt`; su
-  Windows nativo installa anche `tzdata` per il database completo dei fusi orari IANA)
+  `cryptography`, usata per memoria e backup cifrati: `python3 -m pip install -r requirements.txt`,
+  vedi la nota venv/PEP 668 per Debian/Ubuntu nell'Avvio rapido; su Windows nativo
+  installa anche `tzdata` per il database completo dei fusi orari IANA)
 - Node.js **22+** e [OpenClaw](https://openclaw.ai) **2026.4.22+** installato globalmente
   (la guardia anti-raffica in ingresso usa `before_dispatch`; l'installer rifiuta le
   versioni precedenti alla **2026.4.22**, rileva `--accept-capabilities` e
@@ -245,7 +245,11 @@ git clone https://github.com/AhsenKurtoski/whatsapp-digital-secretary.git
 cd whatsapp-digital-secretary
 
 # 0. Dipendenza runtime (memoria clienti e backup cifrati AES-256-GCM)
-python3 -m pip install -r requirements.txt
+#    Debian/Ubuntu e WSL2 marcano il Python di sistema come externally managed
+#    (PEP 668), quindi pip non può installarci: scegli una delle due righe.
+#      sudo apt install python3-cryptography        # /usr/bin/python3 delle unità systemd
+#      python3 -m venv .venv && . .venv/bin/activate && python3 -m pip install -r requirements.txt
+#    Con un Python tuo (pyenv, macOS) basta: python3 -m pip install -r requirements.txt
 
 # 1. Crea la configurazione dell'attività e la persona del bot
 python3 setup.py
@@ -433,26 +437,6 @@ delle tabelle e build/audit SEO del sito pubblico. L'integrazione con un numero 
 reale non è testabile in CI; vedi [docs/TESTING.md](docs/TESTING.md) per la checklist
 manuale.
 
-## Docker (solo dashboard)
-
-La dashboard può girare in un container mentre OpenClaw e WhatsApp restano sull'host:
-
-```bash
-cp .env.example .env
-# modifica .env
-docker compose up -d --build
-```
-
-Il compose monta `~/.openclaw` e `~/.config/digital-secretary`, pubblica la porta solo
-sul loopback dell'host e raggiunge il gateway tramite il localhost forwarding di
-Linux/WSL2. Dentro il container la dashboard ascolta su `0.0.0.0`, ma non è mai
-esposta oltre `127.0.0.1` sull'host. L'immagine presuppone UID/GID 1000 (il primo
-utente Linux/WSL2). Non è un container WhatsApp completo: il client WhatsApp Web e la
-sua sessione restano intenzionalmente sull'host, e i widget basati su systemd (uptime)
-gateway, timer) non sono disponibili nel container. La gestione chiavi e il pulsante di
-riavvio nel container non comandano il gateway dell'host: modifica
-`~/.openclaw/secretary/secrets.env` sull'host o usa la dashboard host.
-
 ## Piattaforma Gina (v1.4): intelligence, ruoli, GDPR, backup
 
 Questa versione porta la segreteria a un prodotto operativo completo. Ogni voce è
@@ -477,7 +461,6 @@ implementata in codice testato, non è un annuncio:
 | Audit a prova di manomissione | ogni voce contiene l'hash della precedente; modificare o togliere una riga rompe la catena; la rotazione conserva segmenti numerati senza perdere voci | `python3 identity.py --verify-audit` |
 | Ban WhatsApp | piano operativo e comunicazione ai clienti | [`docs/WHATSAPP_BAN.md`](docs/WHATSAPP_BAN.md) |
 | Plugin | API, hook ed esempio eseguibile | [`docs/PLUGINS.md`](docs/PLUGINS.md) · `examples/hello-plugin` |
-| Docker | compose full-stack con OpenClaw | [`docs/DOCKER.md`](docs/DOCKER.md) |
 | Qualità | ruff, mypy, bandit, pip-audit, soglia coverage 86% (oggi 87%) | `bash scripts/coverage.sh` |
 | E2E e video | account di test, checklist, storyboard 60 s | [`docs/E2E.md`](docs/E2E.md) · [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) |
 

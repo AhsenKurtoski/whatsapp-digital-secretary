@@ -40,7 +40,7 @@ quotes, and sends nothing without your go-ahead. Public site:
 | **Latest release** | [v1.1.1](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.1.1) — reliable Google bridge, accurate health with an active bridge |
 | **CI on `main`** | [All checks passing](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml) (last verified 20 Nov 2026): unit tests, every Python self-test, email delivery tests, Apps Script bridge handlers, shell syntax |
 | **Python** | 3.11, 3.12, 3.13 and 3.14, all covered by CI |
-| **Platform** | Linux or WSL2 with systemd user services; optional Docker dashboard |
+| **Platform** | Linux or WSL2 with systemd user services (no Docker required) |
 | **License** | MIT |
 
 ## Why this project
@@ -80,7 +80,6 @@ explicit approval.
 | [`docs/GDPR.md`](docs/GDPR.md) | Roles, retention, data subject rights, breach steps |
 | [`docs/MEMORY.md`](docs/MEMORY.md) | Per-customer memory: facts, search, encryption, erasure |
 | [`docs/PLUGINS.md`](docs/PLUGINS.md) | Guard plugin hooks and how to test a plugin |
-| [`docs/DOCKER.md`](docs/DOCKER.md) | Dashboard-only container and its real limits |
 | [`docs/ALWAYS_ON.md`](docs/ALWAYS_ON.md) | Keeping the secretary online 24/7 on free hardware |
 | [`docs/REMOTE_ACCESS.md`](docs/REMOTE_ACCESS.md) | Tailscale + SSH tunnel, no public port |
 | [`docs/WHATSAPP_BAN.md`](docs/WHATSAPP_BAN.md) | What to do if the number gets restricted |
@@ -150,8 +149,7 @@ explicit approval.
 - **Private dashboard** — localhost only, token login, HttpOnly cookie, CSRF
   protection, rate limiting, security headers, audit log, key pool management,
   approval queue, and email preview.
-- **Operations** — systemd user services, watchdog, daily digest, optional Docker
-  dashboard, and a setup wizard.
+- **Operations** — systemd user services, watchdog, daily digest and a setup wizard.
 - **Tool capability check** — the dashboard verifies that the bot actually sees the
   seven secretary tools and shows the owner a banner if it does not, instead of letting
   a customer hear “I don't have that tool”. `doctor.py` runs the installed MCP server
@@ -214,8 +212,9 @@ customer data is sent to a third-party dashboard service.
 
 - Linux or WSL2 with systemd user services
 - Python **3.11+**, tested in CI on 3.11, 3.12, 3.13 and 3.14 (standard library plus
-  `cryptography`, used for memory and backup encryption: `python3 -m pip install -r requirements.txt`; on
-  native Windows also install `tzdata` for the full IANA timezone database)
+  `cryptography`, used for memory and backup encryption: `python3 -m pip install -r requirements.txt`,
+  see the venv/PEP 668 note for Debian/Ubuntu in Quick start; on native Windows also
+  install `tzdata` for the full IANA timezone database)
 - Node.js **22+** and [OpenClaw](https://openclaw.ai) **2026.4.22+** installed globally
   (the inbound burst guard uses `before_dispatch`; the installer rejects versions below
   **2026.4.22**, detects the optional `--accept-capabilities` and
@@ -250,7 +249,11 @@ git clone https://github.com/AhsenKurtoski/whatsapp-digital-secretary.git
 cd whatsapp-digital-secretary
 
 # 0. Runtime dependency (client memory and backups, AES-256-GCM)
-python3 -m pip install -r requirements.txt
+#    Debian/Ubuntu and WSL2 mark the system Python as externally managed
+#    (PEP 668), so pip cannot install into it: pick one of these two lines.
+#      sudo apt install python3-cryptography        # /usr/bin/python3 of the systemd units
+#      python3 -m venv .venv && . .venv/bin/activate && python3 -m pip install -r requirements.txt
+#    With your own Python (pyenv, macOS) plain pip works: python3 -m pip install -r requirements.txt
 
 # 1. Create the business configuration and the persona
 python3 setup.py
@@ -435,26 +438,6 @@ rows, relative links in the documentation (no 404 while following the install gu
 the public site build/SEO audit. Integration with a real WhatsApp number and a real Google account cannot
 be tested in CI; see [docs/TESTING.md](docs/TESTING.md) for the manual checklist.
 
-## Docker (dashboard only)
-
-The dashboard can run in a container while OpenClaw and WhatsApp run on the host:
-
-```bash
-cp .env.example .env
-# edit .env
-docker compose up -d --build
-```
-
-The compose file mounts `~/.openclaw` and `~/.config/digital-secretary`, publishes the
-port on host loopback only, and reaches the gateway through the WSL2/Linux localhost
-forwarding. Inside the container the dashboard listens on `0.0.0.0`, but it is never
-exposed beyond `127.0.0.1` on the host. The image expects host UID/GID 1000 (the
-default first Linux/WSL2 user). This is not a full WhatsApp container: the
-WhatsApp Web client and its session are intentionally kept on the host, and systemd-only
-widgets (gateway uptime, timers) are unavailable inside the container. Key management
-and the restart button in the container do not control the host gateway: edit
-`~/.openclaw/secretary/secrets.env` on the host or use the host dashboard.
-
 ## Gina platform (v1.4): intelligence, roles, GDPR, backups
 
 Everything below is implemented and tested, not a roadmap:
@@ -478,7 +461,6 @@ Everything below is implemented and tested, not a roadmap:
 | Tamper-evident audit | each entry hashes the previous one; changing or removing a line breaks the chain; rotation keeps numbered segments so nothing is lost | `python3 identity.py --verify-audit` |
 | WhatsApp ban | operational plan and customer communication | [`docs/WHATSAPP_BAN.md`](docs/WHATSAPP_BAN.md) |
 | Plugins | API, hooks and a runnable example | [`docs/PLUGINS.md`](docs/PLUGINS.md) · `examples/hello-plugin` |
-| Docker | full-stack compose with OpenClaw | [`docs/DOCKER.md`](docs/DOCKER.md) |
 | Quality | ruff, mypy, bandit, pip-audit, coverage gate 86% (currently 87%) | `bash scripts/coverage.sh` |
 | E2E and video | test accounts, checklist, 60 s storyboard | [`docs/E2E.md`](docs/E2E.md) · [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) |
 
