@@ -6,4 +6,4 @@
 # `cryptography` serve a:
 #   - memory.py: memoria clienti cifrata a riposo (AES-256-GCM)
 #   - backup.py: archivi di backup cifrati (AES-256-GCM, chiave da scrypt)
-cryptography>=42,<51
+cryptography>=50.0.2,<51
