@@ -21,7 +21,9 @@ quotes, and sends nothing without your go-ahead. Public site:
 
 > **English** · [Italiano](README.it.md)
 
-![Gina private dashboard with leads, approvals, quotes and gateway health](docs/screenshot-dashboard.png)
+![Gina private dashboard: leads, PDF quotes, the approval queue and per-customer conversations](docs/demo-dashboard.gif)
+
+<sub>Recorded from the demo dashboard (`python3 demo.py`), 21 November 2026.</sub>
 
 <details>
 <summary>Quote email — preview</summary>
