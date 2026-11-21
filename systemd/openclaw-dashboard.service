@@ -12,11 +12,11 @@ RestartSec=3
 Environment=PYTHONUNBUFFERED=1
 NoNewPrivileges=yes
 PrivateTmp=yes
-# La dashboard misurata usa ~32 MB: il tetto protegge le macchine da 2 GB
-# senza mai toccare il funzionamento normale.
-MemoryHigh=160M
-MemoryMax=256M
-TasksMax=64
+# Misurata a ~32 MB. Il limite è largo perché il cgroup include anche i figli
+# che la dashboard lancia (es. `openclaw message send`, Node): 512 MB restano
+# un tetto reale per una macchina da 2 GB senza rischiare un OOM kill.
+MemoryHigh=384M
+MemoryMax=512M
 
 [Install]
 WantedBy=default.target

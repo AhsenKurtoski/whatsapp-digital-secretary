@@ -45,6 +45,21 @@ project adheres to [Semantic Versioning](https://semver.org/).
   entries, chained hashes, segments and the first broken row, so the hash chain can be
   checked without the CLI.
 
+### Fixed
+
+- **Review of the low-memory release**: `load()` now decides the profile from the config
+  it already read (`_low_memory_from`), so there is no second file read and no path that
+  can recurse into `load()`; `low_memory` accepts `null`/`"auto"` explicitly. The
+  systemd caps were raised to `MemoryHigh=384M`/`MemoryMax=512M` for the dashboard and
+  `MemoryMax=512M` for periodic jobs because a unit's cgroup includes the Node children
+  it spawns (`openclaw message send`): 256 MB could have OOM-killed a healthy job or the
+  dashboard mid-send. `TasksMax` was removed as unnecessary, and `scripts/footprint.py`
+  no longer matches unrelated processes by the generic words "gateway"/"secretary".
+- **`AI_AGENT_PROMPT.md`**: a copy-paste prompt for any terminal-capable AI agent that
+  installs the dashboard, connects WhatsApp and Google, runs the full verification,
+  applies the always-on/window settings and reports PASS/FAIL with remedies, while never
+  printing secrets or disabling the approval and CSRF guards.
+
 ### Performance
 
 - **Runs on light machines (< 8 GB, no Docker)**: `low_memory` turns itself on below

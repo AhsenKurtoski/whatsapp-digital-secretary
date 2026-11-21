@@ -36,10 +36,13 @@ quindi **350–700 MB**, più il sistema operativo.
 
 - **Nessun Docker**: niente layer, niente daemon, niente doppia copia dei dati. Un
   `git pull` + `bash scripts/install.sh` aggiorna tutto.
-- **Limiti systemd già installati**: dashboard `MemoryHigh=160M` / `MemoryMax=256M`, i
+- **Limiti systemd già installati**: dashboard `MemoryHigh=384M` / `MemoryMax=512M`, i
   processi periodici (watchdog, healthcheck, promemoria, monitor, digest)
-  `MemoryMax=256M`. Se un bug gonfia un processo, systemd lo contiene invece di far
-  finire la macchina in swap.
+  `MemoryMax=512M`. I limiti sono larghi perché il cgroup include anche i **figli**
+  Node/OpenClaw lanciati da questi processi (per esempio l'invio WhatsApp): 256 MB
+  avrebbe potuto uccidere un job mentre il figlio era in memoria. Se un bug gonfia un
+  processo, systemd lo contiene invece di far finire la macchina in swap, e la
+  dashboard ha `Restart=always` con `RestartSec=3`.
 - **Profilo `low_memory`**: si attiva da solo sotto i 4 GB di RAM (o con
   `"low_memory": true` in `config.json`) e:
   - limita `max_concurrent` a 2 chiamate AI in parallelo;

@@ -70,6 +70,7 @@ documenti veri. Ogni azione che esce dall'azienda passa da un'approvazione espli
 |---|---|
 | [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | Guida rapida per chi non è tecnico: dalla prima installazione alla prima risposta, in 15 minuti |
 | [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md) | Macchine leggere: RAM misurata, profilo `low_memory`, zram e swap, nessun Docker |
+| [`AI_AGENT_PROMPT.md`](AI_AGENT_PROMPT.md) | Prompt pronto da incollare a un agente AI: installa, collega e verifica tutto da solo |
 | [`docs/WEBSITE.md`](docs/WEBSITE.md) | Sito pubblico: build, audit SEO, analytics, header di sicurezza, deploy |
 | [`docs/TESTING.md`](docs/TESTING.md) | Controlli automatici e checklist manuale WhatsApp/dashboard/Google |
 | [`docs/E2E.md`](docs/E2E.md) | Prova end-to-end con un secondo telefono e account di test |
@@ -278,8 +279,9 @@ L'installer esegue `sync_fallbacks.py`, che sceglie Gemini come modello principa
 esiste una chiave Gemini e mantiene Groq come fallback. Riavvia il gateway; WhatsApp può
 impiegare un minuto a riconnettersi.
 
-> Stai usando un agente AI? [`AGENTS.md`](AGENTS.md) contiene la checklist esatta di
-> installazione e verifica, inclusi Google e WhatsApp.
+> Stai usando un agente AI? Incollagli [`AI_AGENT_PROMPT.md`](AI_AGENT_PROMPT.md):
+> installa, collega WhatsApp/Google, esegue test e footprint e ti riporta un report con
+> PASS/FAIL. La checklist tecnica completa resta in [`AGENTS.md`](AGENTS.md).
 
 ### Connessione WhatsApp
 
@@ -330,7 +332,8 @@ Tutti i dati dell'attività vivono in `~/.config/digital-secretary/config.json`.
 | `hours` | Orari di apertura / testo fuori orario |
 | `pricing_note` | Formula prezzi approvata; non inventare prezzi |
 | `dashboard_port` | Porta locale della dashboard (default `8787`) |
-| `max_concurrent` | Chiamate AI in parallelo (default `3`) |
+| `max_concurrent` | Chiamate AI in parallelo (default `3`; con `low_memory` scende a 2) |
+| `low_memory` | `null`/`"auto"` = attivo sotto i 4 GB di RAM; `true`/`false` lo forzano (vedi [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md)) |
 | `max_reply_lines` | Lunghezza massima della risposta WhatsApp |
 | `whatsapp_number` | Numero del bot, solo per visualizzazione |
 | `quote_prefix` | Prefisso dei numeri preventivo (default `PREV`) |

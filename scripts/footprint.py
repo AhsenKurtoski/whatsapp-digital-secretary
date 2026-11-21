@@ -22,7 +22,7 @@ from pathlib import Path
 MEMINFO = "/proc/meminfo"
 PROC = Path("/proc")
 DEFAULT_BUDGET_MB = 1500
-MATCH = ("dashboard.py", "openclaw", "gateway", "secretary")
+MATCH = ("dashboard.py", "openclaw")
 
 
 def parse_meminfo(text: str) -> dict:

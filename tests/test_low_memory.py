@@ -69,14 +69,42 @@ class LowMemoryDetectionTests(unittest.TestCase):
 
     def test_load_clamps_parallel_calls_in_low_memory(self):
         write_config(self.cfg, {"max_concurrent": 5})
-        with mock.patch.object(config, "DEFAULT_CONFIG_PATH", self.cfg), mock.patch.object(
-            config, "low_memory", return_value=True
+        with mock.patch.object(config, "DEFAULT_CONFIG_PATH", self.cfg), mock.patch.dict(
+            os.environ, {"SECRETARY_LOW_MEMORY": "1"}
         ):
             self.assertEqual(config.load()["max_concurrent"], 2)
-        with mock.patch.object(config, "DEFAULT_CONFIG_PATH", self.cfg), mock.patch.object(
-            config, "low_memory", return_value=False
+        with mock.patch.object(config, "DEFAULT_CONFIG_PATH", self.cfg), mock.patch.dict(
+            os.environ, {"SECRETARY_LOW_MEMORY": "0"}
         ):
             self.assertEqual(config.load()["max_concurrent"], 5)
+
+    def test_explicit_auto_and_false_are_respected(self):
+        write_config(self.cfg, {"low_memory": "auto"})
+        with mock.patch.object(config, "DEFAULT_CONFIG_PATH", self.cfg), mock.patch.object(
+            config, "total_ram_mb", return_value=2048
+        ), mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("SECRETARY_LOW_MEMORY", None)
+            self.assertTrue(config.low_memory())
+        write_config(self.cfg, {"low_memory": False})
+        with mock.patch.object(config, "DEFAULT_CONFIG_PATH", self.cfg), mock.patch.object(
+            config, "total_ram_mb", return_value=2048
+        ):
+            self.assertFalse(config.low_memory())
+
+    def test_load_reads_the_config_file_once(self):
+        write_config(self.cfg, {"max_concurrent": 4})
+        calls = []
+        real = config._read_file
+
+        def counting():
+            calls.append(1)
+            return real()
+
+        with mock.patch.object(config, "DEFAULT_CONFIG_PATH", self.cfg), mock.patch.object(
+            config, "_read_file", counting
+        ):
+            config.load()
+        self.assertEqual(len(calls), 1, "load() deve leggere config.json una sola volta")
 
     def test_module_caps_follow_the_profile(self):
         def caps(flag: str) -> str:
@@ -128,10 +156,12 @@ class UnitAndHealthTests(unittest.TestCase):
         for unit in units:
             text = unit.read_text(encoding="utf-8")
             if unit.name == "openclaw-dashboard.service":
-                self.assertIn("MemoryMax=256M", text)
-                self.assertIn("MemoryHigh=160M", text)
+                self.assertIn("MemoryMax=512M", text)
+                self.assertIn("MemoryHigh=384M", text)
+                # Il cgroup include i figli Node: un TasksMax basso li strozzerebbe.
+                self.assertNotIn("TasksMax", text)
             else:
-                self.assertIn("MemoryMax=", text, unit.name)
+                self.assertIn("MemoryMax=512M", text, unit.name)
 
     def test_installer_ships_the_gateway_dropin(self):
         text = (ROOT / "scripts" / "install.sh").read_text(encoding="utf-8")
@@ -165,6 +195,31 @@ class UnitAndHealthTests(unittest.TestCase):
     def test_low_spec_doc_is_linked(self):
         for name in ("README.md", "README.it.md"):
             self.assertIn("docs/LOW_SPEC.md", (ROOT / name).read_text(encoding="utf-8"), name)
+
+
+class AgentPromptTests(unittest.TestCase):
+    def setUp(self):
+        self.prompt = (ROOT / "AI_AGENT_PROMPT.md").read_text(encoding="utf-8")
+
+    def test_prompt_contains_the_real_commands(self):
+        for command in (
+            "bash scripts/install.sh",
+            "bash scripts/verify.sh",
+            "bash scripts/coverage.sh",
+            "scripts/footprint.py",
+            "python3 setup.py",
+            "python3 doctor.py --short",
+        ):
+            self.assertIn(command, self.prompt, command)
+
+    def test_prompt_forbids_leaking_secrets_and_removing_guards(self):
+        self.assertIn("mai stampare", self.prompt.lower())
+        self.assertIn("non disattivare", self.prompt.lower())
+        self.assertIn("nessun docker", self.prompt.lower())
+
+    def test_prompt_is_linked_from_the_readmes_and_agents(self):
+        for name in ("README.md", "README.it.md", "AGENTS.md"):
+            self.assertIn("AI_AGENT_PROMPT.md", (ROOT / name).read_text(encoding="utf-8"), name)
 
 
 if __name__ == "__main__":

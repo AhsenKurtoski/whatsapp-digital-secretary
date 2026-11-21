@@ -74,7 +74,7 @@ python3 ~/.openclaw/secretary/doctor.py --offline
 python3 ~/.openclaw/secretary/healthcheck.py --json
 ```
 
-Expected: `scripts/verify.sh` prints `VERIFICA OK`; 388 unit tests pass, including
+Expected: `scripts/verify.sh` prints `VERIFICA OK`; 393 unit tests pass, including
 the isolated installer, remote-access, OpenClaw compatibility and MCP protocol tests; every self-test prints `SELF-TEST OK`; the guard test
 prints `secretary guard: OK`; on a host with supported OpenClaw, `--check-compat`
 reports `allowed` with the expected fallback flags; the smoke test prints `SMOKE OK` (one model call for six identical
@@ -142,3 +142,5 @@ quote/email from the dashboard, plus one Calendar request. Record the date and r
 | `link_check.py` | Relative links in documentation and pages; runs in `verify.sh` and CI |
 | `scripts/wsl_status.py` | Windows/WSL2 status: distros, repo folder, install, gateway, tools and the next command (`docs/WSL.md`) |
 | `docs/TESTING.md` | Manual WhatsApp/dashboard/Google checklist |
+| `AI_AGENT_PROMPT.md` | Copy-paste prompt that tells any AI agent to install, connect and verify everything (user-facing; this file stays the technical checklist) |
+| `docs/LOW_SPEC.md` | Light machines: measured RAM, `low_memory` profile, zram/swap, systemd caps |

@@ -75,6 +75,7 @@ explicit approval.
 |---|---|
 | [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | Plain-language quick start for non-technical users: first install to first reply in 15 minutes (Italian) |
 | [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md) | Light machines: measured RAM, `low_memory` profile, zram and swap, no Docker (Italian) |
+| [`AI_AGENT_PROMPT.md`](AI_AGENT_PROMPT.md) | Copy-paste prompt for an AI agent: installs, connects and verifies everything (Italian) |
 | [`docs/WEBSITE.md`](docs/WEBSITE.md) | Public site: build, SEO audit, analytics, security headers, deploy |
 | [`docs/TESTING.md`](docs/TESTING.md) | Automated checks plus the manual WhatsApp/dashboard/Google checklist |
 | [`docs/E2E.md`](docs/E2E.md) | End-to-end run with a second phone and test accounts |
@@ -334,7 +335,8 @@ All business data lives in `~/.config/digital-secretary/config.json`. Start from
 | `hours` | Opening hours / out-of-office text |
 | `pricing_note` | Approved price wording; never invent prices |
 | `dashboard_port` | Local dashboard port (default `8787`) |
-| `max_concurrent` | AI calls processed in parallel (default `3`) |
+| `max_concurrent` | AI calls processed in parallel (default `3`; drops to 2 under `low_memory`) |
+| `low_memory` | `null`/`"auto"` = on below 4 GB of RAM; `true`/`false` force it (see [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md)) |
 | `max_reply_lines` | Maximum WhatsApp reply length |
 | `whatsapp_number` | Bot number, for display only |
 | `quote_prefix` | Prefix for quote numbers (default `PREV`) |

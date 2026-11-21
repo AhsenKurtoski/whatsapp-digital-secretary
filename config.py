@@ -97,7 +97,8 @@ def load() -> dict:
         data["dashboard_port"] = int(data.get("dashboard_port") or 8787)
     except (TypeError, ValueError):
         data["dashboard_port"] = 8787
-    if low_memory():
+    # Riusa il file già letto: nessuna seconda I/O e nessuna ricorsione.
+    if _low_memory_from(data):
         try:
             data["max_concurrent"] = max(1, min(int(data.get("max_concurrent") or 3), 2))
         except (TypeError, ValueError):
@@ -119,30 +120,42 @@ def total_ram_mb(path: str = "/proc/meminfo") -> int:
     return 0
 
 
-def _as_bool(value: object) -> bool:
+def _flag(value: object) -> bool | None:
+    """True/False espliciti; None quando il valore è assente o "auto"."""
+    if value is None:
+        return None
     if isinstance(value, bool):
         return value
-    return str(value or "").strip().lower() in {"1", "true", "yes", "si", "on"}
+    text = str(value).strip().lower()
+    if text in {"", "auto"}:
+        return None
+    return text in {"1", "true", "yes", "si", "on"}
+
+
+def _auto_low_memory() -> bool:
+    total = total_ram_mb()
+    return 0 < total < 4096
+
+
+def _low_memory_from(data: dict) -> bool:
+    """Precedenza: variabile d'ambiente, poi config, poi RAM rilevata."""
+    env = _flag(os.environ.get("SECRETARY_LOW_MEMORY"))
+    if env is not None:
+        return env
+    explicit = _flag(data.get("low_memory"))
+    if explicit is not None:
+        return explicit
+    return _auto_low_memory()
 
 
 def low_memory() -> bool:
     """Profilo a basso consumo per macchine con meno di 8 GB di RAM.
 
-    Ordine di precedenza: variabile `SECRETARY_LOW_MEMORY`, poi `low_memory`
-    nel file di configurazione, poi rilevamento automatico (sotto i 4 GB).
-    Non richiama `load()` per evitare ricorsione.
+    Ordine di precedenza: `SECRETARY_LOW_MEMORY`, poi `low_memory` nel file di
+    configurazione (`null`/`"auto"` = decidi tu), poi rilevamento automatico
+    sotto i 4 GB. Legge il file una volta sola e non chiama `load()`.
     """
-    env = os.environ.get("SECRETARY_LOW_MEMORY")
-    if env is not None and str(env).strip() != "":
-        return _as_bool(env)
-    try:
-        raw = _read_file().get("low_memory")
-    except SystemExit:
-        raw = None
-    if raw is not None and str(raw).strip() != "":
-        return _as_bool(raw)
-    total = total_ram_mb()
-    return 0 < total < 4096
+    return _low_memory_from(_read_file())
 
 
 def get(key: str, default=None):
