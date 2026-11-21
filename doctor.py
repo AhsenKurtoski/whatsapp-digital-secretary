@@ -22,7 +22,7 @@ non interattivo.
 from __future__ import annotations
 
 import argparse
-import importlib.util
+import importlib
 import json
 import os
 import re
@@ -121,14 +121,16 @@ RUNTIME_DEPENDENCIES = {
 
 
 def _missing_dependencies() -> list[str]:
-    """Moduli runtime non importabili dall'interprete che esegue la diagnosi."""
+    """Moduli runtime che l'interprete della diagnosi non riesce a importare.
+
+    L'import vero, non ``find_spec``: un pacchetto presente ma rotto (o ombreggiato
+    da un file incompleto) deve fallire qui, non dentro memoria o backup.
+    """
     missing: list[str] = []
     for module in RUNTIME_DEPENDENCIES:
         try:
-            found = importlib.util.find_spec(module) is not None
-        except (ImportError, ValueError):
-            found = False
-        if not found:
+            importlib.import_module(module)
+        except Exception:
             missing.append(module)
     return missing
 

@@ -107,7 +107,9 @@ class DoctorTests(unittest.TestCase):
         self.assertIn("burst-only", hook["detail"])
 
     def test_missing_cryptography_is_reported_with_requirements_hint(self):
-        with patch.object(doctor.importlib.util, "find_spec", return_value=None):
+        with patch.object(
+            doctor.importlib, "import_module", side_effect=ImportError("cryptography assente")
+        ):
             checks = self.run_checks()
         deps = next(c for c in checks if c["id"] == "deps")
         self.assertEqual(deps["status"], "fail")
