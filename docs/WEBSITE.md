@@ -141,7 +141,7 @@ python3 seo_audit.py --dir site/dist
 Output atteso:
 
 ```text
-SITO OK: 4 pagine in site/dist · base https://tuodominio.it · analytics GA4
+SITO OK: 5 pagine in site/dist · base https://tuodominio.it · analytics GA4
 SEO AUDIT OK
 ```
 

@@ -263,6 +263,17 @@ figcaption { color: var(--muted); font-size: 14px; margin-top: 10px; }
   font-size: 20px;
 }
 
+.author-links { display: flex; flex-wrap: wrap; gap: 8px 10px; margin: 14px 0; }
+.author-links a {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 14px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, .03);
+}
+.author-links a:hover { text-decoration: none; border-color: var(--cyan); }
+
 .faq details {
   border: 1px solid var(--line);
   border-radius: 14px;

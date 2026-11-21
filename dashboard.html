@@ -798,9 +798,11 @@ select option{background:#081420}
         <div class="card span5">
           <h2>Audit locale</h2>
           <p class="sub">Eventi della dashboard: login, chiavi, riavvii e rotazioni. Nessun contenuto delle chiavi.</p>
-          <div class="row" style="margin:12px 0">
+          <div class="row" style="margin:12px 0;gap:8px;flex-wrap:wrap">
             <button class="btn" id="loadAuditBtn" type="button">Carica audit</button>
+            <button class="btn" id="verifyAuditBtn" type="button">Verifica integrità</button>
           </div>
+          <p class="sub" id="auditIntegrity" role="status" aria-live="polite">La catena di hash è verificabile in locale, senza rete.</p>
           <pre class="pre" id="auditBox">Premi “Carica audit”.</pre>
         </div>
         <div class="card span12">
@@ -1447,6 +1449,9 @@ const I18N={
     'state.active':'attivo','state.stopped':'fermo',
     'model.applied':'Modello: {model}','model.notApplied':'Modello non applicato: {error}',
     'scan.last':'Ultima scansione: {when} · {ms} ms','scan.errors':'Scansione terminata con errori: {error}',
+    'audit.verify':'Verifica integrità','audit.verifying':'Controllo la catena di hash…',
+    'audit.intact':'Catena integra: {entries} eventi, {chained} concatenati, {segments} segmenti.',
+    'audit.broken':'Catena interrotta in {file}, riga {at}.',
     'consent.ready':'Consenso pronto per {account}. Apri Google, premi Consenti e incolla qui l\'indirizzo finale.',
     'bridge.unverified':'Bridge configurato, ma la verifica non risponde: {error}',
     'health.expiry':'Scadenza: {date}',
@@ -1520,6 +1525,9 @@ const I18N={
     'state.active':'active','state.stopped':'stopped',
     'model.applied':'Model: {model}','model.notApplied':'Model not applied: {error}',
     'scan.last':'Last scan: {when} · {ms} ms','scan.errors':'Scan finished with errors: {error}',
+    'audit.verify':'Verify integrity','audit.verifying':'Checking the hash chain…',
+    'audit.intact':'Chain intact: {entries} events, {chained} chained, {segments} segments.',
+    'audit.broken':'Chain broken in {file}, line {at}.',
     'consent.ready':'Consent ready for {account}. Open Google, press Allow and paste the final address here.',
     'bridge.unverified':'Bridge configured, but the check is not responding: {error}',
     'health.expiry':'Expiry: {date}',
@@ -2021,6 +2029,17 @@ async function loadSecurity(){
   }catch(e){ if(e.message!=='auth') toast('Errore sicurezza: '+e.message,true); }
 }
 $('loadAuditBtn').addEventListener('click',loadSecurity);
+$('verifyAuditBtn').addEventListener('click', async ()=>{
+  const box=$('auditIntegrity'); if(box){ box.textContent=t('audit.verifying'); box.className='sub'; }
+  try{
+    const r=await api('/api/audit/verify'); const d=r.data||{};
+    if(!box) return;
+    box.textContent = d.ok
+      ? t('audit.intact').replace('{entries}',d.entries??0).replace('{chained}',d.chained??0).replace('{segments}',d.segments??0)
+      : t('audit.broken').replace('{file}',d.broken_in||'—').replace('{at}',(Number(d.broken_at??0)+1));
+    box.className = 'sub ' + (d.ok?'ok':'crit');
+  }catch(e){ if(box){ box.textContent=t('lbl.error')+': '+e.message; box.className='sub crit'; } }
+});
 $('rotateTokenBtn').addEventListener('click', async ()=>{
   if(!confirm('Rigenerare il token? Le altre sessioni della dashboard verranno scollegate.')) return;
   try{ await api('/api/security/rotate',{method:'POST'}); toast('Token ruotato. Nuovo token nel file locale.'); loadSecurity(); }catch(e){ toast(t('lbl.error')+': '+e.message,true); }

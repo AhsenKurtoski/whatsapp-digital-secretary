@@ -6,6 +6,27 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Public author page**: `site/autore.html` collects the real, published facts about
+  Ahsen Kurtoski (student and software developer between Feltre and Belluno, the stack he
+  declares, six projects with their links) and exposes a `ProfilePage` plus a `Person`
+  with `sameAs` to the portfolio, personal site, GitHub, LinkedIn and Instagram. It is in
+  the sitemap, linked from every footer and covered by `seo_audit.py`.
+- **Audit integrity check in the dashboard**: the Sicurezza tab has a **Verifica
+  integrità** button that calls the new admin-only `GET /api/audit/verify` and reports
+  entries, chained hashes, segments and the first broken row, so the hash chain can be
+  checked without the CLI.
+
+### Performance
+
+- **The dashboard is compressed and rendered once**: pages are gzipped when the browser
+  accepts it (162 KiB → 44 KiB, 3.7×) and the rendered page is cached by file signature
+  (1.18 ms → 0.011 ms), rebuilt automatically when `dashboard.html`, `i18n.json` or the
+  business config change. The public site now serves `/assets/*` with
+  `Cache-Control: public, max-age=31536000, immutable` in both `_headers` and
+  `vercel.json`.
+
 ### Security
 
 - **Encrypted contact memory**: `memory/contacts/*.json` is now AES-256-GCM with a
@@ -33,6 +54,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **A non-ASCII token crashed the login page**: `hmac.compare_digest` accepts `str`
+  only when it is ASCII, so a request with `token=città` (or a cookie with non-ASCII
+  bytes) raised `TypeError` and produced a 500 instead of a 401. Both the login handler
+  and `_identity()` now compare UTF-8 bytes through `_token_matches()`.
 - **Coverage matrix skipped six self-tests**: `contacts`, `monitor`, `reminders`,
   `watchdog`, `healthcheck` and `doctor` all support `--self-test` and are run by
   `verify.sh`, but they were missing from `scripts/coverage.sh`, so their code counted as

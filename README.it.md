@@ -573,6 +573,22 @@ Ordinate per rischio rimosso in un'attività reale:
 Già rilasciato e quindi fuori da questa lista: secondo fattore TOTP, sessioni brevi
 revocabili, memoria attiva cifrata, audit a prova di manomissione, backup fuori sede.
 
+## Chi lo costruisce
+
+Gina è progettata, scritta e mantenuta da **Ahsen Kurtoski**, studente e sviluppatore
+software tra Feltre e Belluno. Costruisce siti web, applicazioni full-stack e
+automazioni; i suoi lavori sono pubblicati su
+[ahsen-studio.netlify.app](https://ahsen-studio.netlify.app) e
+[ahsenkurtoski.vercel.app](https://ahsenkurtoski.vercel.app), e tra i suoi progetti open
+source c'è [Lead Machine](https://website-mocha-one-59.vercel.app/it), un CRM con licenza
+MIT. Le stesse informazioni sono nella [pagina autore](site/autore.html) del sito
+pubblico.
+
+- Portfolio: <https://ahsen-studio.netlify.app>
+- Sito personale e modulo di contatto: <https://ahsenkurtoski.vercel.app>
+- GitHub: <https://github.com/AhsenKurtoski>
+- LinkedIn: <https://www.linkedin.com/in/ahsen-kurtoski-397b00354>
+
 ## Contribuire
 
 Issue e pull request sono benvenute. Leggi [CONTRIBUTING.md](CONTRIBUTING.md) e

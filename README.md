@@ -571,6 +571,22 @@ Ordered by what removes the most risk for a real business:
 Already shipped and therefore not on this list: TOTP second factor, short revocable
 sessions, encrypted active memory, tamper-evident audit, off-site backups.
 
+## Who builds it
+
+Gina is designed, written and maintained by **Ahsen Kurtoski**, a student and software
+developer based between Feltre and Belluno, Italy. He builds websites, full-stack
+applications and automations; his work is published on
+[ahsen-studio.netlify.app](https://ahsen-studio.netlify.app) and
+[ahsenkurtoski.vercel.app](https://ahsenkurtoski.vercel.app), and other open-source
+projects of his include [Lead Machine](https://website-mocha-one-59.vercel.app/it), an
+MIT-licensed CRM. The public site carries the same information on its
+[author page](site/autore.html).
+
+- Portfolio: <https://ahsen-studio.netlify.app>
+- Personal site and contact form: <https://ahsenkurtoski.vercel.app>
+- GitHub: <https://github.com/AhsenKurtoski>
+- LinkedIn: <https://www.linkedin.com/in/ahsen-kurtoski-397b00354>
+
 ## Contributing
 
 Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and

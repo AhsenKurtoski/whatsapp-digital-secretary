@@ -1,4 +1,5 @@
 import base64
+import gzip
 import json
 import threading
 import time
@@ -126,6 +127,43 @@ class DashboardTests(unittest.TestCase):
         self.assertNotIn("{{BUSINESS_NAME}}", body)
         self.assertNotIn("{{I18N_TEXT}}", body)
         self.assertIn('"Panoramica": "Overview"', body)
+
+    def test_index_is_gzipped_for_browsers_that_accept_it(self):
+        request = urllib.request.Request(self.base + "/", headers={"Accept-Encoding": "gzip"})
+        with urllib.request.urlopen(request, timeout=10) as response:
+            self.assertEqual(response.headers.get("Content-Encoding"), "gzip")
+            body = gzip.decompress(response.read()).decode("utf-8")
+        self.assertIn("Attività Demo", body)
+        self.assertIn("Panoramica", body)
+
+    def test_rendered_page_is_cached_and_rebuilt_when_files_change(self):
+        dashboard.PAGE_CACHE["key"] = None
+        first = dashboard.rendered_page()
+        self.assertIn("Attività Demo", first)
+        key = dashboard.PAGE_CACHE["key"]
+        self.assertIsNotNone(key)
+        self.assertEqual(dashboard.rendered_page(), first)
+        self.assertEqual(dashboard.PAGE_CACHE["key"], key)
+        dashboard.PAGE_CACHE["key"] = "obsoleto"
+        self.assertEqual(dashboard.rendered_page(), first)
+
+    def test_audit_integrity_endpoint_verifies_the_chain(self):
+        identity.audit("owner", "test.verify", "controllo", base=dashboard.BASE)
+        with self.get("/api/audit/verify", dashboard.DASH_TOKEN) as response:
+            payload = json.loads(response.read())
+        self.assertTrue(payload["ok"])
+        self.assertTrue(payload["data"]["ok"])
+        self.assertEqual(payload["data"]["entries"], payload["data"]["chained"])
+        self.assertIsNone(payload["data"]["broken_at"])
+
+    def test_login_with_a_non_ascii_token_is_rejected_without_crashing(self):
+        body = urllib.parse.urlencode({"token": "città"}).encode("utf-8")
+        request = urllib.request.Request(
+            self.base + "/login", data=body,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        error = self.expect_http_error(401, lambda: urllib.request.urlopen(request, timeout=10))
+        self.assertIn("Token", json.loads(error.read())["error"])
 
     def test_api_requires_token(self):
         self.expect_http_error(401, lambda: self.get("/api/leads"))

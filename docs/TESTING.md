@@ -29,7 +29,7 @@ python3 remote_access.py --self-test
 ```
 
 Expected result: `scripts/verify.sh` prints `VERIFICA OK`, the whole suite passes
-(313 tests at the time of writing), including
+(319 tests at the time of writing), including
 the isolated installer, remote-access and OpenClaw compatibility tests; the compile
 check is silent, Code.gs prints
 `Code.gs handlers: OK`, the guard test prints `secretary guard: OK`, and every

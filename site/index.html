@@ -41,9 +41,17 @@
       "@type": "Person",
       "@id": "{{BASE_URL}}/#ahsen-kurtoski",
       "name": "Ahsen Kurtoski",
-      "url": "{{OWNER_URL}}",
-      "sameAs": ["{{OWNER_URL}}"],
-      "knowsAbout": ["WhatsApp automation", "digital secretary", "Python", "privacy", "OpenClaw"],
+      "url": "{{BASE_URL}}/autore.html",
+      "jobTitle": "Studente e sviluppatore software",
+      "sameAs": [
+        "https://ahsen-studio.netlify.app",
+        "https://ahsenkurtoski.vercel.app",
+        "{{OWNER_URL}}",
+        "https://www.linkedin.com/in/ahsen-kurtoski-397b00354",
+        "https://www.instagram.com/ahsenstudio"
+      ],
+      "address": {"@type": "PostalAddress", "addressLocality": "Feltre", "addressRegion": "Belluno", "addressCountry": "IT"},
+      "knowsAbout": ["React", "Next.js", "TypeScript", "Node.js", "Supabase", "Python", "WhatsApp automation", "digital secretary", "privacy", "OpenClaw"],
       "description": "Ahsen Kurtoski è l'autore di Gina, la segreteria digitale WhatsApp self-hosted e open source."
     },
     {
@@ -199,6 +207,7 @@
     <a href="#come-funziona">Come funziona</a>
     <a href="#costi">Costi</a>
     <a href="#faq">FAQ</a>
+    <a href="{{BASE_URL}}/autore.html">Autore</a>
     <a class="nav-cta" href="{{REPO_URL}}" rel="noopener">GitHub</a>
   </nav>
 </header>
@@ -390,13 +399,20 @@
     <div class="section-head">
       <p class="eyebrow">L'autore</p>
       <h2>Ahsen Kurtoski</h2>
-      <p>Ahsen Kurtoski è l'autore di Gina: un progetto indipendente, open source e self-hosted per chi vuole un'assistenza WhatsApp concreta senza consegnare i dati a una piattaforma.</p>
+      <p>Ahsen Kurtoski è l'autore di Gina. Studente e sviluppatore software tra Feltre e Belluno, costruisce siti, applicazioni full-stack e automazioni: Gina è il suo progetto indipendente per un'assistenza WhatsApp concreta senza consegnare i dati a una piattaforma.</p>
     </div>
     <div class="author">
       <div class="author-badge" aria-hidden="true">AK</div>
       <div>
         <h3>Progetto indipendente, licenza MIT</h3>
         <p>Codice, test, documentazione e cronologia delle release sono pubblici su GitHub. Gina non è un prodotto WhatsApp o Meta e non è affiliata a WhatsApp o Meta.</p>
+        <p class="author-links">
+          <a href="{{BASE_URL}}/autore.html">Chi è l'autore</a>
+          <a href="https://ahsen-studio.netlify.app" rel="me noopener">Portfolio</a>
+          <a href="https://ahsenkurtoski.vercel.app" rel="me noopener">Sito personale</a>
+          <a href="{{OWNER_URL}}" rel="me noopener">GitHub</a>
+          <a href="https://www.linkedin.com/in/ahsen-kurtoski-397b00354" rel="me noopener">LinkedIn</a>
+        </p>
         <p><a class="btn ghost" href="{{REPO_URL}}" rel="noopener">Repository, test e release</a></p>
       </div>
     </div>
@@ -452,6 +468,7 @@
 <footer class="site-footer">
   <p>© {{YEAR}} {{OWNER_NAME}} · Gina è un progetto indipendente, non affiliato a WhatsApp o Meta.</p>
   <nav aria-label="Link legali">
+    <a href="{{BASE_URL}}/autore.html">Autore</a>
     <a href="{{BASE_URL}}/privacy.html">Privacy</a>
     <a href="{{BASE_URL}}/privacy.html#cookie" data-cookie-settings>Cookie</a>
     <a href="{{BASE_URL}}/termini.html">Termini</a>

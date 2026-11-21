@@ -51,7 +51,8 @@ SECURITY_HEADERS = [
     ("Cross-Origin-Resource-Policy", "same-origin"),
     ("X-Permitted-Cross-Domain-Policies", "none"),
 ]
-PAGES = ["index.html", "privacy.html", "termini.html", "404.html"]
+PAGES = ["index.html", "privacy.html", "termini.html", "autore.html", "404.html"]
+ASSET_CACHE = "public, max-age=31536000, immutable"
 TEXT_SUFFIXES = {".html", ".css", ".js", ".json", ".txt", ".xml", ".webmanifest"}
 URL_RE = re.compile(r"^https://[A-Za-z0-9.-]+(?::\d{1,5})?(?:/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$")
 TOKEN_RE = re.compile(r"^[A-Za-z0-9._~-]{6,160}$")
@@ -186,15 +187,26 @@ def _render(template: str, values: dict[str, str]) -> str:
 
 
 def _headers_file() -> str:
-    return "/*\n" + "".join(f"  {name}: {value}\n" for name, value in SECURITY_HEADERS)
+    return (
+        "/*\n"
+        + "".join(f"  {name}: {value}\n" for name, value in SECURITY_HEADERS)
+        + "\n/assets/*\n"
+        + f"  Cache-Control: {ASSET_CACHE}\n"
+    )
 
 
 def _vercel_config() -> str:
     payload = {
-        "headers": [{
-            "source": "/(.*)",
-            "headers": [{"key": name, "value": value} for name, value in SECURITY_HEADERS],
-        }],
+        "headers": [
+            {
+                "source": "/(.*)",
+                "headers": [{"key": name, "value": value} for name, value in SECURITY_HEADERS],
+            },
+            {
+                "source": "/assets/(.*)",
+                "headers": [{"key": "Cache-Control", "value": ASSET_CACHE}],
+            },
+        ],
         "git": {"deploymentEnabled": {"main": True}},
         "trailingSlash": False,
     }
@@ -205,6 +217,7 @@ def _sitemap(base_url: str, today: str) -> str:
     rows = []
     for page, priority, freq in (
         ("", "1.0", "monthly"),
+        ("/autore.html", "0.7", "monthly"),
         ("/privacy.html", "0.5", "yearly"),
         ("/termini.html", "0.3", "yearly"),
     ):
@@ -332,8 +345,10 @@ def self_test() -> int:
         assert "Sitemap: https://example.com/sitemap.xml" in (root / "dist" / "robots.txt").read_text(encoding="utf-8")
         assert "Content-Security-Policy" in (root / "dist" / "_headers").read_text(encoding="utf-8")
         assert (root / "dist" / "termini.html").is_file()
+        assert (root / "dist" / "autore.html").is_file()
         assert (root / "dist" / "assets" / "og.jpg").is_file()
-        assert result["pages"] == 4
+        assert "Cache-Control" in (root / "dist" / "_headers").read_text(encoding="utf-8")
+        assert result["pages"] == 5
         print("SITE BUILD SELF-TEST OK")
     return 0
 

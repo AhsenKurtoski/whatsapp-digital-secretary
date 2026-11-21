@@ -475,4 +475,7 @@
   "Sessioni attive": "Active sessions",
   "Esci da tutti i dispositivi": "Sign out everywhere",
   "Cookie HttpOnly · SameSite Strict · CSRF · CSP · rate limit login · directory 700 · chiavi 600. Le sessioni scadono dopo 12 ore; “Esci da tutti” revoca ogni dispositivo e rigenera il token.": "HttpOnly cookie · SameSite Strict · CSRF · CSP · login rate limit · 700 directory · 600 keys. Sessions expire after 12 hours; “Sign out everywhere” revokes every device and rotates the token."
+,
+  "Verifica integrità": "Verify integrity",
+  "La catena di hash è verificabile in locale, senza rete.": "The hash chain can be verified locally, without a network."
 }

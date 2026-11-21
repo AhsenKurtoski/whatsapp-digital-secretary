@@ -147,6 +147,37 @@ class SiteBuildTests(unittest.TestCase):
             html = (self.out / page).read_text(encoding="utf-8")
             self.assertIn("Ahsen Kurtoski", html, page)
 
+    def test_author_page_is_published_and_linked_everywhere(self):
+        """La pagina autore esiste, è nel sitemap e non è un'isola."""
+        site_build.build(self.config, self.out)
+        page = (self.out / "autore.html").read_text(encoding="utf-8")
+        for fact in ("Ahsen Kurtoski", "Feltre", "Belluno", "Lead Machine", "Locanda del Re"):
+            self.assertIn(fact, page, fact)
+        self.assertIn('"@type": "ProfilePage"', page)
+        self.assertIn('"@type": "Person"', page)
+        for profile in ("https://ahsen-studio.netlify.app", "https://ahsenkurtoski.vercel.app",
+                        "https://www.linkedin.com/in/ahsen-kurtoski-397b00354",
+                        "https://www.instagram.com/ahsenstudio"):
+            self.assertIn(profile, page, profile)
+        self.assertIn('rel="me noopener"', page)
+        self.assertIn("https://example.com/autore.html",
+                      (self.out / "sitemap.xml").read_text(encoding="utf-8"))
+        for linked in ("index.html", "privacy.html", "termini.html"):
+            html = (self.out / linked).read_text(encoding="utf-8")
+            self.assertIn("/autore.html", html, linked)
+        self.assertEqual(site_build.PAGES.count("autore.html"), 1)
+        self.assertIn("autore.html", seo_audit.PAGES)
+
+    def test_assets_are_cached_immutably_and_pages_are_not(self):
+        site_build.build(self.config, self.out)
+        headers = (self.out / "_headers").read_text(encoding="utf-8")
+        self.assertIn("/assets/*", headers)
+        self.assertIn("public, max-age=31536000, immutable", headers)
+        built = json.loads((self.out / "vercel.json").read_text(encoding="utf-8"))
+        self.assertEqual([block["source"] for block in built["headers"]], ["/(.*)", "/assets/(.*)"])
+        root = json.loads((ROOT / "vercel.json").read_text(encoding="utf-8"))
+        self.assertEqual(built["headers"], root["headers"])
+
     def test_self_tests_are_real(self):
         self.assertEqual(site_build.self_test(), 0)
         self.assertEqual(seo_audit.self_test(), 0)

@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import base64
 import csv
+import gzip
 import hmac
 import importlib.util
 import io
@@ -871,6 +872,62 @@ def security_status() -> dict:
     }
 
 
+PAGE_CACHE: dict[str, object] = {"key": None, "html": ""}
+
+
+def rendered_page() -> str:
+    """Dashboard pronta da servire, ricostruita solo se i file cambiano.
+
+    Leggere 161 KiB di HTML e 37 KiB di traduzioni a ogni richiesta costava
+    ~1,3 ms di CPU per un dato che cambia solo quando aggiorni la dashboard.
+    """
+    i18n_path = os.path.join(os.path.dirname(HTML_FILE), "i18n.json")
+    try:
+        key = (
+            os.path.getmtime(HTML_FILE), os.path.getsize(HTML_FILE),
+            os.path.getmtime(i18n_path), os.path.getsize(i18n_path),
+            GOOGLE_ACCOUNT, OWNER,
+            str(CFG.get("business_name") or ""), str(CFG.get("owner_name") or ""),
+            str(CFG.get("bot_name") or ""),
+        )
+    except OSError:
+        key = None
+    if key is not None and PAGE_CACHE["key"] == key:
+        return str(PAGE_CACHE["html"])
+    with open(HTML_FILE, encoding="utf-8") as f:
+        page = f.read()
+    try:
+        with open(i18n_path, encoding="utf-8") as f:
+            i18n_text = f.read().strip() or "{}"
+    except OSError:
+        i18n_text = "{}"
+    page = (page.replace("{{I18N_TEXT}}", i18n_text)
+                .replace("{{BUSINESS_NAME}}", str(CFG.get("business_name") or "Nome Attività"))
+                .replace("{{OWNER_NAME}}", str(CFG.get("owner_name") or "Titolare"))
+                .replace("{{BOT_NAME}}", str(CFG.get("bot_name") or "Gina"))
+                .replace("{{BOT_INITIAL}}", (str(CFG.get("bot_name") or "Gina").strip()[:1] or "G").upper())
+                .replace("{{GOOGLE_ACCOUNT}}", GOOGLE_ACCOUNT)
+                .replace("{{OWNER_NUMBER}}", OWNER))
+    if key is not None:
+        PAGE_CACHE["key"] = key
+        PAGE_CACHE["html"] = page
+    return page
+
+
+def _token_matches(candidate: str) -> bool:
+    """Confronto a tempo costante che non esplode su un token non ASCII.
+
+    ``hmac.compare_digest`` accetta ``str`` solo se è ASCII: un POST con
+    ``token=città`` sollevava ``TypeError`` e chiudeva la richiesta con un 500
+    invece di un 401. Il confronto su UTF-8 è equivalente e non solleva.
+    """
+    try:
+        expected = DASH_TOKEN.encode("utf-8")
+        return hmac.compare_digest(str(candidate or "").encode("utf-8"), expected)
+    except (TypeError, ValueError, AttributeError):
+        return False
+
+
 def _live_sessions() -> dict[str, dict]:
     now = time.time()
     for sid in [key for key, value in SESSIONS.items() if float(value.get("exp") or 0) <= now]:
@@ -1540,16 +1597,27 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header(k, v)
         self.end_headers()
 
-    def _json(self, obj, code=200, extra=None):
-        body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
-        headers = [("Content-Length", str(len(body)))] + (extra or [])
-        self._headers(code, "application/json; charset=utf-8", headers)
+    def _send(self, body: bytes, ctype: str, code=200, extra=None):
+        """Invia il corpo compresso quando il browser lo accetta.
+
+        La dashboard è una pagina locale da ~161 KiB: senza compressione ogni
+        caricamento trasferisce tutto il markup. Sotto i 1400 byte la
+        compressione non conviene e il corpo resta in chiaro.
+        """
+        headers = list(extra or [])
+        if len(body) >= 1400 and "gzip" in self.headers.get("Accept-Encoding", "").lower():
+            body = gzip.compress(body, 6)
+            headers += [("Content-Encoding", "gzip"), ("Vary", "Accept-Encoding")]
+        headers.append(("Content-Length", str(len(body))))
+        self._headers(code, ctype, headers)
         self.wfile.write(body)
 
+    def _json(self, obj, code=200, extra=None):
+        body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+        self._send(body, "application/json; charset=utf-8", code, extra)
+
     def _html(self, body: str, code=200, extra=None):
-        data = body.encode("utf-8")
-        self._headers(code, "text/html; charset=utf-8", [("Content-Length", str(len(data)))] + (extra or []))
-        self.wfile.write(data)
+        self._send(body.encode("utf-8"), "text/html; charset=utf-8", code, extra)
 
     def _pdf(self, path: str, filename: str):
         try:
@@ -1600,7 +1668,7 @@ class Handler(BaseHTTPRequestHandler):
         session = _live_sessions().get(val)
         if session:
             return {"name": str(session.get("name") or "owner"), "role": str(session.get("role") or "viewer")}
-        if hmac.compare_digest(val, DASH_TOKEN):
+        if _token_matches(val):
             return {"name": "owner", "role": "admin"}
         if identity_store is not None:
             try:
@@ -1710,21 +1778,7 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         if path == "/":
             try:
-                with open(HTML_FILE, encoding="utf-8") as f:
-                    page = f.read()
-                try:
-                    with open(os.path.join(os.path.dirname(HTML_FILE), "i18n.json"), encoding="utf-8") as f:
-                        i18n_text = f.read().strip() or "{}"
-                except OSError:
-                    i18n_text = "{}"
-                page = (page.replace("{{I18N_TEXT}}", i18n_text)
-                            .replace("{{BUSINESS_NAME}}", str(CFG.get("business_name") or "Nome Attività"))
-                            .replace("{{OWNER_NAME}}", str(CFG.get("owner_name") or "Titolare"))
-                            .replace("{{BOT_NAME}}", str(CFG.get("bot_name") or "Gina"))
-                            .replace("{{BOT_INITIAL}}", (str(CFG.get("bot_name") or "Gina").strip()[:1] or "G").upper())
-                            .replace("{{GOOGLE_ACCOUNT}}", GOOGLE_ACCOUNT)
-                            .replace("{{OWNER_NUMBER}}", OWNER))
-                self._html(page)
+                self._html(rendered_page())
             except Exception:
                 self._html("<h1>Dashboard non installata</h1>", 500)
             return
@@ -1787,6 +1841,19 @@ class Handler(BaseHTTPRequestHandler):
             if not self._require():
                 return
             self._json({"ok": True, "data": security_status()})
+            return
+        if path == "/api/audit/verify":
+            if not self._require("admin"):
+                return
+            if identity_store is None:
+                self._json({"ok": False, "error": "identità non disponibile"}, 503)
+                return
+            try:
+                report = identity_store.verify_audit()
+            except Exception as exc:
+                self._json({"ok": False, "error": str(exc)[:160]}, 500)
+                return
+            self._json({"ok": True, "data": report})
             return
         if path == "/api/audit":
             if not self._require():
@@ -2045,7 +2112,7 @@ class Handler(BaseHTTPRequestHandler):
                     valid_user = identity_store.authenticate(token)
                 except Exception:
                     valid_user = None
-            if token and (hmac.compare_digest(token, DASH_TOKEN) or valid_user):
+            if token and (_token_matches(token) or valid_user):
                 if identity_store is not None and not identity_store.check_totp(code):
                     LOGIN_FAILS[ip].append(now)
                     log("login failed (2fa)")
