@@ -37,7 +37,7 @@ quotes, and sends nothing without your go-ahead. Public site:
 
 | | |
 |---|---|
-| **Latest release** | [v1.1.1](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.1.1) — reliable Google bridge, accurate health with an active bridge |
+| **Version** | [v1.4.0](CHANGELOG.md) (`pyproject.toml`) — Gina platform: intelligence, roles, GDPR, backups |
 | **CI on `main`** | [All checks passing](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml) (last verified 20 Nov 2026): unit tests, every Python self-test, email delivery tests, Apps Script bridge handlers, shell syntax |
 | **Python** | 3.11, 3.12, 3.13 and 3.14, all covered by CI |
 | **Platform** | Linux or WSL2 with systemd user services (no Docker required) |
@@ -74,7 +74,8 @@ explicit approval.
 | Document | What it covers |
 |---|---|
 | [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | Plain-language quick start for non-technical users: first install to first reply in 15 minutes (Italian) |
-| [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md) | Light machines: measured RAM, `low_memory` profile, zram and swap, no Docker (Italian) |
+| [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md) | Light machines: measured RAM, `low_memory` profile, zram and swap, `scripts/lowmem_check.py` field check, no Docker (Italian) |
+| [`docs/AUDIT.md`](docs/AUDIT.md) | Verified audit of features, security, WhatsApp and remaining test gaps (Italian) |
 | [`AI_AGENT_PROMPT.md`](AI_AGENT_PROMPT.md) | Copy-paste prompt for an AI agent: installs, connects and verifies everything (Italian) |
 | [`docs/WEBSITE.md`](docs/WEBSITE.md) | Public site: build, SEO audit, analytics, security headers, deploy |
 | [`docs/TESTING.md`](docs/TESTING.md) | Automated checks plus the manual WhatsApp/dashboard/Google checklist |
@@ -218,7 +219,9 @@ customer data is sent to a third-party dashboard service.
 - **RAM**: 1 GB with swap as the technical minimum, **2 GB recommended** (Raspberry
   Pi 4/5, used mini-PCs), 4 GB comfortable. Below 4 GB the `low_memory` profile turns
   itself on and systemd caps the dashboard and periodic jobs: measured numbers in
-  [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md) (Italian)
+  [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md) (Italian). On a real machine run
+  `python3 scripts/lowmem_check.py`: it checks cgroup support, `MemoryCurrent`,
+  OOM kills in the journal, footprint, zram and swap, and exits 1 on a real failure.
 - Python **3.11+**, tested in CI on 3.11, 3.12, 3.13 and 3.14 (standard library plus
   `cryptography`, used for memory and backup encryption: `python3 -m pip install -r requirements.txt`,
   see the venv/PEP 668 note for Debian/Ubuntu in Quick start). **Windows** needs WSL2

@@ -126,6 +126,7 @@ bash scripts/verify.sh
 python3 -m unittest discover -s tests
 bash scripts/coverage.sh
 python3 scripts/footprint.py
+python3 scripts/lowmem_check.py
 python3 doctor.py --short
 ```
 
@@ -157,6 +158,9 @@ python3 -c 'import config; print("low_memory:", config.low_memory())'
 Se è `False` su una macchina con meno di 8 GB e vuoi margine, imposta
 `"low_memory": true` in `~/.config/digital-secretary/config.json` e rilancia
 `bash scripts/install.sh` (vedi `docs/LOW_SPEC.md`).
+
+`python3 scripts/lowmem_check.py` è la prova sul campo: se stampa `FAIL` su `cgroup`,
+`oom:*` o `swap`, non chiudere il lavoro: riporta la riga e applica il rimedio indicato.
 
 ### Formato del report finale
 

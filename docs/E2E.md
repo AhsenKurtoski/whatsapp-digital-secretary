@@ -58,7 +58,7 @@ Un test senza ID verificabile non conta come superato.
 ```bash
 python3 scripts/smoke_guard.py        # raffica + retry + pipeline live, gateway reale isolato
 bash scripts/verify.sh                # matrice completa
-python3 -m unittest discover -s tests  # 256 test
+python3 -m unittest discover -s tests  # tutti i test
 python3 live.py --self-test           # intento, memoria e cache
 ```
 

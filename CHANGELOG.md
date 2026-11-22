@@ -8,6 +8,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Field check for light machines** (`scripts/lowmem_check.py`): on a real machine it
+  verifies cgroup v1/v2 and the `memory` controller, `MemoryMax`/`MemoryCurrent`/`MemoryPeak`
+  of every unit, OOM kills in the user journal, the real footprint against a budget, swap,
+  zram and `vm.swappiness`. Human table or `--json`, `--since`, `--budget-mb`, `--self-test`;
+  exits 1 only on a real failure, so it can run from a timer. Documented with an
+  interpretation table in [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md).
+- **Verified audit** ([`docs/AUDIT.md`](docs/AUDIT.md)): every requested feature, security
+  control, WhatsApp integration and test is marked as implemented, partial, absent or
+  "must be proven on real hardware", with the file/test that supports the claim and the
+  real gaps (webhook replay window, prompt-injection corpus, full-text search, bookings
+  edit/cancel, multi-business, incoming attachments).
 - **Operator replies from the dashboard**: after **Prendi il controllo** the
   Conversations panel shows a composer; `POST /api/conversations/send` validates the
   number and text (max 1000 characters, no control characters), refuses to write unless
@@ -47,6 +58,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Docs consistency**: the READMEs now report the version in `pyproject.toml` (1.4.0)
+  instead of a v1.1.1 tag that no longer matched, the E2E page no longer hardcodes an
+  old test count, and both READMEs explain the field check.
 - **Review of the low-memory release**: `load()` now decides the profile from the config
   it already read (`_low_memory_from`), so there is no second file read and no path that
   can recurse into `load()`; `low_memory` accepts `null`/`"auto"` explicitly. The

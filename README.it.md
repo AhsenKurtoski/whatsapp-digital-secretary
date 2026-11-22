@@ -33,7 +33,7 @@ senza il tuo via libera. Sito pubblico: <https://gina-secretary.vercel.app>.
 
 | | |
 |---|---|
-| **Ultima release** | [v1.1.1](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.1.1) — bridge Google affidabile, salute corretta con bridge attivo |
+| **Versione** | [v1.4.0](CHANGELOG.md) (`pyproject.toml`) — Gina platform: intelligence, ruoli, GDPR, backup |
 | **CI su `main`** | [Tutti i controlli verdi](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/actions/workflows/ci.yml) (ultima verifica 20 nov 2026): test unitari, tutti i self-test Python, test di consegna email, handler del bridge Apps Script, sintassi degli script shell |
 | **Python** | 3.11, 3.12, 3.13 e 3.14, tutte coperte dalla CI |
 | **Piattaforme** | Linux o WSL2 con systemd utente (nessun Docker richiesto) |
@@ -69,7 +69,8 @@ documenti veri. Ogni azione che esce dall'azienda passa da un'approvazione espli
 | Documento | Cosa spiega |
 |---|---|
 | [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | Guida rapida per chi non è tecnico: dalla prima installazione alla prima risposta, in 15 minuti |
-| [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md) | Macchine leggere: RAM misurata, profilo `low_memory`, zram e swap, nessun Docker |
+| [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md) | Macchine leggere: RAM misurata, profilo `low_memory`, zram e swap, verifica sul campo con `scripts/lowmem_check.py`, nessun Docker |
+| [`docs/AUDIT.md`](docs/AUDIT.md) | Audit verificato di funzionalità, sicurezza, WhatsApp e test ancora da fare |
 | [`AI_AGENT_PROMPT.md`](AI_AGENT_PROMPT.md) | Prompt pronto da incollare a un agente AI: installa, collega e verifica tutto da solo |
 | [`docs/WEBSITE.md`](docs/WEBSITE.md) | Sito pubblico: build, audit SEO, analytics, header di sicurezza, deploy |
 | [`docs/TESTING.md`](docs/TESTING.md) | Controlli automatici e checklist manuale WhatsApp/dashboard/Google |
@@ -215,7 +216,9 @@ Nessun dato dei clienti viene inviato a un servizio dashboard di terze parti.
 - **RAM**: 1 GB con swap come minimo tecnico, **2 GB consigliati** (Raspberry Pi 4/5,
   mini-PC usati), 4 GB comodi. Sotto i 4 GB il profilo `low_memory` si attiva da solo
   e systemd limita dashboard e processi periodici: numeri misurati in
-  [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md)
+  [`docs/LOW_SPEC.md`](docs/LOW_SPEC.md). Sulla macchina vera lancia
+  `python3 scripts/lowmem_check.py`: controlla supporto cgroup, `MemoryCurrent`,
+  OOM kill nei log, footprint, zram e swap, ed esce con 1 se c'è un problema reale.
 - Python **3.11+**, testato in CI su 3.11, 3.12, 3.13 e 3.14 (standard library più
   `cryptography`, usata per memoria e backup cifrati: `python3 -m pip install -r requirements.txt`,
   vedi la nota venv/PEP 668 per Debian/Ubuntu nell'Avvio rapido). Su **Windows** serve

@@ -117,9 +117,57 @@ swap=2GB
 ```bash
 python3 scripts/footprint.py                 # tabella RAM reale + verdetto sul budget
 python3 scripts/footprint.py --json          # stessa cosa, per script
+python3 scripts/lowmem_check.py              # verifica sul campo (vedi sotto)
 python3 healthcheck.py --json | grep -A5 '"ram"'
 systemctl --user show openclaw-dashboard.service -p MemoryCurrent
 ```
+
+### Verifica sul campo: `scripts/lowmem_check.py`
+
+I test automatici girano in una sandbox: non possono dire se **questa** macchina supporta
+i limiti di systemd, se un job è già stato ucciso dall'OOM killer o se lo swap basta.
+Questo script legge lo stato reale e non modifica nulla.
+
+```bash
+python3 scripts/lowmem_check.py                     # tabella leggibile, exit 1 se c'è un FAIL
+python3 scripts/lowmem_check.py --json              # per cron o monitoraggio
+python3 scripts/lowmem_check.py --since "48 hours ago"
+python3 scripts/lowmem_check.py --budget-mb 1200    # budget più stretto per 2 GB
+```
+
+| Controllo | Cosa verifica | Quando è `fail` |
+|---|---|---|
+| `profile` | `low_memory` attivo e RAM totale | mai: su < 4 GB senza profilo è `warn` |
+| `cgroup` | cgroup v1/v2 e controller `memory` | cgroup assente, o v2 senza controller memory |
+| `unit:<nome>` | `MemoryMax` e picco reale di ogni unit | nessun limite, o picco ≥ 90% del massimo |
+| `oom[:unit]` | righe OOM/kill nei log (`journalctl --user`) | almeno una riga trovata |
+| `footprint` | RAM dei processi rispetto al budget | oltre il budget |
+| `swap` | swap totale, dispositivi, zram | su < 4 GB con meno di 512 MB di swap |
+| `swappiness` | `vm.swappiness` | mai: sopra 20 è `warn` |
+
+Le unit non installate sono `skip`, non errori: su una macchina senza la segreteria
+installata lo script resta utile per profilo, cgroup e swap. I `warn` non fanno fallire
+l'exit code; i `fail` sì, così può essere usato in un timer o in CI su hardware reale.
+
+Interpretazione rapida:
+
+- `unit:…` con picco vicino al massimo → alza `MemoryMax` nella unit o riduci il lavoro
+  parallelo; non alzarlo oltre 1 GB su una macchina da 2 GB.
+- `oom:…` → il processo è già stato ucciso almeno una volta: guarda `journalctl --user
+  -u <unit> -n 100` e confronta con `MemoryPeak`.
+- `swap` rosso su 2 GB → aggiungi zram (sezione precedente) **e** uno swapfile: senza
+  swap l'OOM killer interviene appena due processi crescono insieme.
+- `swappiness=60` su 2 GB → la macchina passa il tempo a spostare pagine: imposta 10.
+
+Cosa resta comunque manuale, perché nessuno script può dimostrarlo:
+
+1. 24–48 h di funzionamento reale con WhatsApp connesso e `MemoryPeak` che si stabilizza.
+2. Un invio WhatsApp dalla dashboard e un job `healthcheck --notify` **mentre** guardi
+   `MemoryCurrent`: è lo scenario in cui il cgroup include il figlio Node.
+3. Sospensione/ripresa del PC: la dashboard riparte (`Restart=always`), la sessione
+   WhatsApp può richiedere il QR.
+4. Backup e ripristino su un'altra macchina (`backup.py create` / `restore`).
+5. 10 conversazioni in parallelo e 50 messaggi in sequenza su gateway reale.
 
 `healthcheck` aggiunge un controllo **Memoria RAM**: sotto 400 MB disponibili avvisa,
 sotto 200 MB segnala critico con il rimedio, e il timer ogni 30 minuti manda l'avviso

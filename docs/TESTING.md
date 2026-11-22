@@ -5,7 +5,8 @@
 Run these before every release:
 
 ```bash
-bash scripts/verify.sh          # tutta la matrice in un comando
+bash scripts/verify.sh
+python3 scripts/lowmem_check.py --self-test   # verifica low_memory, senza toccare il sistema          # tutta la matrice in un comando
 python3 -m unittest discover -s tests -v
 python3 -m unittest discover -s tests -p 'test_install.py' -v
 python3 -m unittest discover -s tests -p 'test_remote_access.py' -v
@@ -29,7 +30,7 @@ python3 remote_access.py --self-test
 ```
 
 Expected result: `scripts/verify.sh` prints `VERIFICA OK`, the whole suite passes
-(393 tests at the time of writing), including
+(414 tests at the time of writing), including
 the isolated installer, remote-access and OpenClaw compatibility tests; the compile
 check is silent, Code.gs prints
 `Code.gs handlers: OK`, the guard test prints `secretary guard: OK`, and every
