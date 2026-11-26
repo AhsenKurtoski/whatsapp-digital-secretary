@@ -31,6 +31,7 @@ import json
 import os
 import secrets
 import shlex
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -222,6 +223,38 @@ def create(base: Path | None = None, paths: list[Path] | None = None,
     }
 
 
+def _safe_extract(tar: tarfile.TarFile, destination: Path) -> None:
+    """Estrae solo file e cartelle regolari dentro `destination`.
+
+    Non usiamo `extractall`, nemmeno con `filter="data"`: il filtro esiste da
+    Python 3.12 e il comportamento cambia tra le versioni, mentre un archivio di
+    backup può arrivare da un'altra macchina. Qui ogni membro viene validato e
+    scritto a mano, quindi un archivio manomesso non può uscire dalla cartella
+    né creare link simbolici verso file di sistema.
+    """
+    root = destination.resolve()
+    for member in tar.getmembers():
+        name = member.name
+        if name.startswith("/") or ".." in Path(name).parts:
+            raise ValueError(f"percorso non sicuro: {name}")
+        if member.issym() or member.islnk() or member.ischr() or member.isblk() or member.isfifo():
+            raise ValueError(f"membro non consentito: {name}")
+        target = (root / name).resolve()
+        if target != root and root not in target.parents:
+            raise ValueError(f"percorso non sicuro: {name}")
+        if member.isdir():
+            target.mkdir(parents=True, exist_ok=True)
+            continue
+        if not member.isfile():
+            continue
+        source = tar.extractfile(member)
+        if source is None:
+            raise ValueError(f"membro illeggibile: {name}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with source, open(target, "wb") as out:
+            shutil.copyfileobj(source, out)
+
+
 def verify(archive: str | Path, base: Path | None = None) -> dict:
     """Decifra, estrae in una cartella temporanea e confronta ogni hash."""
     path = Path(archive)
@@ -236,13 +269,7 @@ def verify(archive: str | Path, base: Path | None = None) -> dict:
     with tempfile.TemporaryDirectory(prefix="gina-verify-") as tmp:
         try:
             with tarfile.open(fileobj=io.BytesIO(raw), mode="r:gz") as tar:
-                members = tar.getmembers()
-                for member in members:
-                    name = member.name
-                    if name.startswith("/") or ".." in Path(name).parts:
-                        return {"ok": False, "error": f"percorso non sicuro: {name}"}
-                # nosec B202 - i membri sono già validati (niente percorsi assoluti o "..").
-                tar.extractall(tmp, filter="data") if hasattr(tarfile, "data_filter") else tar.extractall(tmp)  # nosec B202
+                _safe_extract(tar, Path(tmp))
         except Exception as exc:
             return {"ok": False, "error": f"archivio corrotto: {str(exc)[:120]}"}
         manifest_path = Path(tmp) / MANIFEST
@@ -282,14 +309,7 @@ def restore(archive: str | Path, target: str | Path, base: Path | None = None) -
         return {"ok": False, "error": str(exc)[:200]}
     try:
         with tarfile.open(fileobj=io.BytesIO(raw), mode="r:gz") as tar:
-            for member in tar.getmembers():
-                if member.name.startswith("/") or ".." in Path(member.name).parts:
-                    return {"ok": False, "error": f"percorso non sicuro: {member.name}"}
-            # nosec B202 - i membri sono già validati (niente percorsi assoluti o "..").
-            if hasattr(tarfile, "data_filter"):
-                tar.extractall(destination, filter="data")
-            else:
-                tar.extractall(destination)  # nosec B202
+            _safe_extract(tar, destination)
     except Exception as exc:
         return {"ok": False, "error": f"estrazione fallita: {str(exc)[:200]}"}
     files = sum(1 for _ in destination.rglob("*") if _.is_file())
