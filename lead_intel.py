@@ -98,7 +98,9 @@ def redact(text: str) -> str:
 
 
 def _scam(text: str) -> list[str]:
-    low = norm(text)
+    # Limite esplicito anche qui: oggi `classify` passa testo già troncato, ma
+    # la funzione è separata e un domani potrebbe ricevere input diretto.
+    low = norm(str(text or "")[:MAX_TEXT])
     signals = [name for name, pat in SCAM_CRITICAL if re.search(pat, low)]
     medium = [name for name, pat in SCAM_MEDIUM if re.search(pat, low)]
     if len(medium) >= 2:
