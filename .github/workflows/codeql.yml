@@ -6,6 +6,9 @@ on:
   pull_request:
   schedule:
     - cron: "24 4 * * 1"
+  # Permette di rieseguire l'analisi a mano dopo un avviso di sicurezza o una
+  # modifica alle query, senza aspettare il lunedì.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -14,6 +17,7 @@ jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       security-events: write
       packages: read

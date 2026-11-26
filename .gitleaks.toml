@@ -1,0 +1,27 @@
+# Configurazione gitleaks (CI → job "security").
+#
+# Restano attive tutte le regole di default: qui sotto ci sono solo i due falsi
+# positivi verificati a mano, con il motivo. Non aggiungere voci senza aver
+# prima controllato il valore: un'allowlist sbagliata spegne il controllo.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Falsi positivi verificati: non sono credenziali."
+
+# b25cd0d2 — google-bridge/Config.gs.example riga 3:
+#   const BRIDGE_SECRET = 'INSERISCI_QUI_UN_SEGRETO_CASUALE_DI_ALMENO_32_CARATTERI';
+# È il testo del placeholder, non un segreto: il file è un esempio che
+# l'installer sostituisce. Verificato anche oggi: stesso contenuto.
+#
+# ad4119c1 — .env.example righe 20-21 (file poi rimosso):
+#   GROQ_API_KEY=
+#   GROQ_API_KEY_2=
+# Valori vuoti. La regola generic-api-key ha preso il *nome* della variabile
+# della riga successiva come se fosse il valore. Nessuna chiave `gsk_` esiste
+# nella storia (verificato con grep su tutti i commit).
+commits = [
+  "b25cd0d2d898e25d64d1cc3fb7d9f20ec037b07e",
+  "ad4119c14b4c6aab6dfd3e07776274c5edd836ff",
+]

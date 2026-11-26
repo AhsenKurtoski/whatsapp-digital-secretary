@@ -4,14 +4,29 @@ on:
   push:
     branches: ["main"]
   pull_request:
+  # Ogni lunedì alle 06:00 UTC: `cryptography` ha un intervallo di versioni
+  # (`>=42,<51`), quindi una CVE pubblicata dopo l'ultimo push non la vedrebbe
+  # nessuno. Sulla run schedulata girano solo `quality` (che include pip-audit)
+  # e `security`: rifare 4 matrici Python identiche sarebbe solo rumore.
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# Una nuova push sullo stesso branch/PR annulla la run precedente. Sul branch
+# principale e sulle run schedulate non si annulla nulla.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test:
     name: Tests (Python ${{ matrix.python }})
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -60,7 +75,9 @@ jobs:
 
   apps-script:
     name: Apps Script bridge test
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -78,7 +95,10 @@ jobs:
 
   quality:
     name: Lint, types, security, coverage
+    # Gira anche sulla run settimanale: è qui che `pip-audit` scopre una CVE
+    # nuova delle dipendenze runtime.
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -118,7 +138,9 @@ jobs:
 
   shell:
     name: Shell syntax
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -138,3 +160,26 @@ jobs:
           if (hooks.join(",") !== "before_dispatch,message_sending,agent_end") process.exit(1);
           console.log("hello-plugin: OK");
           '
+
+  security:
+    name: Segreti nella storia (gitleaks)
+    # Sempre: è il controllo che deve restare verde anche senza push.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Tutta la storia: un segreto committato mesi fa resta leggibile
+          # anche dopo la rimozione dal file attuale.
+          fetch-depth: 0
+
+      - name: gitleaks
+        shell: bash
+        run: |
+          if ! command -v gitleaks >/dev/null 2>&1; then
+            version=8.24.3
+            curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz" \
+              | tar -xz -C /usr/local/bin gitleaks
+          fi
+          gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1

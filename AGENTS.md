@@ -44,6 +44,20 @@ healthy, not able to send without the owner's approval.
 8. Run the verification commands below. Fix every `FAIL`; report every remaining `WARN`
    with its remedy. Only then tell the user the installation is ready.
 
+## Controlli automatici (CI)
+
+`.github/workflows/ci.yml` esegue la suite su Python **3.11–3.14**, i self-test, il
+bridge firmato, ruff/mypy/bandit/`pip-audit`/coverage (soglia 86%) e la sintassi
+degli script. Ogni **lunedì alle 06:00 UTC** parte una run schedulata con solo
+`quality` e `security`: serve a vedere una CVE nuova di `cryptography` (l'unica
+dipendenza runtime, con intervallo `>=42,<51`) senza aspettare un push.
+
+`security` esegue **gitleaks** su tutta la storia. `.gitleaks.toml` elenca due
+falsi positivi verificati — il placeholder in `google-bridge/Config.gs.example`
+e le righe vuote di `.env.example` — non credenziali: non aggiungere voci senza
+aver controllato il valore. `codeql.yml` analizza Python e JavaScript/TypeScript
+ogni lunedì alle 04:24 UTC ed è rilanciabile a mano (`workflow_dispatch`).
+
 ## Verification commands
 
 ```bash
