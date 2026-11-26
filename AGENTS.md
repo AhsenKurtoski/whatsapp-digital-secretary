@@ -58,6 +58,12 @@ e le righe vuote di `.env.example` — non credenziali: non aggiungere voci senz
 aver controllato il valore. `codeql.yml` analizza Python e JavaScript/TypeScript
 ogni lunedì alle 04:24 UTC ed è rilanciabile a mano (`workflow_dispatch`).
 
+Gli alert di code scanning sono rivisti uno per uno in
+[`docs/CODEQL_TRIAGE.md`](docs/CODEQL_TRIAGE.md): ogni voce dice se è stata
+corretta, perché è un falso positivo, o perché è una scelta voluta (mostrare
+un segreto una volta). Un alert non si dismette senza quella riga, e una
+modifica che ne introduce uno nuovo va spiegata lì.
+
 ## Verification commands
 
 ```bash
