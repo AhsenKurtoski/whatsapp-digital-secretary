@@ -6,6 +6,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-28
+
 ### Added
 
 - **Field check for light machines** (`scripts/lowmem_check.py`): on a real machine it
@@ -726,4 +728,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 [1.0.1]: https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.0.1
 [1.1.0]: https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.1.0
+[Unreleased]: https://github.com/AhsenKurtoski/whatsapp-digital-secretary/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.4.0
+[1.1.1]: https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.1.1
 [1.0.0]: https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.0.0

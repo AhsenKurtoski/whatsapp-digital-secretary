@@ -197,6 +197,30 @@ Windows va in sospensione, si spegne o esegue `wsl --shutdown`**, e in quel mome
 bot non risponde. Per un servizio davvero 24/7 usa una macchina Linux accesa (VPS o mini
 PC): vedi [ALWAYS_ON.md](ALWAYS_ON.md).
 
+## Aggiornare un'installazione che esiste già
+
+Da Ubuntu (non da PowerShell, e non in `/mnt/c`):
+
+```bash
+cd ~/whatsapp-digital-secretary
+git status --short
+git pull --ff-only
+grep '^version' pyproject.toml     # deve dire 1.4.0
+bash scripts/install.sh
+python3 doctor.py
+```
+
+L'installer riavvia dashboard e gateway e non tocca configurazione né segreti. Per capire
+se sei ancora sulla vecchia versione:
+
+```bash
+git describe --tags          # v1.1.1 = vecchia; la release corrente è v1.4.0
+sha256sum ~/.openclaw/secretary/dashboard.py dashboard.py
+```
+
+Se `git pull` risponde `not a git repository`, la cartella è quella di Windows: il repo
+vive nella home di Linux (`~/whatsapp-digital-secretary`).
+
 ## Problemi frequenti
 
 | Sintomo | Causa e rimedio |

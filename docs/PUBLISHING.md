@@ -2,18 +2,20 @@
 
 The live repository is [AhsenKurtoski/whatsapp-digital-secretary](https://github.com/AhsenKurtoski/whatsapp-digital-secretary).
 It is public and MIT-licensed. The latest published release is
-[v1.1.1](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.1.1).
+[v1.4.0](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.4.0)
+(28 November 2026), whose notes live in
+[the v1.4.0 notes](releases/v1.4.0.md) and in the `## [1.4.0]` section of
+[CHANGELOG.md](../CHANGELOG.md).
 
-`main` currently contains the changes listed under `## [Unreleased]` in
-[CHANGELOG.md](../CHANGELOG.md). They are prepared for the next minor release,
-**v1.2.0** (new demo quote preview, mobile email layout, approval-flow tests,
-inbound burst protection before the model, signed Gmail/Calendar bridge health, AI agent
-setup guide and related documentation). v1.2.0 is not tagged yet.
+`main` now carries only new changes under `## [Unreleased]`, prepared for the next
+release (**v1.5.0**). Nothing in `Unreleased` is tagged or published yet.
 
 | Version | State |
 |---|---|
-| `v1.1.1` | Latest published release |
-| `v1.2.0` | Next release, from the current `Unreleased` section |
+| `v1.4.0` | Latest published release (2026-11-28) |
+| `v1.2.0` | Superseded draft notes, never tagged (kept in `docs/releases/`) |
+| `v1.1.1` | Previous release |
+| `v1.5.0` | Next release, from the current `Unreleased` section |
 
 ## 1. Final secret scan
 
@@ -73,22 +75,26 @@ In **Settings → Code security** enable private vulnerability reporting and Dep
 alerts. In **Settings → Actions → General** allow the default GitHub Actions workflow.
 Keep the description and homepage current in **Settings → General**.
 
-## 4. Prepare and release v1.2.0
+## 4. Prepare and release the next version
+
+The flow below is the one used for v1.4.0; replace `X.Y.Z` and the title.
 
 ### 4.1 Freeze the changelog and version
 
 Before tagging:
 
 1. In [CHANGELOG.md](../CHANGELOG.md), rename `## [Unreleased]` to
-   `## [1.2.0] - YYYY-MM-DD`.
+   `## [X.Y.Z] - YYYY-MM-DD`.
 2. Add a fresh empty `## [Unreleased]` section and update the link references at the
    bottom of the file:
-   - `[Unreleased]: .../compare/v1.2.0...HEAD`
-   - `[1.2.0]: .../compare/v1.1.1...v1.2.0`
-3. Set `VERSION = "1.2.0"` in `healthcheck.py`.
-4. Update the **Latest release** row and verification date in `README.md` and
-   `README.it.md`.
-5. Re-read the rendered README, including these images:
+   - `[Unreleased]: .../compare/vX.Y.Z...HEAD`
+   - `[X.Y.Z]: .../releases/tag/vX.Y.Z`
+3. Set `VERSION = "X.Y.Z"` in `healthcheck.py`.
+4. Set `version = "X.Y.Z"` in `pyproject.toml`.
+5. Write the release notes in `docs/releases/vX.Y.Z.md` (upgrade steps first, then the
+   changelog highlights) and link them from this file.
+6. Update the **Version** row in `README.md` and `README.it.md`.
+7. Re-read the rendered README, including these images:
    - `docs/screenshot-dashboard.png`
    - `docs/email-preview.png`
    - `docs/email-preview-mobile.png`
@@ -97,10 +103,13 @@ Before tagging:
 ### 4.2 Run the final checks
 
 ```bash
-python -m py_compile *.py google-bridge/*.py
-python -m unittest discover -s tests
-python google-bridge/test_bridge.py
+python3 -m py_compile *.py google-bridge/*.py
+python3 -m unittest discover -s tests
+python3 google-bridge/test_bridge.py
 node google-bridge/test_code_gs.js
+python3 link_check.py
+python3 healthcheck.py --self-test
+python3 doctor.py --self-test
 ```
 
 The same checks run in `.github/workflows/ci.yml` on Python 3.11–3.14. Wait for the
@@ -109,29 +118,28 @@ CI run on the release commit to pass before creating the tag.
 ### 4.3 Tag and publish
 
 ```bash
-git tag -a v1.2.0 -m "v1.2.0 — demo quote preview and mobile layout"
+git tag -a vX.Y.Z -m "vX.Y.Z — short title"
 git push origin main
-git push origin v1.2.0
+git push origin vX.Y.Z
 
-gh release create v1.2.0 \
-  --title "v1.2.0 — Demo quote preview and mobile layout" \
-  --generate-notes
+gh release create vX.Y.Z \
+  --title "vX.Y.Z — Short title" \
+  --notes-file docs/releases/vX.Y.Z.md
 ```
 
-`--generate-notes` creates notes from merged changes. If you prefer curated notes,
-extract the `## [1.2.0]` section into a temporary file and use `--notes-file` instead.
+Use curated notes from `docs/releases/`, not `--generate-notes`: the changelog is the
+source of truth and the release page must show the upgrade steps.
 
 ### 4.4 Verify the release
 
-- Open the release page and check the title, tag and notes.
+- Open the release page and check the tag, title and notes.
 - Verify that CI is green for the tagged commit.
-- Confirm that the README images load on GitHub and that the release links point to
-  `v1.2.0`.
+- Confirm that the README version row and the CHANGELOG links point to `vX.Y.Z`.
 - Check that the dashboard is still shown as local-only (`127.0.0.1`), never exposed on
   a public port.
 
-Future releases follow the same flow: move `Unreleased` under the new version, bump
-`healthcheck.VERSION`, update the README release row, run the checks, tag, publish.
+For v1.4.0 the published tag is `v1.4.0` at the commit that contains this document's
+release notes.
 
 ## 5. What stays private
 
