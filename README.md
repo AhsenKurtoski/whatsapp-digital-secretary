@@ -289,6 +289,39 @@ take a minute to reconnect.
 > Using an AI coding agent? [`AGENTS.md`](AGENTS.md) is the exact install and
 > verification checklist, including the Google and WhatsApp checks.
 
+### Updating an existing installation
+
+Releases and `main` move on, but an installed copy does not update itself:
+`~/.openclaw/secretary` stays at the version from install day. From the repository
+folder:
+
+```bash
+cd ~/whatsapp-digital-secretary
+git status --short          # must be empty; save or stash local edits first
+git pull --ff-only
+grep '^version' pyproject.toml   # 1.4.0 for this release
+bash scripts/install.sh
+python3 doctor.py
+```
+
+`install.sh` copies the new code into `~/.openclaw/secretary`, refreshes the systemd
+units and restarts the dashboard and gateway. It does **not** touch
+`~/.config/digital-secretary/config.json` or `secrets.env`, so business data and keys
+survive.
+
+Check that the installed copy is the new one:
+
+```bash
+sha256sum ~/.openclaw/secretary/dashboard.py dashboard.py   # hashes must match
+systemctl --user status openclaw-dashboard.service --no-pager
+```
+
+If `git pull` says `not a git repository`, you are in the Windows folder instead of WSL:
+open Ubuntu and work in `~/whatsapp-digital-secretary` (see
+[`docs/WSL.md`](docs/WSL.md)). The latest release is
+[v1.4.0](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.4.0):
+if `git describe --tags` still shows `v1.1.1`, you are on the old one.
+
 ### WhatsApp connection
 
 OpenClaw manages the WhatsApp session. On first run, open the OpenClaw control UI or

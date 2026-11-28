@@ -36,7 +36,7 @@ sys.path.insert(0, str(HERE / "google-bridge"))
 
 import config  # noqa: E402 - sys.path è impostato sopra per google-bridge
 
-VERSION = "1.1.1"
+VERSION = "1.4.0"
 HOME = os.path.expanduser("~")
 CFG = config.load()
 BASE = Path(config.BASE)

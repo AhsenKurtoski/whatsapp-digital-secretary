@@ -91,6 +91,24 @@ la sola finestra **10:00–20:00** vedi [`docs/ALWAYS_ON.md`](ALWAYS_ON.md).
 - `python3 ~/.openclaw/secretary/doctor.py --short`: cosa manca e come ripararlo.
 - Dashboard → **Sicurezza**: verifica integrità del registro e sessioni attive.
 
+## 10. Aggiornare la segreteria
+
+Una copia installata non si aggiorna da sola. Quando esce una versione nuova (l'ultima è
+la **1.4.0**), apri il terminale nella cartella del repository e riesegui l'installer:
+
+```bash
+cd ~/whatsapp-digital-secretary
+git pull --ff-only
+grep '^version' pyproject.toml     # deve dire 1.4.0
+bash scripts/install.sh
+python3 doctor.py
+```
+
+I dati dell'attività (`~/.config/digital-secretary/config.json`) e le chiavi
+(`~/.openclaw/secretary/secrets.env`) non vengono toccati. Se `doctor.py` non segnala
+`FAIL`, la segreteria è aggiornata. I dettagli e la verifica della copia installata sono
+nel [README](../README.it.md#aggiornare-uninstallazione-esistente).
+
 ## Errori tipici e soluzione in una riga
 
 | Messaggio | Cosa fare |

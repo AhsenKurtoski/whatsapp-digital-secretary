@@ -286,6 +286,38 @@ impiegare un minuto a riconnettersi.
 > installa, collega WhatsApp/Google, esegue test e footprint e ti riporta un report con
 > PASS/FAIL. La checklist tecnica completa resta in [`AGENTS.md`](AGENTS.md).
 
+### Aggiornare un'installazione esistente
+
+Le release e `main` vanno avanti, ma una copia installata non si aggiorna da sola:
+`~/.openclaw/secretary` resta quella del giorno dell'installazione. Dalla cartella del
+repository:
+
+```bash
+cd ~/whatsapp-digital-secretary
+git status --short          # deve essere vuoto; salva o metti da parte le modifiche
+git pull --ff-only
+grep '^version' pyproject.toml   # per questa release: 1.4.0
+bash scripts/install.sh
+python3 doctor.py
+```
+
+`install.sh` ricopia il codice nuovo in `~/.openclaw/secretary`, aggiorna le unit systemd
+e riavvia dashboard e gateway. **Non tocca** `~/.config/digital-secretary/config.json`
+né `secrets.env`: dati dell'attività e chiavi restano.
+
+Verifica che la copia installata sia quella nuova:
+
+```bash
+sha256sum ~/.openclaw/secretary/dashboard.py dashboard.py   # gli hash devono coincidere
+systemctl --user status openclaw-dashboard.service --no-pager
+```
+
+Se `git pull` risponde `not a git repository`, sei nella cartella Windows invece che in
+WSL: apri Ubuntu e lavora in `~/whatsapp-digital-secretary` (vedi
+[`docs/WSL.md`](docs/WSL.md)). L'ultima release è la
+[v1.4.0](https://github.com/AhsenKurtoski/whatsapp-digital-secretary/releases/tag/v1.4.0):
+se `git describe --tags` mostra `v1.1.1`, hai ancora la vecchia.
+
 ### Connessione WhatsApp
 
 OpenClaw gestisce la sessione WhatsApp. Al primo avvio apri la control UI di OpenClaw
